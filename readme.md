@@ -50,7 +50,7 @@ In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestinat
 
 By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).
 
-Let's see the benefit of the A\* algorithm with the french road network :
+### Let's see the benefit of the A\* algorithm with the french road network :
 
 ``` r
 library(cppRouting)
@@ -80,6 +80,20 @@ head(roads)
     ## 5    4 113129 4.9680000
     ## 6    5      4 1.6680000
 
+### Head of coordinates data
+
+``` r
+head(coord)
+```
+
+    ##   ID        X       Y
+    ## 1  0 805442.8 6458384
+    ## 2  1 552065.9 6790520
+    ## 3  2 556840.2 6790475
+    ## 4  3 554883.7 6790020
+    ## 5  4 548345.2 6791000
+    ## 6  5 547141.3 6790434
+
 ### Instantiate the graph
 
 ``` r
@@ -87,7 +101,7 @@ head(roads)
 graph<-makegraph(roads,directed = T,coords = coord)
 ```
 
-### Dijkstra algorithm
+### Run Dijkstra algorithm for finding minimum cost between pairs of nodes
 
 ``` r
 #Generate 2000 random origin and destination nodes
@@ -104,7 +118,7 @@ pair_dijkstra<-get_distance_pair(graph,origin,destination)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   55.91    0.00   56.34
+    ##   54.69    0.00   54.79
 
 ``` r
 #Benchmarks parallel
@@ -117,9 +131,9 @@ pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   70.06    0.07   18.46
+    ##   70.31    0.00   17.97
 
-### A\* algorithm
+### Run A\* algorithm
 
 Coordinates are defined in meters and max speed is 110km/h; so for the heuristic function to be admissible, the constant equal 110/0.06 :
 
@@ -133,7 +147,7 @@ pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   30.30    2.54   33.18
+    ##   30.42    2.28   32.79
 
 ``` r
 #A* parallel
@@ -145,7 +159,7 @@ pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",cons
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   43.93    0.58   11.67
+    ##   44.38    0.72   11.65
 
 A\* is the fastest one and the output is the same.
 
@@ -154,12 +168,12 @@ head(cbind(pair_dijkstra,pair_astar,pair_dijkstra_par,pair_astar_par))
 ```
 
     ##      pair_dijkstra pair_astar pair_dijkstra_par pair_astar_par
-    ## [1,]      191.4190   191.4190          191.4190       191.4190
-    ## [2,]      453.8487   453.8487          453.8487       453.8487
-    ## [3,]      228.9699   228.9699          228.9699       228.9699
-    ## [4,]      275.5419   275.5419          275.5419       275.5419
-    ## [5,]      265.9542   265.9542          265.9542       265.9542
-    ## [6,]      433.7142   433.7142          433.7142       433.7142
+    ## [1,]      462.4514   462.4514          462.4514       462.4514
+    ## [2,]      114.1351   114.1351          114.1351       114.1351
+    ## [3,]      238.4923   238.4923          238.4923       238.4923
+    ## [4,]      490.4173   490.4173          490.4173       490.4173
+    ## [5,]      218.5715   218.5715          218.5715       218.5715
+    ## [6,]      482.1238   482.1238          482.1238       482.1238
 
 Applications
 ============
@@ -193,7 +207,7 @@ df$ratio<-df$NB_D201/df$pop
 ### Second step
 
 ``` r
-#Isochrone around each commune with time limit of 15 minutes
+#Isochrone around each commune with time limit of 15 minutes (few seconds to compute)
 iso2<-get_isochrone(graph,from=ndcom$id_noeud,lim = 15)
 #Convert list to long data frame
 df2<-stack(setNames(iso2, seq_along(iso2)))
@@ -221,7 +235,7 @@ p<-ggplot()+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-8-1.png)
 
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
@@ -237,7 +251,7 @@ The shortest travel time is computed with the `cppRouting` function `get_distanc
 We compute travel time from all commune nodes to all maternity ward nodes (e.g ~36000\*400 distances).
 
 ``` r
-#Distance matrix
+#Distance matrix (around 10 minutes to compute)
 dists<-get_distance_matrix(graph,
                            from=ndcom$id_noeud,
                            to=ndcom$id_noeud[ndcom$com %in% maternity$CODGEO],
@@ -263,7 +277,7 @@ p<-ggplot()+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-10-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
 Benchmark with other R packages
 ===============================
@@ -285,12 +299,12 @@ destination<-sample(unique(roads$from),1000,replace = F)
 graph_igraph<-graph_from_data_frame(roads,directed = TRUE)
 
 system.time(
-  test_igraph<-distances(graph_igraph,origin,to=destination,weights = E(graph_igraph)$weight)
+  test_igraph<-distances(graph_igraph,origin,to=destination,weights = E(graph_igraph)$weight,mode="out")
 )
 ```
 
     ##    user  system elapsed 
-    ##  120.42    0.07  121.51
+    ##   86.48    0.06   86.69
 
 ``` r
 #dodgr
@@ -311,7 +325,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##   87.57    0.08   88.27
+    ##   85.02    0.08   85.27
 
 ``` r
 #cppRouting
@@ -321,7 +335,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 ```
 
     ##    user  system elapsed 
-    ##   54.97    0.03   55.38
+    ##   54.35    0.02   54.45
 
 ### Distance matrix : parallel
 
@@ -333,7 +347,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##  125.91    0.61   33.93
+    ##  118.82    0.36   31.42
 
 ``` r
 #cppRouting
@@ -343,7 +357,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 ```
 
     ##    user  system elapsed 
-    ##   70.85    0.03   18.28
+    ##   69.43    0.00   17.73
 
 Benchmarking on shortest paths by pairs
 ---------------------------------------
@@ -359,7 +373,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 ```
 
     ##    user  system elapsed 
-    ##  534.82   20.57  557.50
+    ##  524.96   18.16  544.13
 
 ``` r
 #cppRouting
@@ -371,7 +385,7 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##    7.90    0.00    7.91
+    ##    7.88    0.01    7.90
 
 ### Test similarity of the first travel
 
@@ -380,13 +394,13 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0
 length(test_dodgr[[1]][[1]])
 ```
 
-    ## [1] 274
+    ## [1] 324
 
 ``` r
 length(test_cpp[[1]])
 ```
 
-    ## [1] 274
+    ## [1] 324
 
 ``` r
 #Setdiff 

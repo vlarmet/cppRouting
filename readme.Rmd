@@ -52,7 +52,7 @@ In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestinat
 By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).  
   
 
-Let's see the benefit of the A* algorithm with the french road network :
+###Let's see the benefit of the A* algorithm with the french road network :
 ```{r pressure, echo=TRUE,message=FALSE}
 library(cppRouting)
 library(dplyr)
@@ -72,6 +72,11 @@ coord<-read.csv("coordinates.csv",colClasses = c("character","numeric","numeric"
 #Head of road network data
 head(roads)
 ```
+###Head of coordinates data  
+```{r , echo=TRUE,message=FALSE}
+head(coord)
+```
+
 
 ###Instantiate the graph
 ```{r,echo=TRUE}
@@ -79,7 +84,7 @@ head(roads)
 graph<-makegraph(roads,directed = T,coords = coord)
 ```
 
-###Dijkstra algorithm
+###Run Dijkstra algorithm for finding minimum cost between pairs of nodes
 ```{r,echo=TRUE}
 #Generate 2000 random origin and destination nodes
 origin<-sample(roads$from,2000)
@@ -98,7 +103,7 @@ pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
 )
 
 ```
-###A* algorithm
+###Run A* algorithm
 Coordinates are defined in meters and max speed is 110km/h; so for the heuristic function to be admissible, the constant equal 110/0.06 :  
 ```{r,echo=TRUE}
 #A* single node
@@ -145,7 +150,7 @@ df$ratio<-df$NB_D201/df$pop
 
 ###Second step
 ```{r,echo=TRUE,message=FALSE}
-#Isochrone around each commune with time limit of 15 minutes
+#Isochrone around each commune with time limit of 15 minutes (few seconds to compute)
 iso2<-get_isochrone(graph,from=ndcom$id_noeud,lim = 15)
 #Convert list to long data frame
 df2<-stack(setNames(iso2, seq_along(iso2)))
@@ -182,7 +187,7 @@ maternity<-read.csv("maternity.csv",colClasses = c("character","numeric"))
 The shortest travel time is computed with the `cppRouting` function `get_distance_matrix`.    
 We compute travel time from all commune nodes to all maternity ward nodes (e.g ~36000*400 distances).
 ```{r,echo=TRUE,message=FALSE,warning=FALSE,include=TRUE}
-#Distance matrix
+#Distance matrix (around 10 minutes to compute)
 dists<-get_distance_matrix(graph,
                            from=ndcom$id_noeud,
                            to=ndcom$id_noeud[ndcom$com %in% maternity$CODGEO],
@@ -224,7 +229,7 @@ destination<-sample(unique(roads$from),1000,replace = F)
 graph_igraph<-graph_from_data_frame(roads,directed = TRUE)
 
 system.time(
-  test_igraph<-distances(graph_igraph,origin,to=destination,weights = E(graph_igraph)$weight)
+  test_igraph<-distances(graph_igraph,origin,to=destination,weights = E(graph_igraph)$weight,mode="out")
 )
 
 
@@ -249,6 +254,7 @@ system.time(
 test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 )
 ```
+
 ###Distance matrix : parallel
 ```{r,echo=TRUE,warning=FALSE}
 #dodgr
