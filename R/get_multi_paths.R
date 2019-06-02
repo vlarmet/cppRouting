@@ -8,7 +8,8 @@
 #' @note Be aware that if 'from' and 'to' have consequent size, output will require much memory space. 
 
 get_multi_paths<-function(Graph,from,to){
-  if (any(is.na(cbind(from,to)))) stop("NAs are not allowed in origin/destination nodes")
+  if (any(is.na(from))) stop("NAs are not allowed in origin/destination nodes")
+  if (any(is.na(to))) stop("NAs are not allowed in origin/destination nodes")
   
   
   from<-as.character(from)
