@@ -22,8 +22,10 @@ get_distance_pair<-function(Graph,from,to,algorithm="Dijkstra",constant=1,allcor
   
   if (any(is.na(cbind(from,to)))) stop("NAs are not allowed in origin/destination nodes")
   from<-as.character(from)
-  from_id<-Graph$dict$id[match(from,Graph$dict$ref)]
   to<-as.character(to)
+  allnodes<-c(from,to)
+  if (sum(allnodes %in% Graph$dict$ref)<length(allnodes)) stop("Some nodes are not in the graph")
+  from_id<-Graph$dict$id[match(from,Graph$dict$ref)]
   to_id<-Graph$dict$id[match(to,Graph$dict$ref)]
   
   
