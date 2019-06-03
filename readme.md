@@ -57,6 +57,8 @@ library(cppRouting)
 library(dplyr)
 library(sf)
 library(ggplot2)
+library(concaveman)
+library(ggmap)
 #setwd("")
 #Reading french road data
 roads<-read.csv("roads.csv",colClasses = c("character","character","numeric"))
@@ -118,7 +120,7 @@ pair_dijkstra<-get_distance_pair(graph,origin,destination)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   54.69    0.00   54.79
+    ##   56.36    0.02   57.24
 
 ``` r
 #Benchmarks parallel
@@ -131,7 +133,7 @@ pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   70.31    0.00   17.97
+    ##   71.52    0.08   19.59
 
 ### Run A\* algorithm
 
@@ -147,7 +149,7 @@ pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   30.42    2.28   32.79
+    ##   31.37    1.93   33.82
 
 ``` r
 #A* parallel
@@ -159,7 +161,7 @@ pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",cons
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   44.38    0.72   11.65
+    ##   43.90    0.75   11.97
 
 A\* is the fastest one and the output is the same.
 
@@ -168,12 +170,51 @@ head(cbind(pair_dijkstra,pair_astar,pair_dijkstra_par,pair_astar_par))
 ```
 
     ##      pair_dijkstra pair_astar pair_dijkstra_par pair_astar_par
-    ## [1,]      462.4514   462.4514          462.4514       462.4514
-    ## [2,]      114.1351   114.1351          114.1351       114.1351
-    ## [3,]      238.4923   238.4923          238.4923       238.4923
-    ## [4,]      490.4173   490.4173          490.4173       490.4173
-    ## [5,]      218.5715   218.5715          218.5715       218.5715
-    ## [6,]      482.1238   482.1238          482.1238       482.1238
+    ## [1,]      347.4129   347.4129          347.4129       347.4129
+    ## [2,]      331.9925   331.9925          331.9925       331.9925
+    ## [3,]      196.9234   196.9234          196.9234       196.9234
+    ## [4,]      427.4617   427.4617          427.4617       427.4617
+    ## [5,]      196.4124   196.4124          196.4124       196.4124
+    ## [6,]      313.8013   313.8013          313.8013       313.8013
+
+Compute isochrones
+------------------
+
+Let's compute isochrones around Dijon city
+
+``` r
+#Compute isochrones
+iso<-get_isochrone(graph,from = "205793",lim = c(15,25,45,60,90,120))
+#Convert nodes to concave polygons with concaveman package
+poly<-lapply(iso[[1]],function(x){
+  x<-data.frame(noeuds=x,stringsAsFactors = F)
+  x<-left_join(x,coord,by=c("noeuds"="ID"))
+  return(concaveman(summarise(st_as_sf(x,coords=c("X","Y"),crs=2154))))
+})
+
+poly<-do.call(rbind,poly)
+poly$time<-as.factor(names(iso[[1]]))
+#Multipolygon
+poly2<-st_cast(poly,"MULTIPOLYGON")
+poly2$time<-reorder(poly2$time,c(120,90,60,45,25,15))
+#Reproject for plotting
+poly2<-st_transform(poly2,"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+#Import map backgroung
+dijon=get_map(location=c(lon=5.041140,lat=47.323025),zoom=7, source="google",maptype = "toner-2010")
+#Plot the map
+p<-ggmap(dijon)+
+  geom_sf(data=poly2,aes(fill=time),alpha=.5,inherit.aes = FALSE)+
+  scale_fill_brewer(palette = "RdBu")+
+  labs(fill="Minutes")+
+  ggtitle("Isochrones around Dijon")+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.y=element_blank(),axis.title.x=element_blank())
+p
+```
+
+![](readme_files/figure-markdown_github/unnamed-chunk-6-1.png)
 
 Applications
 ============
@@ -235,7 +276,7 @@ p<-ggplot()+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-8-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-9-1.png)
 
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
@@ -277,7 +318,7 @@ p<-ggplot()+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-11-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-12-1.png)
 
 Benchmark with other R packages
 ===============================
@@ -304,7 +345,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   86.48    0.06   86.69
+    ##   92.93    0.11   93.70
 
 ``` r
 #dodgr
@@ -325,7 +366,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##   85.02    0.08   85.27
+    ##   89.75    0.08   90.28
 
 ``` r
 #cppRouting
@@ -335,7 +376,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 ```
 
     ##    user  system elapsed 
-    ##   54.35    0.02   54.45
+    ##   59.76    0.06   60.61
 
 ### Distance matrix : parallel
 
@@ -347,7 +388,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##  118.82    0.36   31.42
+    ##  134.83    0.89   41.32
 
 ``` r
 #cppRouting
@@ -357,7 +398,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 ```
 
     ##    user  system elapsed 
-    ##   69.43    0.00   17.73
+    ##   76.25    0.10   21.98
 
 Benchmarking on shortest paths by pairs
 ---------------------------------------
@@ -373,7 +414,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 ```
 
     ##    user  system elapsed 
-    ##  524.96   18.16  544.13
+    ##  572.20   20.48  599.70
 
 ``` r
 #cppRouting
@@ -385,7 +426,7 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##    7.88    0.01    7.90
+    ##    8.30    0.04    8.35
 
 ### Test similarity of the first travel
 
@@ -394,13 +435,13 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0
 length(test_dodgr[[1]][[1]])
 ```
 
-    ## [1] 324
+    ## [1] 227
 
 ``` r
 length(test_cpp[[1]])
 ```
 
-    ## [1] 324
+    ## [1] 227
 
 ``` r
 #Setdiff 

@@ -58,6 +58,8 @@ library(cppRouting)
 library(dplyr)
 library(sf)
 library(ggplot2)
+library(concaveman)
+library(ggmap)
 #setwd("")
 #Reading french road data
 roads<-read.csv("roads.csv",colClasses = c("character","character","numeric"))
@@ -122,6 +124,41 @@ A* is the fastest one and the output is the same.
 ```{r,echo=TRUE}
 head(cbind(pair_dijkstra,pair_astar,pair_dijkstra_par,pair_astar_par))
 ```
+##Compute isochrones
+Let's compute isochrones around Dijon city  
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+#Compute isochrones
+iso<-get_isochrone(graph,from = "205793",lim = c(15,25,45,60,90,120))
+#Convert nodes to concave polygons with concaveman package
+poly<-lapply(iso[[1]],function(x){
+  x<-data.frame(noeuds=x,stringsAsFactors = F)
+  x<-left_join(x,coord,by=c("noeuds"="ID"))
+  return(concaveman(summarise(st_as_sf(x,coords=c("X","Y"),crs=2154))))
+})
+
+poly<-do.call(rbind,poly)
+poly$time<-as.factor(names(iso[[1]]))
+#Multipolygon
+poly2<-st_cast(poly,"MULTIPOLYGON")
+poly2$time<-reorder(poly2$time,c(120,90,60,45,25,15))
+#Reproject for plotting
+poly2<-st_transform(poly2,"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+#Import map backgroung
+dijon=get_map(location=c(lon=5.041140,lat=47.323025),zoom=7, source="google",maptype = "toner-2010")
+#Plot the map
+p<-ggmap(dijon)+
+  geom_sf(data=poly2,aes(fill=time),alpha=.5,inherit.aes = FALSE)+
+  scale_fill_brewer(palette = "RdBu")+
+  labs(fill="Minutes")+
+  ggtitle("Isochrones around Dijon")+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.y=element_blank(),axis.title.x=element_blank())
+p
+
+```
+
 
 #Applications
 ## Application 1 : Calculate Two Step Floating Catchment Areas (2SFCA) of general practitioners in France
