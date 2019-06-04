@@ -17,7 +17,7 @@ using namespace RcppParallel;
 struct Pardijkstra : public Worker
 {
   //input
-  const std::vector<std::vector<std::pair<int, float> > > m_graph;
+  const std::vector<std::vector<std::pair<int, double> > > m_graph;
   RVector<int> m_dep;
   RVector<int> m_arr;
   const int m_nbnodes;
@@ -26,7 +26,7 @@ struct Pardijkstra : public Worker
   RcppParallel::RVector<double> m_result;
   
   //constructor
-  Pardijkstra(const std::vector<std::vector<std::pair<int, float> > > graph,
+  Pardijkstra(const std::vector<std::vector<std::pair<int, double> > > graph,
               Rcpp::IntegerVector dep,
               Rcpp::IntegerVector arr,
               const int nbnodes,
@@ -39,7 +39,7 @@ struct Pardijkstra : public Worker
   void operator()(std::size_t begin, std::size_t end){
     struct comp{
       
-      bool operator()(const std::pair<int, float> &a, const std::pair<int, float> &b){
+      bool operator()(const std::pair<int, double> &a, const std::pair<int, double> &b){
         return a.second > b.second;
       }
     };
@@ -50,7 +50,7 @@ struct Pardijkstra : public Worker
       
       int StartNode=m_dep[k];
       
-      std::vector<float> Distances(m_nbnodes, std::numeric_limits<float>::max());                   
+      std::vector<double> Distances(m_nbnodes, std::numeric_limits<double>::max());                   
       
       
       Distances[StartNode] = 0.0;                                                     
@@ -58,20 +58,20 @@ struct Pardijkstra : public Worker
       std::vector<int> Parents(m_nbnodes, -1);                                            
       
       
-      std::priority_queue<std::pair<int, float>, std::vector<std::pair<int, float> >, comp > Q;
+      std::priority_queue<std::pair<int, double>, std::vector<std::pair<int, double> >, comp > Q;
       Q.push(std::make_pair(StartNode, 0.0));                                              
       
       while (!Q.empty()) {                                                        
         int v = Q.top().first;                                                     
-        float w = Q.top().second;                                                     
+        double w = Q.top().second;                                                     
         Q.pop();
         
         if (w <= Distances[v]) {                                                    
           
           for (int i=0; i< m_graph[v].size(); i++) {
-            std::pair<int,float> j = m_graph[v][i];                                               
+            std::pair<int,double> j = m_graph[v][i];                                               
             int v2 = j.first;                                                      
-            float w2 = j.second;
+            double w2 = j.second;
             
             if (Distances[v] + w2 < Distances[v2]) {                               
               Distances[v2] = Distances[v] + w2;                                   
@@ -87,7 +87,7 @@ struct Pardijkstra : public Worker
       
       int EndNode=m_arr[k];
       
-      if (Distances[EndNode]==std::numeric_limits<float>::max()){
+      if (Distances[EndNode]==std::numeric_limits<double>::max()){
         m_result[k] = Rcpp::NumericVector::get_na();
       }
       else {
@@ -110,7 +110,7 @@ Rcpp::NumericVector Dijkstra_early_stop_par(Rcpp::IntegerVector dep, Rcpp::Integ
   Rcpp::NumericVector result(dep.size());
   int NbEdges=gfrom.size();
   
-  std::vector<std::vector<std::pair<int, float> > > G(NbNodes);                                    
+  std::vector<std::vector<std::pair<int, double> > > G(NbNodes);                                    
   for (int i = 0; i != NbEdges; ++i) {
     
     G[gfrom[i]].push_back(std::make_pair(gto[i], gw[i]));

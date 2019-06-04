@@ -14,7 +14,6 @@ get_isochrone<-function(Graph,from,lim,setdif=FALSE){
   
   if (any(is.na(from))) stop("NAs are not allowed in origin nodes")
   from<-as.character(from)
-  if (sum(from %in% Graph$dict$ref)<length(from)) stop("Some nodes are not in the graph")
   from_id<-Graph$dict$id[match(from,Graph$dict$ref)]
   lim<-as.numeric(lim)
   if (any(is.na(lim))) stop("NAs are not allowed in cost value(s)")

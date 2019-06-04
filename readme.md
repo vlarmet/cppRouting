@@ -45,12 +45,15 @@ Main functions
 
 The choice between Dijkstra and A\* algorithm is available for `get_distance_pair` and `get_path_pair`. In these functions, Dijkstra algorithm is stopped when the destination node is reached.
 A\* is relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a projection system.
-To be accurate and efficient, `A*` algorithm should use an admissible heuristic function (see <https://en.wikipedia.org/wiki/A*_search_algorithm>), e.g the cost and geographic coordinates must be expressed in the same unit.
+To be accurate and efficient, `A*` algorithm should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.
 In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road.
 
 By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).
 
-### Let's see the benefit of the A\* algorithm with the french road network :
+Examples
+--------
+
+### Prepare data
 
 ``` r
 library(cppRouting)
@@ -82,7 +85,7 @@ head(roads)
     ## 5    4 113129 4.9680000
     ## 6    5      4 1.6680000
 
-### Head of coordinates data
+#### Head of coordinates data
 
 ``` r
 head(coord)
@@ -103,7 +106,9 @@ head(coord)
 graph<-makegraph(roads,directed = T,coords = coord)
 ```
 
-### Run Dijkstra algorithm for finding minimum cost between pairs of nodes
+### Distances by pairs between nodes
+
+#### Using Dijkstra algorithm
 
 ``` r
 #Generate 2000 random origin and destination nodes
@@ -120,7 +125,7 @@ pair_dijkstra<-get_distance_pair(graph,origin,destination)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   56.36    0.02   57.24
+    ##   60.49    0.77   61.84
 
 ``` r
 #Benchmarks parallel
@@ -133,9 +138,9 @@ pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   71.52    0.08   19.59
+    ##   77.55    1.54   20.98
 
-### Run A\* algorithm
+#### Using A\* algorithm
 
 Coordinates are defined in meters and max speed is 110km/h; so for the heuristic function to be admissible, the constant equal 110/0.06 :
 
@@ -149,7 +154,7 @@ pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   31.37    1.93   33.82
+    ##   32.99    2.03   35.32
 
 ``` r
 #A* parallel
@@ -161,24 +166,23 @@ pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",cons
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   43.90    0.75   11.97
+    ##   47.74    4.79   13.98
 
-A\* is the fastest one and the output is the same.
+#### Output
 
 ``` r
 head(cbind(pair_dijkstra,pair_astar,pair_dijkstra_par,pair_astar_par))
 ```
 
     ##      pair_dijkstra pair_astar pair_dijkstra_par pair_astar_par
-    ## [1,]      347.4129   347.4129          347.4129       347.4129
-    ## [2,]      331.9925   331.9925          331.9925       331.9925
-    ## [3,]      196.9234   196.9234          196.9234       196.9234
-    ## [4,]      427.4617   427.4617          427.4617       427.4617
-    ## [5,]      196.4124   196.4124          196.4124       196.4124
-    ## [6,]      313.8013   313.8013          313.8013       313.8013
+    ## [1,]      427.5181   427.5181          427.5181       427.5181
+    ## [2,]      175.5770   175.5770          175.5770       175.5770
+    ## [3,]      383.0222   383.0222          383.0222       383.0222
+    ## [4,]      240.5373   240.5373          240.5373       240.5373
+    ## [5,]      114.4894   114.4894          114.4894       114.4894
+    ## [6,]      382.0717   382.0717          382.0717       382.0717
 
-Compute isochrones
-------------------
+### Compute isochrones
 
 Let's compute isochrones around Dijon city
 
@@ -203,8 +207,8 @@ poly2<-st_transform(poly2,"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 dijon=get_map(location=c(lon=5.041140,lat=47.323025),zoom=7, source="google",maptype = "toner-2010")
 #Plot the map
 p<-ggmap(dijon)+
-  geom_sf(data=poly2,aes(fill=time),alpha=.5,inherit.aes = FALSE)+
-  scale_fill_brewer(palette = "RdBu")+
+  geom_sf(data=poly2,aes(fill=time),alpha=.8,inherit.aes = FALSE)+
+  scale_fill_brewer(palette = "YlOrRd")+
   labs(fill="Minutes")+
   ggtitle("Isochrones around Dijon")+
   theme(axis.text.x = element_blank(),
@@ -345,7 +349,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   92.93    0.11   93.70
+    ##   92.08    0.01   93.24
 
 ``` r
 #dodgr
@@ -366,7 +370,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##   89.75    0.08   90.28
+    ##   90.96    0.12   92.15
 
 ``` r
 #cppRouting
@@ -376,7 +380,21 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 ```
 
     ##    user  system elapsed 
-    ##   59.76    0.06   60.61
+    ##   62.51    0.34   63.67
+
+#### Ouput
+
+``` r
+head(cbind(test_igraph[,1],test_dodgr[,1],test_cpp[,1]))
+```
+
+    ##            [,1]     [,2]     [,3]
+    ## 65497  298.6589 298.6589 298.6589
+    ## 31007  494.4791 494.4791 494.4791
+    ## 90120  471.7311 471.7311 471.7311
+    ## 173218 168.3926 168.3926 168.3926
+    ## 133255 264.4111 264.4111 264.4111
+    ## 207610 301.4288 301.4288 301.4288
 
 ### Distance matrix : parallel
 
@@ -388,7 +406,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##  134.83    0.89   41.32
+    ##  129.23    1.33   34.44
 
 ``` r
 #cppRouting
@@ -398,10 +416,10 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 ```
 
     ##    user  system elapsed 
-    ##   76.25    0.10   21.98
+    ##   80.90    0.67   20.98
 
-Benchmarking on shortest paths by pairs
----------------------------------------
+Benchmark on computing shortest paths by pairs
+----------------------------------------------
 
 ``` r
 #Sampling 500 random origin/destination nodes 
@@ -414,7 +432,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 ```
 
     ##    user  system elapsed 
-    ##  572.20   20.48  599.70
+    ##  554.38   20.50  580.83
 
 ``` r
 #cppRouting
@@ -426,7 +444,7 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##    8.30    0.04    8.35
+    ##    8.44    0.01    8.49
 
 ### Test similarity of the first travel
 
@@ -435,13 +453,13 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0
 length(test_dodgr[[1]][[1]])
 ```
 
-    ## [1] 227
+    ## [1] 196
 
 ``` r
 length(test_cpp[[1]])
 ```
 
-    ## [1] 227
+    ## [1] 196
 
 ``` r
 #Setdiff 

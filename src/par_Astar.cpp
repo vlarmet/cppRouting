@@ -16,25 +16,25 @@ using namespace RcppParallel;
 struct Pardijkstra : public Worker
 {
   //input
-  const std::vector<std::vector<std::pair<int, float> > > m_graph;
+  const std::vector<std::vector<std::pair<int, double> > > m_graph;
   RVector<int> m_dep;
   RVector<int> m_arr;
   const int m_nbnodes;
   RVector<double> m_lat;
   RVector<double> m_lon;
-  const float m_k;
+  const double m_k;
   
   //output
   RcppParallel::RVector<double> m_result;
   
   //constructor
-  Pardijkstra(const std::vector<std::vector<std::pair<int, float> > > graph,
+  Pardijkstra(const std::vector<std::vector<std::pair<int, double> > > graph,
               Rcpp::IntegerVector dep,
               Rcpp::IntegerVector arr,
               const int nbnodes,
               Rcpp::NumericVector lat,
               Rcpp::NumericVector lon,
-              const float k,
+              const double k,
               Rcpp::NumericVector result) : m_graph(graph),m_dep(dep), m_arr(arr),m_nbnodes(nbnodes),m_lat(lat),m_lon(lon),m_k(k),m_result(result)
   {
     
@@ -44,7 +44,7 @@ struct Pardijkstra : public Worker
   void operator()(std::size_t begin, std::size_t end){
     struct comp{
       
-      bool operator()(const std::pair<int, float> &a, const std::pair<int, float> &b){
+      bool operator()(const std::pair<int, double> &a, const std::pair<int, double> &b){
         return a.second > b.second;
       }
     };
@@ -55,11 +55,11 @@ struct Pardijkstra : public Worker
       
       int StartNode=m_dep[it];
       int EndNode=m_arr[it];
-      float lata=m_lat[EndNode];
-      float lona=m_lon[EndNode];
+      double lata=m_lat[EndNode];
+      double lona=m_lon[EndNode];
       
-      std::vector<float> Distances(m_nbnodes, std::numeric_limits<float>::max());                   
-      std::vector<float> Distances2(m_nbnodes, std::numeric_limits<float>::max());
+      std::vector<double> Distances(m_nbnodes, std::numeric_limits<double>::max());                   
+      std::vector<double> Distances2(m_nbnodes, std::numeric_limits<double>::max());
       
       Distances[StartNode] = 0.0;
       Distances2[StartNode] = sqrt(pow(m_lat[StartNode]-lata,2)+pow(m_lon[StartNode]-lona,2))/m_k;
@@ -68,7 +68,7 @@ struct Pardijkstra : public Worker
       std::vector <int> closedList(m_nbnodes,0);
       std::vector <int> openList(m_nbnodes,0);
       
-      std::priority_queue<std::pair<int, float>, std::vector<std::pair<int, float> >, comp > Q;
+      std::priority_queue<std::pair<int, double>, std::vector<std::pair<int, double> >, comp > Q;
       Q.push(std::make_pair(StartNode,sqrt(pow(m_lat[StartNode]-lata,2)+pow(m_lon[StartNode]-lona,2))/m_k));                                           
       openList[StartNode]=1;
       
@@ -82,14 +82,14 @@ struct Pardijkstra : public Worker
         closedList[v]=1;
         
         for (int i=0; i< m_graph[v].size(); i++) {
-          std::pair<int,float> j = m_graph[v][i];                                    
+          std::pair<int,double> j = m_graph[v][i];                                    
           int v2 = j.first;                                                      
-          float w2 = j.second;
+          double w2 = j.second;
           if (closedList[v2]==1) {
             continue;
           }
           
-          float temp;                             
+          double temp;                             
           temp = Distances[v] + w2;
           if (openList[v2]==0){
             
@@ -116,8 +116,12 @@ struct Pardijkstra : public Worker
         
       }
       
-      
-      m_result[it] = Distances[EndNode];
+      if (Distances[EndNode]==std::numeric_limits<double>::max()){
+        m_result[it] = Rcpp::NumericVector::get_na();
+      }
+      else {
+        m_result[it] = Distances[EndNode];
+      }
       
       
     }
@@ -128,13 +132,13 @@ struct Pardijkstra : public Worker
 
 
 // [[Rcpp::export]]
-Rcpp::NumericVector Astar_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr,Rcpp::IntegerVector gfrom,Rcpp::IntegerVector gto,Rcpp::NumericVector gw,int NbNodes,Rcpp::NumericVector lat,Rcpp::NumericVector lon,float k){
+Rcpp::NumericVector Astar_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr,Rcpp::IntegerVector gfrom,Rcpp::IntegerVector gto,Rcpp::NumericVector gw,int NbNodes,Rcpp::NumericVector lat,Rcpp::NumericVector lon,double k){
   
   
   Rcpp::NumericVector result(dep.size());
   int NbEdges=gfrom.size();
   
-  std::vector<std::vector<std::pair<int, float> > > G(NbNodes);                                    
+  std::vector<std::vector<std::pair<int, double> > > G(NbNodes);                                    
   for (int i = 0; i != NbEdges; ++i) {
     
     G[gfrom[i]].push_back(std::make_pair(gto[i], gw[i]));

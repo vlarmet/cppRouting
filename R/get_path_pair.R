@@ -9,6 +9,7 @@
 #' @return List containing shortest path between from[i] and to[i].
 #' @note 'from' and 'to' must be the same length.
 #' @details To perform A*, projected coordinates should be provided in the Graph object.  
+#' In A* algorithm, euclidean distance is used as heuristic function.
 #' To understand how A star algorithm work, see https://en.wikipedia.org/wiki/A*_search_algorithm .  
 #' To understand the importance of constant parameter, see the package description : https://github.com/vlarmet/cppRouting .
 #'
@@ -20,10 +21,8 @@ get_path_pair<-function(Graph,from,to,algorithm="Dijkstra",constant=1){
   
   if (any(is.na(cbind(from,to)))) stop("NAs are not allowed in origin/destination nodes")
   from<-as.character(from)
-  to<-as.character(to)
-  allnodes<-c(from,to)
-  if (sum(allnodes %in% Graph$dict$ref)<length(allnodes)) stop("Some nodes are not in the graph")
   from_id<-Graph$dict$id[match(from,Graph$dict$ref)]
+  to<-as.character(to)
   to_id<-Graph$dict$id[match(to,Graph$dict$ref)]
   
   

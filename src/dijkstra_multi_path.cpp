@@ -15,7 +15,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::vector<float> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr,std::vector<std::string> dict){
+Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr,std::vector<std::string> dict){
   
   
   
@@ -26,7 +26,7 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
   
   struct comp{
     
-    bool operator()(const std::pair<int, float> &a, const std::pair<int, float> &b){
+    bool operator()(const std::pair<int, double> &a, const std::pair<int, double> &b){
       return a.second > b.second;
     }
   };
@@ -35,7 +35,7 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
   
   int NbEdges=gfrom.size();
   
-  std::vector<std::vector<std::pair<int, float> > > G(NbNodes);  
+  std::vector<std::vector<std::pair<int, double> > > G(NbNodes);  
  
   for (unsigned int i = 0; i < NbEdges; ++i) {
     
@@ -54,7 +54,7 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
     
     int StartNode=dep[j];
     
-    std::vector<float> Distances(NbNodes, std::numeric_limits<float>::max());                   
+    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());                   
     
     
     Distances[StartNode] = 0.0;                                                     
@@ -62,20 +62,20 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
     std::vector<int> Parents(NbNodes, -1);                                            
     
     
-    priority_queue<std::pair<int, float>, vector<std::pair<int, float> >, comp > Q;
+    priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
     Q.push(std::make_pair(StartNode, 0.0));                                              
     
     while (!Q.empty()) {                                                        
       int v = Q.top().first;                                                     
-      float w = Q.top().second;                                                     
+      double w = Q.top().second;                                                     
       Q.pop();
       
       if (w <= Distances[v]) {                                                    
         
         for (unsigned int i=0; i< G[v].size(); i++) {
-          std::pair<int,float> j = G[v][i];                                               
+          std::pair<int,double> j = G[v][i];                                               
           int v2 = j.first;                                                      
-          float w2 = j.second;
+          double w2 = j.second;
           
           if (Distances[v] + w2 < Distances[v2]) {                               
             Distances[v2] = Distances[v] + w2;                                   

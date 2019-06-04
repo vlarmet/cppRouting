@@ -46,13 +46,13 @@ Data has to be a 3 columns data.frame or matrix containing from, to and a cost/d
                     
 The choice between Dijkstra and A* algorithm is available for `get_distance_pair` and `get_path_pair`. In these functions, Dijkstra algorithm is stopped when the destination node is reached.  
 A* is relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a projection system.  
-To be accurate and efficient, `A*` algorithm should use an admissible heuristic function (see https://en.wikipedia.org/wiki/A*_search_algorithm), e.g the cost and geographic coordinates must be expressed in the same unit.  
+To be accurate and efficient, `A*` algorithm should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.  
 In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road.  
   
 By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).  
   
-
-###Let's see the benefit of the A* algorithm with the french road network :
+##Examples
+###Prepare data
 ```{r pressure, echo=TRUE,message=FALSE}
 library(cppRouting)
 library(dplyr)
@@ -74,7 +74,7 @@ coord<-read.csv("coordinates.csv",colClasses = c("character","numeric","numeric"
 #Head of road network data
 head(roads)
 ```
-###Head of coordinates data  
+####Head of coordinates data  
 ```{r , echo=TRUE,message=FALSE}
 head(coord)
 ```
@@ -85,8 +85,8 @@ head(coord)
 #Instantiate a graph with coordinates
 graph<-makegraph(roads,directed = T,coords = coord)
 ```
-
-###Run Dijkstra algorithm for finding minimum cost between pairs of nodes
+###Distances by pairs between nodes
+####Using Dijkstra algorithm
 ```{r,echo=TRUE}
 #Generate 2000 random origin and destination nodes
 origin<-sample(roads$from,2000)
@@ -105,7 +105,7 @@ pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
 )
 
 ```
-###Run A* algorithm
+####Using A* algorithm
 Coordinates are defined in meters and max speed is 110km/h; so for the heuristic function to be admissible, the constant equal 110/0.06 :  
 ```{r,echo=TRUE}
 #A* single node
@@ -119,12 +119,14 @@ pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",cons
 )
 ```
 
-A* is the fastest one and the output is the same.     
+####Output  
                   
 ```{r,echo=TRUE}
 head(cbind(pair_dijkstra,pair_astar,pair_dijkstra_par,pair_astar_par))
 ```
-##Compute isochrones
+
+
+###Compute isochrones
 Let's compute isochrones around Dijon city  
 ```{r,echo=TRUE,message=FALSE,warning=FALSE}
 #Compute isochrones
@@ -147,8 +149,8 @@ poly2<-st_transform(poly2,"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 dijon=get_map(location=c(lon=5.041140,lat=47.323025),zoom=7, source="google",maptype = "toner-2010")
 #Plot the map
 p<-ggmap(dijon)+
-  geom_sf(data=poly2,aes(fill=time),alpha=.5,inherit.aes = FALSE)+
-  scale_fill_brewer(palette = "RdBu")+
+  geom_sf(data=poly2,aes(fill=time),alpha=.8,inherit.aes = FALSE)+
+  scale_fill_brewer(palette = "YlOrRd")+
   labs(fill="Minutes")+
   ggtitle("Isochrones around Dijon")+
   theme(axis.text.x = element_blank(),
@@ -291,6 +293,10 @@ system.time(
 test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 )
 ```
+####Ouput
+```{r,echo=TRUE}
+head(cbind(test_igraph[,1],test_dodgr[,1],test_cpp[,1]))
+```
 
 ###Distance matrix : parallel
 ```{r,echo=TRUE,warning=FALSE}
@@ -305,7 +311,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 )
 ```
 
-##Benchmarking on shortest paths by pairs
+##Benchmark on computing shortest paths by pairs
 ```{r,echo=TRUE,warning=FALSE}
 #Sampling 500 random origin/destination nodes 
 origin<-sample(unique(roads$from),500,replace = F)

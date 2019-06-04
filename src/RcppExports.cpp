@@ -6,7 +6,7 @@
 using namespace Rcpp;
 
 // Astar
-Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes, std::vector<float> lat, std::vector<float> lon, float k);
+Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<double> lat, std::vector<double> lon, double k);
 RcppExport SEXP _cppRouting_Astar(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -15,11 +15,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type lat(latSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type lon(lonSEXP);
-    Rcpp::traits::input_parameter< float >::type k(kSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type lon(lonSEXP);
+    Rcpp::traits::input_parameter< double >::type k(kSEXP);
     rcpp_result_gen = Rcpp::wrap(Astar(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k));
     return rcpp_result_gen;
 END_RCPP
@@ -45,7 +45,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // Dijkstra_early_stop
-Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes);
+Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes);
 RcppExport SEXP _cppRouting_Dijkstra_early_stop(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -54,21 +54,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     rcpp_result_gen = Rcpp::wrap(Dijkstra_early_stop(dep, arr, gfrom, gto, gw, NbNodes));
     return rcpp_result_gen;
 END_RCPP
 }
 // Dijkstra_early_stop_path
-Rcpp::List Dijkstra_early_stop_path(std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes, std::vector<int> dep, std::vector<int> arr, std::vector<std::string> dict);
+Rcpp::List Dijkstra_early_stop_path(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<int> dep, std::vector<int> arr, std::vector<std::string> dict);
 RcppExport SEXP _cppRouting_Dijkstra_early_stop_path(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP dictSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
@@ -78,14 +78,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // Dijkstra_mat
-Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes, std::vector<int> dep, std::vector<int> arr);
+Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<int> dep, std::vector<int> arr);
 RcppExport SEXP _cppRouting_Dijkstra_mat(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP arrSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
@@ -94,14 +94,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // Dijkstra_multi_path
-Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes, std::vector<int> dep, std::vector<int> arr, std::vector<std::string> dict);
+Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<int> dep, std::vector<int> arr, std::vector<std::string> dict);
 RcppExport SEXP _cppRouting_Dijkstra_multi_path(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP dictSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
@@ -111,35 +111,35 @@ BEGIN_RCPP
 END_RCPP
 }
 // Isochrone
-Rcpp::List Isochrone(std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes, std::vector<int> dep, float max_limit, std::vector<std::string> dict);
+Rcpp::List Isochrone(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<int> dep, double max_limit, std::vector<std::string> dict);
 RcppExport SEXP _cppRouting_Isochrone(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP max_limitSEXP, SEXP dictSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
-    Rcpp::traits::input_parameter< float >::type max_limit(max_limitSEXP);
+    Rcpp::traits::input_parameter< double >::type max_limit(max_limitSEXP);
     Rcpp::traits::input_parameter< std::vector<std::string> >::type dict(dictSEXP);
     rcpp_result_gen = Rcpp::wrap(Isochrone(gfrom, gto, gw, NbNodes, dep, max_limit, dict));
     return rcpp_result_gen;
 END_RCPP
 }
 // Isochrone_multi
-Rcpp::List Isochrone_multi(std::vector<int> gfrom, std::vector<int> gto, std::vector<float> gw, int NbNodes, std::vector<int> dep, std::vector<float> limit_vec, float max_limit, bool setdif, std::vector<std::string> dict);
+Rcpp::List Isochrone_multi(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<int> dep, std::vector<double> limit_vec, double max_limit, bool setdif, std::vector<std::string> dict);
 RcppExport SEXP _cppRouting_Isochrone_multi(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP limit_vecSEXP, SEXP max_limitSEXP, SEXP setdifSEXP, SEXP dictSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
-    Rcpp::traits::input_parameter< std::vector<float> >::type limit_vec(limit_vecSEXP);
-    Rcpp::traits::input_parameter< float >::type max_limit(max_limitSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type limit_vec(limit_vecSEXP);
+    Rcpp::traits::input_parameter< double >::type max_limit(max_limitSEXP);
     Rcpp::traits::input_parameter< bool >::type setdif(setdifSEXP);
     Rcpp::traits::input_parameter< std::vector<std::string> >::type dict(dictSEXP);
     rcpp_result_gen = Rcpp::wrap(Isochrone_multi(gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict));
@@ -147,7 +147,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // Astar_par
-Rcpp::NumericVector Astar_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr, Rcpp::IntegerVector gfrom, Rcpp::IntegerVector gto, Rcpp::NumericVector gw, int NbNodes, Rcpp::NumericVector lat, Rcpp::NumericVector lon, float k);
+Rcpp::NumericVector Astar_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr, Rcpp::IntegerVector gfrom, Rcpp::IntegerVector gto, Rcpp::NumericVector gw, int NbNodes, Rcpp::NumericVector lat, Rcpp::NumericVector lon, double k);
 RcppExport SEXP _cppRouting_Astar_par(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -160,7 +160,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lat(latSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lon(lonSEXP);
-    Rcpp::traits::input_parameter< float >::type k(kSEXP);
+    Rcpp::traits::input_parameter< double >::type k(kSEXP);
     rcpp_result_gen = Rcpp::wrap(Astar_par(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k));
     return rcpp_result_gen;
 END_RCPP

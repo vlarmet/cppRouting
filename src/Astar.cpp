@@ -14,7 +14,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector<int> gfrom,std::vector<int> gto,std::vector<float> gw,int NbNodes,std::vector<float> lat,std::vector<float> lon,float k){
+Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<double> lat,std::vector<double> lon,double k){
   
   
   Rcpp::NumericVector result(dep.size());
@@ -24,7 +24,7 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
   
   struct comp{
     
-    bool operator()(const std::pair<int, float> &a, const std::pair<int, float> &b){
+    bool operator()(const std::pair<int, double> &a, const std::pair<int, double> &b){
       return a.second > b.second;
     }
   };
@@ -33,7 +33,7 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
   
   int NbEdges=gfrom.size();
   
-  std::vector<std::vector<std::pair<int, float> > > G(NbNodes);                                   
+  std::vector<std::vector<std::pair<int, double> > > G(NbNodes);                                   
   
   for (int i = 0; i != NbEdges; ++i) {
     
@@ -51,11 +51,11 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
     
     int StartNode=dep[j];
     int endNode=arr[j];
-    float lata=lat[endNode];
-    float lona=lon[endNode];
+    double lata=lat[endNode];
+    double lona=lon[endNode];
     
-    std::vector<float> Distances(NbNodes, std::numeric_limits<float>::max()); 
-    std::vector<float> Distances2(NbNodes, numeric_limits<float>::max());
+    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
+    std::vector<double> Distances2(NbNodes, numeric_limits<double>::max());
     
     
     Distances[StartNode] = 0.0;                                                    
@@ -65,7 +65,7 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
    
     vector <int> closedList(NbNodes,0);
     vector <int> openList(NbNodes,0);
-    priority_queue<std::pair<int, float>, vector<std::pair<int, float> >, comp > Q;
+    priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
     Q.push(make_pair(StartNode,sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k));                                             
     openList[StartNode]=1;
     
@@ -79,14 +79,14 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
       closedList[v]=1;
       
       for (int i=0; i< G[v].size(); i++) {
-        std::pair<int,float> j = G[v][i];                                                  
+        std::pair<int,double> j = G[v][i];                                                  
         int v2 = j.first;                                                     
-        float w2 = j.second;
+        double w2 = j.second;
         if (closedList[v2]==1) {
           continue;
         }
         
-        float temp;  
+        double temp;  
         temp = Distances[v] + w2;                              
         if (openList[v2]==0){
           
@@ -113,7 +113,7 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
       
     }
     
-    if (Distances[endNode]==std::numeric_limits<float>::max()){
+    if (Distances[endNode]==std::numeric_limits<double>::max()){
       result[j]= Rcpp::NumericVector::get_na();
     }
     else {

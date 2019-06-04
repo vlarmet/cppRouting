@@ -26,6 +26,7 @@ Compute shortest path between origin and destination nodes.
 }
 \details{
 To perform A*, projected coordinates should be provided in the Graph object.  
+In A* algorithm, euclidean distance is used as heuristic function.
 To understand how A star algorithm work, see https://en.wikipedia.org/wiki/A*_search_algorithm .  
 To understand the importance of constant parameter, see the package description : https://github.com/vlarmet/cppRouting .
 }
