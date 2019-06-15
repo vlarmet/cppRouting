@@ -1,13 +1,13 @@
 Package: cppRouting
 Type: Package
 Title: Fast implementation of Dijkstra algorithm
-Version: 1.0
-Date: 2019-05-30
+Version: 1.1
+Date: 2019-06-15
 Author: Vincent Larmet
 Maintainer: Vincent Larmet <larmet.vincent@gmail.com>
-Description: cppRouting provides Dijkstra and A* algorithms implemented in C++. The main functions of cppRouting are about calculating distances, paths and isochrones/isodistances on oriented graphs.
+Description: cppRouting provides variants of Dijkstra algorithm implemented in C++.
 License: GPL (>= 2)
-Imports: Rcpp (>= 1.0.1), RcppParallel (>= 4.4.2)
-LinkingTo: Rcpp, RcppParallel
-SystemRequirements: GNU make
+Imports: Rcpp (>= 1.0.1), parallel (>= 3.5.3)
+LinkingTo: Rcpp, parallel (>= 3.5.3)
+SystemRequirements: GNU make, C++11
 RoxygenNote: 6.1.1

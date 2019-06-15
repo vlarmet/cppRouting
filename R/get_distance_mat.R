@@ -21,7 +21,17 @@ get_distance_matrix<-function(Graph,from,to,allcores=FALSE){
   
   
   if (allcores==TRUE){
-    res<-Dijkstra_mat_par(Graph$data[,1],Graph$data[,2],Graph$data[,3],Graph$nbnode,from_id,to_id)
+    numWorkers <- parallel::detectCores()
+    cl <- parallel::makeCluster(numWorkers, type = "PSOCK")
+    parallel::clusterEvalQ(cl = cl,library("cppRouting"))
+    chunks <- parallel::splitIndices(length(from), ncl = numWorkers)
+    mylist<-lapply(chunks,function(x) from_id[x])
+    #mylist2<-lapply(chunks,function(x) to_id[x])
+    res<-parallel::clusterMap(cl,Dijkstra_mat,dep=mylist,
+                              MoreArgs = list(arr=to_id,gfrom=Graph$data$from,gto=Graph$data$to,gw=Graph$data$dist,NbNodes=Graph$nbnode))
+    parallel::stopCluster(cl)
+    res<-do.call(rbind,res)
+    
   }
   else res<-Dijkstra_mat(Graph$data[,1],Graph$data[,2],Graph$data[,3],Graph$nbnode,from_id,to_id)
   

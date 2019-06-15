@@ -44,6 +44,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Bidir
+Rcpp::NumericVector Bidir(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes);
+RcppExport SEXP _cppRouting_Bidir(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    rcpp_result_gen = Rcpp::wrap(Bidir(dep, arr, gfrom, gto, gw, NbNodes));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Bidir_path
+Rcpp::List Bidir_path(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<std::string> dict);
+RcppExport SEXP _cppRouting_Bidir_path(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP dictSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type dict(dictSEXP);
+    rcpp_result_gen = Rcpp::wrap(Bidir_path(dep, arr, gfrom, gto, gw, NbNodes, dict));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Dijkstra_early_stop
 Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> arr, std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes);
 RcppExport SEXP _cppRouting_Dijkstra_early_stop(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
@@ -146,70 +179,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// Astar_par
-Rcpp::NumericVector Astar_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr, Rcpp::IntegerVector gfrom, Rcpp::IntegerVector gto, Rcpp::NumericVector gw, int NbNodes, Rcpp::NumericVector lat, Rcpp::NumericVector lon, double k);
-RcppExport SEXP _cppRouting_Astar_par(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP kSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dep(depSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type arr(arrSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gfrom(gfromSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gw(gwSEXP);
-    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lat(latSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type lon(lonSEXP);
-    Rcpp::traits::input_parameter< double >::type k(kSEXP);
-    rcpp_result_gen = Rcpp::wrap(Astar_par(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k));
-    return rcpp_result_gen;
-END_RCPP
-}
-// Dijkstra_early_stop_par
-Rcpp::NumericVector Dijkstra_early_stop_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr, Rcpp::IntegerVector gfrom, Rcpp::IntegerVector gto, Rcpp::NumericVector gw, int NbNodes);
-RcppExport SEXP _cppRouting_Dijkstra_early_stop_par(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dep(depSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type arr(arrSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gfrom(gfromSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gw(gwSEXP);
-    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
-    rcpp_result_gen = Rcpp::wrap(Dijkstra_early_stop_par(dep, arr, gfrom, gto, gw, NbNodes));
-    return rcpp_result_gen;
-END_RCPP
-}
-// Dijkstra_mat_par
-Rcpp::NumericMatrix Dijkstra_mat_par(Rcpp::IntegerVector gfrom, Rcpp::IntegerVector gto, Rcpp::NumericVector gw, int NbNodes, Rcpp::IntegerVector dep, Rcpp::IntegerVector arr);
-RcppExport SEXP _cppRouting_Dijkstra_mat_par(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP arrSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gfrom(gfromSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gto(gtoSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gw(gwSEXP);
-    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dep(depSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type arr(arrSEXP);
-    rcpp_result_gen = Rcpp::wrap(Dijkstra_mat_par(gfrom, gto, gw, NbNodes, dep, arr));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_Astar", (DL_FUNC) &_cppRouting_Astar, 9},
     {"_cppRouting_Astar_paths", (DL_FUNC) &_cppRouting_Astar_paths, 10},
+    {"_cppRouting_Bidir", (DL_FUNC) &_cppRouting_Bidir, 6},
+    {"_cppRouting_Bidir_path", (DL_FUNC) &_cppRouting_Bidir_path, 7},
     {"_cppRouting_Dijkstra_early_stop", (DL_FUNC) &_cppRouting_Dijkstra_early_stop, 6},
     {"_cppRouting_Dijkstra_early_stop_path", (DL_FUNC) &_cppRouting_Dijkstra_early_stop_path, 7},
     {"_cppRouting_Dijkstra_mat", (DL_FUNC) &_cppRouting_Dijkstra_mat, 6},
     {"_cppRouting_Dijkstra_multi_path", (DL_FUNC) &_cppRouting_Dijkstra_multi_path, 7},
     {"_cppRouting_Isochrone", (DL_FUNC) &_cppRouting_Isochrone, 7},
     {"_cppRouting_Isochrone_multi", (DL_FUNC) &_cppRouting_Isochrone_multi, 9},
-    {"_cppRouting_Astar_par", (DL_FUNC) &_cppRouting_Astar_par, 9},
-    {"_cppRouting_Dijkstra_early_stop_par", (DL_FUNC) &_cppRouting_Dijkstra_early_stop_par, 6},
-    {"_cppRouting_Dijkstra_mat_par", (DL_FUNC) &_cppRouting_Dijkstra_mat_par, 6},
     {NULL, NULL, 0}
 };
 

@@ -1,7 +1,7 @@
 ---
 title: "cppRouting package"
 author: "Vincent LARMET"
-date: "30 mai 2019"
+date: "15 juin 2019"
 output: github_document
 ---
 
@@ -12,8 +12,15 @@ knitr::opts_knit$set(root.dir = 'D:/users/vlarmet/Dijkstra/exemple/data')
 
 #Package presentation
 
-`cppRouting` is a `R` package which provide functions to calculate distances, shortest paths and isochrones/isodistances on weighted graphs. Under the hood, `cppRouting` call Dijkstra and A* algorithms implemented in C++ using std::priority_queue from the Standard Template Library.  
-This package have been made with `Rcpp` and `RcppParallel`.
+`cppRouting` is a `R` package which provide functions to calculate distances, shortest paths and isochrones/isodistances on weighted graphs. 
+For now, `cppRouting` can implement :  
+  
+  - uni-directional Dijkstra algorithm,
+  - bi-directional Dijkstra algorithm,
+  - uni-directional A* algorithm  
+   
+All these functions are written in C++ and use std::priority_queue container from the Standard Template Library.  
+This package have been made with `Rcpp` and `parallel` packages.
 
 #Install from github
 
@@ -44,12 +51,14 @@ Data has to be a 3 columns data.frame or matrix containing from, to and a cost/d
 - shortest paths between all origin nodes and all destination nodes,  
 - Isochrones/isodistances with one or multiple breaks.  
                     
-The choice between Dijkstra and A* algorithm is available for `get_distance_pair` and `get_path_pair`. In these functions, Dijkstra algorithm is stopped when the destination node is reached.  
+The choice between all the algorithms is available for `get_distance_pair` and `get_path_pair`. In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.  
 A* is relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a projection system.  
 To be accurate and efficient, `A*` algorithm should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.  
 In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road.  
   
 By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).  
+
+If coordinates cannot be provided, bi-directional Dijkstra algorithm can offer a good alternative to A* in terms of performance.
   
 ##Examples
 ###Prepare data
@@ -60,7 +69,7 @@ library(sf)
 library(ggplot2)
 library(concaveman)
 library(ggmap)
-#setwd("")
+
 #Reading french road data
 roads<-read.csv("roads.csv",colClasses = c("character","character","numeric"))
 #Shapefile data of communes
@@ -86,22 +95,33 @@ head(coord)
 graph<-makegraph(roads,directed = T,coords = coord)
 ```
 ###Distances by pairs between nodes
-####Using Dijkstra algorithm
+####Using uni-directional Dijkstra algorithm
 ```{r,echo=TRUE}
 #Generate 2000 random origin and destination nodes
 origin<-sample(roads$from,2000)
 destination<-sample(roads$from,2000)
 
-#Benchmarks single core
-#Dijkstra 
+#Uni-directional : single core
 system.time(
 pair_dijkstra<-get_distance_pair(graph,origin,destination)
 )
 
-#Benchmarks parallel
-#Dijkstra
+#Parallel
 system.time(
 pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
+)
+
+```
+####Using bi-directional Dijkstra algorithm
+```{r,}
+#Bi-directional : single core
+system.time(
+pair_bidijkstra<-get_distance_pair(graph,origin,destination,algorithm = "bi")
+)
+
+#Parallel
+system.time(
+pair_bidijkstra_par<-get_distance_pair(graph,origin,destination,algorithm = "bi",allcores = TRUE)
 )
 
 ```
@@ -113,7 +133,7 @@ system.time(
 pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant = 110/0.06)
 )
 
-#A* parallel
+#Parallel
 system.time(
 pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant = 110/0.06,allcores = TRUE)
 )
@@ -122,7 +142,7 @@ pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",cons
 ####Output  
                   
 ```{r,echo=TRUE}
-head(cbind(pair_dijkstra,pair_astar,pair_dijkstra_par,pair_astar_par))
+head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_dijkstra_par,pair_bidijkstra_par,pair_astar_par))
 ```
 
 
@@ -223,7 +243,8 @@ maternity<-read.csv("maternity.csv",colClasses = c("character","numeric"))
 ```
 
 ###Shortest travel time matrix
-The shortest travel time is computed with the `cppRouting` function `get_distance_matrix`.    
+The shortest travel time is computed with the `cppRouting` function `get_distance_matrix`. 
+In order to compute multiple distances from one source, original uni-directional Dijkstra algorithm is ran without early stopping.  
 We compute travel time from all commune nodes to all maternity ward nodes (e.g ~36000*400 distances).
 ```{r,echo=TRUE,message=FALSE,warning=FALSE,include=TRUE}
 #Distance matrix (around 10 minutes to compute)
@@ -337,7 +358,7 @@ setdiff(test_dodgr[[1]][[1]],test_cpp[[1]])
 
 ```
 
-#New functions `cppRouting` will provide in the future   
+#New algorithms `cppRouting` will provide in the future   
   
 - Detours admitting shortest paths : finding the nodes that are reachable under a fixed detour time around the shortest path  
 - Graph simplification by removing irrelevant nodes in order to compute in a faster way the  shortest distance or travel time  

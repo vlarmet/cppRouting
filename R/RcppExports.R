@@ -9,6 +9,14 @@ Astar_paths <- function(gfrom, gto, gw, NbNodes, dep, arr, lat, lon, k, dict) {
     .Call(`_cppRouting_Astar_paths`, gfrom, gto, gw, NbNodes, dep, arr, lat, lon, k, dict)
 }
 
+Bidir <- function(dep, arr, gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Bidir`, dep, arr, gfrom, gto, gw, NbNodes)
+}
+
+Bidir_path <- function(dep, arr, gfrom, gto, gw, NbNodes, dict) {
+    .Call(`_cppRouting_Bidir_path`, dep, arr, gfrom, gto, gw, NbNodes, dict)
+}
+
 Dijkstra_early_stop <- function(dep, arr, gfrom, gto, gw, NbNodes) {
     .Call(`_cppRouting_Dijkstra_early_stop`, dep, arr, gfrom, gto, gw, NbNodes)
 }
@@ -31,17 +39,5 @@ Isochrone <- function(gfrom, gto, gw, NbNodes, dep, max_limit, dict) {
 
 Isochrone_multi <- function(gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict) {
     .Call(`_cppRouting_Isochrone_multi`, gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict)
-}
-
-Astar_par <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k) {
-    .Call(`_cppRouting_Astar_par`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k)
-}
-
-Dijkstra_early_stop_par <- function(dep, arr, gfrom, gto, gw, NbNodes) {
-    .Call(`_cppRouting_Dijkstra_early_stop_par`, dep, arr, gfrom, gto, gw, NbNodes)
-}
-
-Dijkstra_mat_par <- function(gfrom, gto, gw, NbNodes, dep, arr) {
-    .Call(`_cppRouting_Dijkstra_mat_par`, gfrom, gto, gw, NbNodes, dep, arr)
 }
 
