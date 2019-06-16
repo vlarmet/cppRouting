@@ -18,6 +18,7 @@ For now, `cppRouting` can implement :
   - uni-directional Dijkstra algorithm,
   - bi-directional Dijkstra algorithm,
   - uni-directional A* algorithm  
+  - New bi-directional A* algorithm (Piljs & Post, 2009 : see http://repub.eur.nl/pub/16100/ei2009-10.pdf)
    
 All these functions are written in C++ and use std::priority_queue container from the Standard Template Library.  
 This package have been made with `Rcpp` and `parallel` packages.
@@ -52,12 +53,10 @@ Data has to be a 3 columns data.frame or matrix containing from, to and a cost/d
 - Isochrones/isodistances with one or multiple breaks.  
                     
 The choice between all the algorithms is available for `get_distance_pair` and `get_path_pair`. In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.  
-A* is relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a projection system.  
-To be accurate and efficient, `A*` algorithm should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.  
-In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road.  
+`A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a projection system.  
+To be accurate and efficient, `A*` and `NBA*` algorithms should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.  
+In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).  
   
-By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).  
-
 If coordinates cannot be provided, bi-directional Dijkstra algorithm can offer a good alternative to A* in terms of performance.
   
 ##Examples
@@ -106,22 +105,12 @@ system.time(
 pair_dijkstra<-get_distance_pair(graph,origin,destination)
 )
 
-#Parallel
-system.time(
-pair_dijkstra_par<-get_distance_pair(graph,origin,destination,allcores = TRUE)
-)
-
 ```
 ####Using bi-directional Dijkstra algorithm
 ```{r,}
 #Bi-directional : single core
 system.time(
 pair_bidijkstra<-get_distance_pair(graph,origin,destination,algorithm = "bi")
-)
-
-#Parallel
-system.time(
-pair_bidijkstra_par<-get_distance_pair(graph,origin,destination,algorithm = "bi",allcores = TRUE)
 )
 
 ```
@@ -133,17 +122,21 @@ system.time(
 pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant = 110/0.06)
 )
 
-#Parallel
-system.time(
-pair_astar_par<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant = 110/0.06,allcores = TRUE)
-)
 ```
-
-####Output  
-                  
+####Using NBA* algorithm
 ```{r,echo=TRUE}
-head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_dijkstra_par,pair_bidijkstra_par,pair_astar_par))
+#NBA* single node
+system.time(
+pair_nba<-get_distance_pair(graph,origin,destination,algorithm = "NBA",constant = 110/0.06)
+)
+
 ```
+####Output
+```{r,echo=TRUE}
+head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_nba))
+
+```
+#####In `get_distance_pair` function, all the algorithms can be ran in parallel by setting TRUE to allcores argument.  
 
 
 ###Compute isochrones
@@ -344,7 +337,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 
 #cppRouting
 system.time(
-test_cpp<-get_path_pair(graph,origin,destination,algorithm = "A*",constant=110/0.06)
+test_cpp<-get_path_pair(graph,origin,destination,algorithm = "NBA",constant=110/0.06)
 )
 ```
 ###Test similarity of the first travel
