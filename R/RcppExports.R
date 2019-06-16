@@ -13,6 +13,14 @@ Bidir <- function(dep, arr, gfrom, gto, gw, NbNodes) {
     .Call(`_cppRouting_Bidir`, dep, arr, gfrom, gto, gw, NbNodes)
 }
 
+NBA <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k) {
+    .Call(`_cppRouting_NBA`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k)
+}
+
+NBA_path <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k, dict) {
+    .Call(`_cppRouting_NBA_path`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k, dict)
+}
+
 Bidir_path <- function(dep, arr, gfrom, gto, gw, NbNodes, dict) {
     .Call(`_cppRouting_Bidir_path`, dep, arr, gfrom, gto, gw, NbNodes, dict)
 }
