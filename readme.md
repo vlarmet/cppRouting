@@ -243,7 +243,7 @@ p<-ggmap(dijon)+
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-11-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
 Applications
 ============
@@ -305,7 +305,7 @@ p<-ggplot()+
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-14-1.png)
 
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
@@ -347,7 +347,7 @@ p<-ggplot()+
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-17-1.png)
+![](readme_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
 Benchmark with other R packages
 ===============================
