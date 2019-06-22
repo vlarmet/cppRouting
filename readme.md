@@ -6,7 +6,7 @@ Vincent LARMET
 Package presentation
 ====================
 
-`cppRouting` is a `R` package which provide functions to calculate distances, shortest paths and isochrones/isodistances on weighted graphs. For now, `cppRouting` can implement :
+`cppRouting` is an `R` package which provide functions to calculate distances, shortest paths and isochrones/isodistances on non-negative weighted graphs. For now, `cppRouting` can implement :
 
 -   uni-directional Dijkstra algorithm,
 -   bi-directional Dijkstra algorithm,
@@ -16,8 +16,16 @@ Package presentation
 All these functions are written in C++ and use std::priority\_queue container from the Standard Template Library.
 This package have been made with `Rcpp` and `parallel` packages.
 
-Install from github
-===================
+Install
+=======
+
+### Stable version from CRAN
+
+``` r
+install.packages("cppRouting")
+```
+
+### or from github
 
 ``` r
 library(devtools)
@@ -44,16 +52,18 @@ Main functions
 ==============
 
 `cppRouting` package provide these functions :
-- distance matrix (between all combinations origin-destination nodes),
-- distances between origin and destination by pair,
-- shortest paths between origin and destination by pair,
-- shortest paths between all origin nodes and all destination nodes,
-- Isochrones/isodistances with one or multiple breaks.
 
-The choice between all the algorithms is available for `get_distance_pair` and `get_path_pair`. In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.
-`A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a projection system.
+-   `get_distance_matrix` : compute distance matrix (between all combinations origin-destination nodes - *one-to-many*),
+-   `get_distance_pair` : compute distances between origin and destination by pair (*one-to-one*),
+-   `get_path_pair` : compute shortest paths between origin and destination by pair (*one-to-one*),
+-   `get_multi_paths` : compute shortest paths between all origin nodes and all destination nodes (*one-to-many*),
+-   `get_isochrone` : compute isochrones/isodistances with one or multiple breaks.
+
+The choice between all the algorithms is available for *one-to-one* calculation like `get_distance_pair` and `get_path_pair`.
+In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.
+`A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a **projection system**.
 To be accurate and efficient, `A*` and `NBA*` algorithms should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.
-In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (e.g meters).
+In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (for example in meters).
 
 If coordinates cannot be provided, bi-directional Dijkstra algorithm can offer a good alternative to A\* in terms of performance.
 
@@ -80,7 +90,11 @@ ndcom<-read.csv("node_commune.csv",colClasses = c("character","character","numer
 med<-read.csv("doctor.csv",colClasses = c("character","numeric","character","numeric"))
 #Import nodes coordinates (projected in EPSG : 2154)
 coord<-read.csv("coordinates.csv",colClasses = c("character","numeric","numeric"))
-#Head of road network data
+```
+
+#### Head of road network data
+
+``` r
 head(roads)
 ```
 
@@ -113,7 +127,7 @@ head(coord)
 graph<-makegraph(roads,directed = T,coords = coord)
 ```
 
-### Distances by pairs between nodes
+### Distances by pairs between nodes (*one-to-one*)
 
 #### Using uni-directional Dijkstra algorithm
 
@@ -131,7 +145,7 @@ pair_dijkstra<-get_distance_pair(graph,origin,destination)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   61.37    0.73   63.01
+    ##   59.59    0.83   60.73
 
 #### Using bi-directional Dijkstra algorithm
 
@@ -145,7 +159,7 @@ pair_bidijkstra<-get_distance_pair(graph,origin,destination,algorithm = "bi")
     ## Running bidirectional Dijkstra...
 
     ##    user  system elapsed 
-    ##   38.85    0.99   39.87
+    ##   38.38    1.51   40.13
 
 #### Using A\* algorithm
 
@@ -161,7 +175,7 @@ pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   32.45    2.01   34.51
+    ##   33.24    1.60   34.97
 
 #### Using NBA\* algorithm
 
@@ -175,7 +189,7 @@ pair_nba<-get_distance_pair(graph,origin,destination,algorithm = "NBA",constant 
     ## Running NBA* ...
 
     ##    user  system elapsed 
-    ##   18.61    2.78   21.45
+    ##   18.71    2.76   21.58
 
 #### Output
 
@@ -184,12 +198,12 @@ head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_nba))
 ```
 
     ##      pair_dijkstra pair_bidijkstra pair_astar pair_nba
-    ## [1,]      475.9349        475.9349   475.9349 475.9349
-    ## [2,]      502.9290        502.9290   502.9290 502.9290
-    ## [3,]      512.4824        512.4824   512.4824 512.4824
-    ## [4,]      246.4425        246.4425   246.4425 246.4425
-    ## [5,]      776.0014        776.0014   776.0014 776.0014
-    ## [6,]      109.4739        109.4739   109.4739 109.4739
+    ## [1,]      299.3078        299.3078   299.3078 299.3078
+    ## [2,]      500.5018        500.5018   500.5018 500.5018
+    ## [3,]      436.1398        436.1398   436.1398 436.1398
+    ## [4,]      467.0901        467.0901   467.0901 467.0901
+    ## [5,]      505.7301        505.7301   505.7301 505.7301
+    ## [6,]      219.4237        219.4237   219.4237 219.4237
 
 ##### In `get_distance_pair` function, all the algorithms can be ran in parallel by setting TRUE to allcores argument.
 
@@ -229,7 +243,7 @@ p<-ggmap(dijon)+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-8-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
 Applications
 ============
@@ -291,7 +305,7 @@ p<-ggplot()+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-11-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-14-1.png)
 
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
@@ -333,7 +347,7 @@ p<-ggplot()+
 p
 ```
 
-![](readme_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
 Benchmark with other R packages
 ===============================
@@ -360,7 +374,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   84.08    0.03   84.26
+    ##   88.18    0.00   88.50
 
 ``` r
 #dodgr
@@ -381,7 +395,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##   83.94    0.08   84.15
+    ##   88.30    0.03   88.66
 
 ``` r
 #cppRouting
@@ -391,7 +405,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 ```
 
     ##    user  system elapsed 
-    ##   57.52    0.35   57.92
+    ##   59.86    0.29   60.42
 
 #### Ouput
 
@@ -400,12 +414,12 @@ head(cbind(test_igraph[,1],test_dodgr[,1],test_cpp[,1]))
 ```
 
     ##            [,1]     [,2]     [,3]
-    ## 158924 453.1183 453.1183 453.1183
-    ## 208013 485.0933 485.0933 485.0933
-    ## 51666  203.5290 203.5290 203.5290
-    ## 77929  241.8183 241.8183 241.8183
-    ## 114669 391.8915 391.8915 391.8915
-    ## 74916  669.7842 669.7842 669.7842
+    ## 64038  400.9610 400.9610 400.9610
+    ## 43287  319.9803 319.9803 319.9803
+    ## 39075  152.0365 152.0365 152.0365
+    ## 218830 241.4449 241.4449 241.4449
+    ## 19000  251.9193 251.9193 251.9193
+    ## 229875 501.7039 501.7039 501.7039
 
 ### Distance matrix : parallel
 
@@ -417,7 +431,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##  118.12    0.43   31.02
+    ##  141.65    0.77   37.08
 
 ``` r
 #cppRouting
@@ -427,7 +441,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 ```
 
     ##    user  system elapsed 
-    ##    0.15    0.08   21.52
+    ##    0.15    0.03   22.92
 
 Benchmark on computing shortest paths by pairs
 ----------------------------------------------
@@ -443,7 +457,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 ```
 
     ##    user  system elapsed 
-    ##  522.81   18.75  542.18
+    ##  533.76   19.00  554.54
 
 ``` r
 #cppRouting
@@ -455,7 +469,7 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "NBA",constant=110/
     ## Running NBA* ...
 
     ##    user  system elapsed 
-    ##    5.00    0.34    5.34
+    ##    5.24    0.37    5.65
 
 ### Test similarity of the first travel
 
@@ -464,13 +478,13 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "NBA",constant=110/
 length(test_dodgr[[1]][[1]])
 ```
 
-    ## [1] 130
+    ## [1] 224
 
 ``` r
 length(test_cpp[[1]])
 ```
 
-    ## [1] 130
+    ## [1] 224
 
 ``` r
 #Setdiff 
