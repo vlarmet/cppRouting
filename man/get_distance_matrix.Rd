@@ -24,3 +24,21 @@ Compute all shortest distance between origin and destination nodes.
 \note{
 get_distance_matrix() recursively perform Dijkstra algorithm for each 'from' nodes.
 }
+\examples{
+#Data describing edges of the graph
+edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
+                  to_vertex=c(1,3,2,4,4,5,1,3,5), 
+                  cost=c(9,2,11,3,5,12,4,1,6))
+#Get all nodes
+nodes<-unique(c(edges$from_vertex,edges$to_vertex))
+ 
+#Construct directed and undirected graph 
+directed_graph<-makegraph(edges,directed=TRUE)
+non_directed<-makegraph(edges,directed=FALSE)
+
+#Get matrix of distance between all nodes in the two graphs
+dir_dist<-get_distance_matrix(Graph=directed_graph, from=nodes, to=nodes, allcores=FALSE)
+non_dir_dist<-get_distance_matrix(Graph=non_directed, from=nodes, to=nodes, allcores=FALSE)
+print(dir_dist)
+print(non_dir_dist)
+}

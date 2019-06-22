@@ -1,34 +1,45 @@
 \name{cppRouting-package}
-\alias{cppRouting-package}
 \alias{cppRouting}
 \docType{package}
 \title{
-  A short title line describing what the package does
+  Fast Implementation of Dijkstra Algorithm in R
 }
 \description{
-  A more detailed description of what the package does. A length
-  of about one to five lines is recommended.
+  Calculation of distances, shortest paths and isochrones on non-negative weighted graphs using several variants of Dijkstra algorithm.
 }
-\details{
-  This section should provide a more detailed overview of how to use the
-  package, including the most important functions.
+\section{Functions}{
+  
+\itemize{
+\item distance matrix (between all combinations origin-destination nodes),
+\item distances between origin and destination by pair (one-to-one),
+\item shortest paths between origin and destination by pair (one-to-one),
+\item shortest paths between all origin nodes and all destination nodes,
+\item Isochrones/isodistances with one or multiple breaks.
 }
-\author{
-Your Name, email optional.
+}
 
-Maintainer: Your Name <your@email.com>
+\section{Algorithms}{
+  
+  Algorithms can be chosen for one-to-one calculations like get_distance_pair() and get_path_pair() :
+\itemize{
+\item uni-directional Dijkstra algorithm,
+\item bi-directional Dijkstra algorithm,
+\item uni-directional A* algorithm (nodes coordinates are needed),
+\item New bi-directional A* algorithm (nodes coordinates are needed).
 }
+}
+
+
 \references{
-  This optional section can contain literature or other references for
-  background information.
+Dijkstra, E. W. (1959), A note on two problems in connexion with graphs.
+
+P. E. Hart, N. J. Nilsson et B. Raphael (1968). A Formal Basis for the Heuristic Determination of Minimum Cost Paths.
+
+Goldberg, Andrew & Fonseca F. Werneck, Renato (2005). Computing Point-to-Point Shortest Paths from External Memory.
+
+Pijls & Post (2009). Yet another bidirectional algorithm for shortest paths.
+
 }
-\keyword{ package }
-\seealso{
-  Optional links to other man pages
-}
-\examples{
-  \dontrun{
-     ## Optional simple examples of the most important functions
-     ## These can be in \dontrun{} and \donttest{} blocks.   
-  }
-}
+
+
+

@@ -13,23 +13,46 @@ get_path_pair(Graph, from, to, algorithm = "Dijkstra", constant = 1)
 
 \item{to}{A vector of one or more vertices (destination).}
 
-\item{algorithm}{character. "Dijkstra" or "A*"}
+\item{algorithm}{character. "Dijkstra" for uni-directional Dijkstra, "bi" for bi-directional Dijkstra, "A*" or "NBA" for New bi-directional A star .Default to "Dijkstra"}
 
-\item{constant}{numeric. Constant to maintain the heuristic function admissible. 
+\item{constant}{numeric. Constant to maintain the heuristic function admissible in A* algorithm. 
 Default to 1, when cost is expressed in the same unit than coordinates. See details}
 }
 \value{
-List containing shortest path between from[i] and to[i].
+List containing shortest path between from and to.
 }
 \description{
 Compute shortest path between origin and destination nodes.
 }
 \details{
 To perform A*, projected coordinates should be provided in the Graph object.  
-In A* algorithm, euclidean distance is used as heuristic function.
+In A* algorithms, euclidean distance is used as heuristic function.
 To understand how A star algorithm work, see https://en.wikipedia.org/wiki/A*_search_algorithm .  
 To understand the importance of constant parameter, see the package description : https://github.com/vlarmet/cppRouting .
 }
 \note{
 'from' and 'to' must be the same length.
+}
+\examples{
+#Data describing edges of the graph
+edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
+                  to_vertex=c(1,3,2,4,4,5,1,3,5), 
+                  cost=c(9,2,11,3,5,12,4,1,6))
+                  
+#Get all nodes
+nodes<-unique(c(edges$from_vertex,edges$to_vertex))
+ 
+#Construct directed and undirected graph 
+directed_graph<-makegraph(edges,directed=TRUE)
+non_directed<-makegraph(edges,directed=FALSE)
+
+#Sampling origin and destination nodes
+origin<-sample(nodes,10,replace=TRUE)
+destination<-sample(nodes,10,replace=TRUE)
+
+#Get distance between origin and destination in the two graphs
+dir_paths<-get_path_pair(Graph=directed_graph, from=origin, to=destination)
+non_dir_paths<-get_path_pair(Graph=non_directed, from=origin, to=destination)
+print(dir_paths)
+print(non_dir_paths)
 }

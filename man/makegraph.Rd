@@ -11,7 +11,7 @@ makegraph(df, directed = TRUE, coords = NULL)
 
 \item{directed}{logical. If FALSE, then all edges are duplicated by inverting 'from' and 'to' nodes.}
 
-\item{coords}{A data.frame or matrix containing all nodes coordinates.}
+\item{coords}{Optional. A data.frame or matrix containing all nodes coordinates. Columns order should be 'node_ID', 'X', 'Y'.}
 }
 \value{
 List
@@ -21,6 +21,31 @@ Construct graph
 }
 \details{
 'from' and 'to' are character or numeric vector containing nodes IDs. 
-'cost' is a numeric vector describing the cost (e.g time, distance) between each 'from' and 'to' nodes.
+'cost' is a non-negative numeric vector describing the cost (e.g time, distance) between each 'from' and 'to' nodes.
 coords should not be angles (e.g latitude and longitude), but expressed in a projection system.
+}
+\examples{
+#Data describing edges of the graph
+edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
+                  to_vertex=c(1,3,2,4,4,5,1,3,5), 
+                  cost=c(9,2,11,3,5,12,4,1,6))
+                  
+#Construct directed and undirected graph 
+directed_graph<-makegraph(edges,directed=TRUE)
+non_directed<-makegraph(edges,directed=FALSE)
+
+#Visualizing directed and undirected graphs
+if(requireNamespace("igraph",quietly = TRUE)){
+  plot(igraph::graph_from_data_frame(edges))
+  plot(igraph::graph_from_data_frame(edges,directed=FALSE))
+} 
+
+#Coordinates of each nodes
+coord<-data.frame(node=c(0,1,2,3,4,5),X=c(2,2,2,0,0,0),Y=c(0,2,2,0,2,4))
+
+#Construct graph with coordinates
+directed_graph2<-makegraph(edges, directed=TRUE, coords=coord)
+
+
+
 }
