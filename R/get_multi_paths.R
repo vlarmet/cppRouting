@@ -6,6 +6,25 @@
 #' @return List containing lists of shortest paths.
 #' @details get_multi_paths() recursively perform Dijkstra algorithm for each 'from' nodes.
 #' @note Be aware that if 'from' and 'to' have consequent size, output will require much memory space. 
+#' @examples 
+#' #Data describing edges of the graph
+#' edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
+#'                   to_vertex=c(1,3,2,4,4,5,1,3,5), 
+#'                   cost=c(9,2,11,3,5,12,4,1,6))
+#'                   
+#' #Get all nodes
+#' nodes<-unique(c(edges$from_vertex,edges$to_vertex))
+#'                   
+#' #Construct directed and undirected graph 
+#' directed_graph<-makegraph(edges,directed=TRUE)
+#' non_directed<-makegraph(edges,directed=FALSE)
+#' 
+#' #Get all shortest paths between all nodes in the two graphs
+#' dir_paths<-get_multi_paths(Graph=directed_graph, from=nodes, to=nodes)
+#' non_dir_paths<-get_multi_paths(Graph=non_directed, from=nodes, to=nodes)
+#' print(dir_paths)
+#' print(non_dir_paths)
+
 
 get_multi_paths<-function(Graph,from,to){
   if (any(is.na(cbind(from,to)))) stop("NAs are not allowed in origin/destination nodes")
@@ -23,6 +42,8 @@ get_multi_paths<-function(Graph,from,to){
   res<-Dijkstra_multi_path(Graph$data[,1],Graph$data[,2],Graph$data[,3],Graph$nbnode,from_id,to_id,Graph$dict$ref)
   
   names(res)<-from
+  
+  for (i in 1:length(res)) names(res[[i]])<-to
   
   return(res)
 }

@@ -12,9 +12,29 @@
 #' In A* algorithms, euclidean distance is used as heuristic function.
 #' To understand how A star algorithm work, see https://en.wikipedia.org/wiki/A*_search_algorithm .  
 #' To understand the importance of constant parameter, see the package description : https://github.com/vlarmet/cppRouting .
-#'
+#' @examples
+#' #Data describing edges of the graph
+#' edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
+#'                   to_vertex=c(1,3,2,4,4,5,1,3,5), 
+#'                   cost=c(9,2,11,3,5,12,4,1,6))
+#'                   
+#' #Get all nodes
+#' nodes<-unique(c(edges$from_vertex,edges$to_vertex))
+#'  
+#' #Construct directed and undirected graph 
+#' directed_graph<-makegraph(edges,directed=TRUE)
+#' non_directed<-makegraph(edges,directed=FALSE)
 #' 
-#'
+#' #Sampling origin and destination nodes
+#' origin<-sample(nodes,10,replace=TRUE)
+#' destination<-sample(nodes,10,replace=TRUE)
+#' 
+#' #Get distance between origin and destination in the two graphs
+#' dir_paths<-get_path_pair(Graph=directed_graph, from=origin, to=destination)
+#' non_dir_paths<-get_path_pair(Graph=non_directed, from=origin, to=destination)
+#' print(dir_paths)
+#' print(non_dir_paths)
+
 get_path_pair<-function(Graph,from,to,algorithm="Dijkstra",constant=1){
   
   if (length(from)!=length(to)) stop("From and to have not the same length")
