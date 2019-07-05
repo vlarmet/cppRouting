@@ -182,6 +182,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Remove_duplicate
+Rcpp::NumericMatrix Remove_duplicate(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes);
+RcppExport SEXP _cppRouting_Remove_duplicate(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    rcpp_result_gen = Rcpp::wrap(Remove_duplicate(gfrom, gto, gw, NbNodes));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Isochrone
 Rcpp::List Isochrone(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, std::vector<int> dep, double max_limit, std::vector<std::string> dict);
 RcppExport SEXP _cppRouting_Isochrone(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP depSEXP, SEXP max_limitSEXP, SEXP dictSEXP) {
@@ -218,6 +232,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Simplify2
+Rcpp::List Simplify2(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, bool loop, std::vector<int> keep, std::vector<std::string> dict);
+RcppExport SEXP _cppRouting_Simplify2(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP loopSEXP, SEXP keepSEXP, SEXP dictSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int> >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< bool >::type loop(loopSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type keep(keepSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type dict(dictSEXP);
+    rcpp_result_gen = Rcpp::wrap(Simplify2(gfrom, gto, gw, NbNodes, loop, keep, dict));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_Astar", (DL_FUNC) &_cppRouting_Astar, 9},
@@ -230,8 +261,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_Dijkstra_early_stop_path", (DL_FUNC) &_cppRouting_Dijkstra_early_stop_path, 7},
     {"_cppRouting_Dijkstra_mat", (DL_FUNC) &_cppRouting_Dijkstra_mat, 6},
     {"_cppRouting_Dijkstra_multi_path", (DL_FUNC) &_cppRouting_Dijkstra_multi_path, 7},
+    {"_cppRouting_Remove_duplicate", (DL_FUNC) &_cppRouting_Remove_duplicate, 4},
     {"_cppRouting_Isochrone", (DL_FUNC) &_cppRouting_Isochrone, 7},
     {"_cppRouting_Isochrone_multi", (DL_FUNC) &_cppRouting_Isochrone_multi, 9},
+    {"_cppRouting_Simplify2", (DL_FUNC) &_cppRouting_Simplify2, 7},
     {NULL, NULL, 0}
 };
 
