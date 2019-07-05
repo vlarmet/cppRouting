@@ -41,11 +41,19 @@ Dijkstra_multi_path <- function(gfrom, gto, gw, NbNodes, dep, arr, dict) {
     .Call(`_cppRouting_Dijkstra_multi_path`, gfrom, gto, gw, NbNodes, dep, arr, dict)
 }
 
+Remove_duplicate <- function(gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Remove_duplicate`, gfrom, gto, gw, NbNodes)
+}
+
 Isochrone <- function(gfrom, gto, gw, NbNodes, dep, max_limit, dict) {
     .Call(`_cppRouting_Isochrone`, gfrom, gto, gw, NbNodes, dep, max_limit, dict)
 }
 
 Isochrone_multi <- function(gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict) {
     .Call(`_cppRouting_Isochrone_multi`, gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict)
+}
+
+Simplify2 <- function(gfrom, gto, gw, NbNodes, loop, keep, dict) {
+    .Call(`_cppRouting_Simplify2`, gfrom, gto, gw, NbNodes, loop, keep, dict)
 }
 
