@@ -55,8 +55,11 @@ Data has to be a 3 columns data.frame or matrix containing from, to and a cost/d
 - `get_distance_pair` : compute distances between origin and destination by pair (*one-to-one*),  
 - `get_path_pair` : compute shortest paths between origin and destination by pair (*one-to-one*),  
 - `get_multi_paths` : compute shortest paths between all origin nodes and all destination nodes (*one-to-many*),  
-- `get_isochrone` : compute isochrones/isodistances with one or multiple breaks.    
-                    
+- `get_isochrone` : compute isochrones/isodistances with one or multiple breaks.  
+- `cpp_simplify` : remove non-intersection nodes, duplicated edges and isolated loops in the graph. Graph topology is preserved so distance calculation is faster and remains true. This function can be applied to very large graphs (several millions of nodes).  
+
+
+###Path algorithms                    
 The choice between all the algorithms is available for *one-to-one* calculation like  `get_distance_pair` and `get_path_pair`.  
 In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.  
 `A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a **projection system**.  
@@ -184,7 +187,104 @@ p
 
 ```
 
+###Graph simplification
+`cpp_simplify`'s internal function performs two major steps :  
+  
+- removing non-intersection nodes between two intersection nodes then calculate cost of the new edges,  
+- removing duplicate edges that are potentially created in the first step.   
+In order to remove maximum number of nodes, some iterations are needed until only intersection nodes are remained.  
+  
+Let's see a small example :
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+library(igraph)
+#Create directed graph
+edges<-data.frame(from=c("a","b","c","d",
+                         "d","e","e","e",
+                         "f","f","g","h","h","h",
+                         "i","j","k","k","k",
+                         "l","l","l","m","m","m",
+                         "n","n","o","p","q","r"),
+                  to=c("b","c","d","e","k","f","d",
+                       "h","g","e","f","e","i","k",
+                       "j","i","h","d","l","k",
+                       "m","n","n","o","l","l","m","m",
+                       "r","p","q"),
+                  dist=rep(1,31))
 
+#Plotting with igraph
+par(mfrow=c(1,2),mar=c(3,0,3,0))
+
+igr1<-graph_from_data_frame(edges)
+set.seed(2)
+plot.igraph(igr1,edge.arrow.size=.3,main="Original graph")
+box(col="black")
+
+#Instantiate cppRouting graph, then simplify without iterations
+graph_ex<-makegraph(edges,directed = TRUE)
+simp<-cpp_simplify(graph_ex,rm_loop = FALSE)
+#Convert graph to df
+edges2<-to_df(simp$graph)
+
+#Plotting simplified graph
+igr2<-graph_from_data_frame(edges2)
+set.seed(2)
+plot(igr2,edge.arrow.size=.3,edge.label=E(igr2)$dist,main="One iteration - keeping loop")
+box(col="black")
+```
+  
+Here, junction nodes are `e`, `h`, `d`, `k`, `l`, `i` and `m`. So `b`, `c`, `f` and `n` have been contracted in the first step of the function. By contracting `n`, an edge with cost of 2 has been created between `m` and `l` nodes.  
+The second step of the function has removed this edge which is greater than the original one (e.g 1), and the whole process now need a second iteration to remove `m` and `l` that aren't intersection nodes anymore.  
+Let's try with `iterate` argument set to `TRUE` :
+  
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+par(mfrow=c(1,2),mar=c(3,0,3,0))
+#Simplify with iterations
+simp2<-cpp_simplify(graph_ex,rm_loop = FALSE,iterate = TRUE)
+edges3<-to_df(simp2$graph)
+igr3<-graph_from_data_frame(edges3)
+set.seed(2)
+plot(igr3,edge.arrow.size=.3,edge.label=E(igr3)$dist,main="Second iteration - keeping loop")
+box(col="black")
+
+#The same but removing loops
+simp3<-cpp_simplify(graph_ex,rm_loop = TRUE,iterate = TRUE)
+edges4<-to_df(simp3$graph)
+
+igr4<-graph_from_data_frame(edges4)
+set.seed(2)
+plot(igr4,edge.arrow.size=.3,edge.label=E(igr4)$dist,main="Second iteration - removing loop")
+box(col="black")
+```
+
+####French road network simplification
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+#Simplify original graph by keeping nodes of interest
+graph2<-cpp_simplify(graph,
+                     iterate = TRUE,
+                     keep = unique(c(origin,destination)))
+
+#Running NBA*
+system.time(
+  pair_nba_2<-get_distance_pair(graph2$graph,origin,destination,algorithm = "NBA",constant = 110/0.06)
+)
+
+```
+#####Compare outputs
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+summary(pair_nba-pair_nba_2)
+
+```
+
+####Running time
+Here are running times in second on graphs of different sizes  (data presented here, TEXAS road network from [SNAP](http://snap.stanford.edu/data/roadNet-TX.html) and french road network from OpenStreetMap and extracted with [osm2po](https://osm2po.de/) tool).    
+  
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(kableExtra)
+bench<-read.csv2("benchmark_simplify.csv")
+colnames(bench)<-gsub("\\."," ",colnames(bench))
+knitr::kable((bench),format.args = list(big.mark = ","))
+```
+  
 #Applications
 ## Application 1 : Calculate Two Step Floating Catchment Areas (2SFCA) of general practitioners in France
 
@@ -364,5 +464,4 @@ setdiff(test_dodgr[[1]][[1]],test_cpp[[1]])
 #New algorithms `cppRouting` will provide in the future   
   
 - Detours admitting shortest paths : finding the nodes that are reachable under a fixed detour time around the shortest path  
-- Graph simplification by removing irrelevant nodes in order to compute in a faster way the  shortest distance or travel time  
 - Contraction hierarchies implementation  
