@@ -24,7 +24,6 @@
 #' print(dir_dist)
 #' print(non_dir_dist)
 
-
 get_distance_matrix<-function(Graph,from,to,allcores=FALSE){
   if (any(is.na(from))) stop("NAs are not allowed in origin/destination nodes")
   if (any(is.na(to))) stop("NAs are not allowed in origin/destination nodes")
@@ -41,16 +40,33 @@ get_distance_matrix<-function(Graph,from,to,allcores=FALSE){
     numWorkers <- parallel::detectCores()
     cl <- parallel::makeCluster(numWorkers, type = "PSOCK")
     parallel::clusterEvalQ(cl = cl,library("cppRouting"))
-    chunks <- parallel::splitIndices(length(from), ncl = numWorkers)
-    mylist<-lapply(chunks,function(x) from_id[x])
-    #mylist2<-lapply(chunks,function(x) to_id[x])
-    res<-parallel::clusterMap(cl,Dijkstra_mat,dep=mylist,
-                              MoreArgs = list(arr=to_id,gfrom=Graph$data$from,gto=Graph$data$to,gw=Graph$data$dist,NbNodes=Graph$nbnode))
-    parallel::stopCluster(cl)
+    
+    if (length(to)< length(from)){
+      chunks <- parallel::splitIndices(length(to), ncl = numWorkers)
+      mylist<-lapply(chunks,function(x) to_id[x])
+      #mylist2<-lapply(chunks,function(x) to_id[x])
+      res<-parallel::clusterMap(cl,Dijkstra_mat,dep=mylist,
+                                MoreArgs = list(arr=from_id,gfrom=Graph$data$to,gto=Graph$data$from,gw=Graph$data$dist,NbNodes=Graph$nbnode))
+      parallel::stopCluster(cl)
+    }
+    else {
+      chunks <- parallel::splitIndices(length(from), ncl = numWorkers)
+      mylist<-lapply(chunks,function(x) from_id[x])
+      #mylist2<-lapply(chunks,function(x) to_id[x])
+      res<-parallel::clusterMap(cl,Dijkstra_mat,dep=mylist,
+                                MoreArgs = list(arr=to_id,gfrom=Graph$data$from,gto=Graph$data$to,gw=Graph$data$dist,NbNodes=Graph$nbnode))
+      parallel::stopCluster(cl)
+    }
+    
     res<-do.call(rbind,res)
     
   }
-  else res<-Dijkstra_mat(Graph$data[,1],Graph$data[,2],Graph$data[,3],Graph$nbnode,from_id,to_id)
+  else {
+    if (length(to)< length(from))  res<-Dijkstra_mat(Graph$data[,2],Graph$data[,1],Graph$data[,3],Graph$nbnode,to_id,from_id)
+    else res<-Dijkstra_mat(Graph$data[,1],Graph$data[,2],Graph$data[,3],Graph$nbnode,from_id,to_id)
+  }
+  
+  if (length(to)< length(from)) res<-t(res)
   
   rownames(res)<-from
   colnames(res)<-to
