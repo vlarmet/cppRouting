@@ -1,7 +1,7 @@
 cppRouting package
 ================
 Vincent LARMET
-15 juin 2019
+July 6, 2019
 
 Package presentation
 ====================
@@ -148,7 +148,7 @@ pair_dijkstra<-get_distance_pair(graph,origin,destination)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   58.87    0.74   59.86
+    ##   58.47    0.77   59.52
 
 #### Using bi-directional Dijkstra algorithm
 
@@ -162,7 +162,7 @@ pair_bidijkstra<-get_distance_pair(graph,origin,destination,algorithm = "bi")
     ## Running bidirectional Dijkstra...
 
     ##    user  system elapsed 
-    ##   39.92    1.40   41.75
+    ##   37.04    1.42   38.50
 
 #### Using A\* algorithm
 
@@ -178,7 +178,7 @@ pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   32.85    1.93   34.87
+    ##   31.64    1.95   33.65
 
 #### Using NBA\* algorithm
 
@@ -192,7 +192,7 @@ pair_nba<-get_distance_pair(graph,origin,destination,algorithm = "NBA",constant 
     ## Running NBA* ...
 
     ##    user  system elapsed 
-    ##   18.34    2.97   21.32
+    ##   17.89    2.88   20.82
 
 #### Output
 
@@ -201,12 +201,12 @@ head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_nba))
 ```
 
     ##      pair_dijkstra pair_bidijkstra pair_astar pair_nba
-    ## [1,]      370.2267        370.2267   370.2267 370.2267
-    ## [2,]      173.4823        173.4823   173.4823 173.4823
-    ## [3,]      609.7753        609.7753   609.7753 609.7753
-    ## [4,]      460.4252        460.4252   460.4252 460.4252
-    ## [5,]      407.5842        407.5842   407.5842 407.5842
-    ## [6,]      320.0234        320.0234   320.0234 320.0234
+    ## [1,]      822.8825        822.8825   822.8825 822.8825
+    ## [2,]      255.7911        255.7911   255.7911 255.7911
+    ## [3,]      410.9381        410.9381   410.9381 410.9381
+    ## [4,]      613.2455        613.2455   613.2455 613.2455
+    ## [5,]      327.6106        327.6106   327.6106 327.6106
+    ## [6,]      357.9866        357.9866   357.9866 357.9866
 
 ##### In `get_distance_pair` function, all the algorithms can be ran in parallel by setting TRUE to allcores argument.
 
@@ -338,7 +338,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   14.81    1.37   16.24
+    ##   14.77    0.97   15.79
 
 ##### Compare outputs
 
@@ -347,7 +347,7 @@ summary(pair_nba-pair_nba_2)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##       0       0       0       0       0       0      35
+    ##       0       0       0       0       0       0      42
 
 #### Running time
 
@@ -475,7 +475,6 @@ OSM
 </tr>
 </tbody>
 </table>
-
 Applications
 ============
 
@@ -552,7 +551,7 @@ The shortest travel time is computed with the `cppRouting` function `get_distanc
 We compute travel time from all commune nodes to all maternity ward nodes (e.g ~36000\*400 distances).
 
 ``` r
-#Distance matrix (around 10 minutes to compute)
+#Distance matrix (few seconds to compute)
 dists<-get_distance_matrix(graph,
                            from=ndcom$id_noeud,
                            to=ndcom$id_noeud[ndcom$com %in% maternity$CODGEO],
@@ -605,7 +604,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   89.63    0.02   89.83
+    ##   88.33    0.03   88.55
 
 ``` r
 #dodgr
@@ -626,7 +625,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##   90.09    0.09   90.78
+    ##   87.47    0.02   87.70
 
 ``` r
 #cppRouting
@@ -636,7 +635,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 ```
 
     ##    user  system elapsed 
-    ##   62.66    0.40   63.48
+    ##   59.32    0.42   59.80
 
 #### Ouput
 
@@ -662,7 +661,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##  134.15    0.42   36.97
+    ##  126.10    0.59   33.43
 
 ``` r
 #cppRouting
@@ -672,7 +671,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 ```
 
     ##    user  system elapsed 
-    ##    0.11    0.08   23.82
+    ##    0.14    0.05   22.36
 
 Benchmark on computing shortest paths by pairs
 ----------------------------------------------
@@ -688,7 +687,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 ```
 
     ##    user  system elapsed 
-    ##  561.26   20.80  587.54
+    ##  531.79   18.66  551.76
 
 ``` r
 #cppRouting
@@ -700,7 +699,7 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "NBA",constant=110/
     ## Running NBA* ...
 
     ##    user  system elapsed 
-    ##    5.24    0.31    5.56
+    ##    4.93    0.36    5.29
 
 ### Test similarity of the first travel
 

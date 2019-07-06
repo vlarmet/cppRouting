@@ -1,7 +1,7 @@
 ---
 title: "cppRouting package"
 author: "Vincent LARMET"
-date: "15 juin 2019"
+date: "July 6, 2019"
 output: github_document
 ---
 
@@ -350,7 +350,7 @@ The shortest travel time is computed with the `cppRouting` function `get_distanc
 In order to compute multiple distances from one source, original uni-directional Dijkstra algorithm is ran without early stopping.  
 We compute travel time from all commune nodes to all maternity ward nodes (e.g ~36000*400 distances).
 ```{r,echo=TRUE,message=FALSE,warning=FALSE,include=TRUE}
-#Distance matrix (around 10 minutes to compute)
+#Distance matrix (few seconds to compute)
 dists<-get_distance_matrix(graph,
                            from=ndcom$id_noeud,
                            to=ndcom$id_noeud[ndcom$com %in% maternity$CODGEO],
