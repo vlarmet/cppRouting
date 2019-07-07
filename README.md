@@ -1,4 +1,4 @@
-cppRouting package
+cppRouting package v1.2
 ================
 Vincent LARMET
 July 6, 2019
@@ -59,6 +59,7 @@ Main functions
 -   `get_multi_paths` : compute shortest paths between all origin nodes and all destination nodes (*one-to-many*),
 -   `get_isochrone` : compute isochrones/isodistances with one or multiple breaks.
 -   `cpp_simplify` : remove non-intersection nodes, duplicated edges and isolated loops in the graph. Graph topology is preserved so distance calculation is faster and remains true. This function can be applied to very large graphs (several millions of nodes).
+-   `get_detour` : return nodes that are reachable within a fixed additional cost around shortest paths. This function can be useful in producing accessibility indicators.
 
 ### Path algorithms
 
@@ -66,7 +67,10 @@ The choice between all the algorithms is available for *one-to-one* calculation 
 In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.
 `A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a **projection system**.
 To be accurate and efficient, `A*` and `NBA*` algorithms should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.
-In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (for example in meters).
+In `cppRouting`, heuristic function `h` for a node (n) is defined such that :
+**h(n,d) = ED(n,d) / k** with *h* the heuristic, *ED* the Euclidean distance, *d* the destination node and a constant *k*.
+
+So in the case where coordinates are expressed in meters and cost is expressed in time, *k* is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (for example in meters).
 
 If coordinates cannot be provided, bi-directional Dijkstra algorithm can offer a good alternative to A\* in terms of performance.
 
@@ -148,7 +152,7 @@ pair_dijkstra<-get_distance_pair(graph,origin,destination)
     ## Running Dijkstra ...
 
     ##    user  system elapsed 
-    ##   58.47    0.77   59.52
+    ##   56.57    0.81   57.39
 
 #### Using bi-directional Dijkstra algorithm
 
@@ -162,7 +166,7 @@ pair_bidijkstra<-get_distance_pair(graph,origin,destination,algorithm = "bi")
     ## Running bidirectional Dijkstra...
 
     ##    user  system elapsed 
-    ##   37.04    1.42   38.50
+    ##   36.66    1.36   38.02
 
 #### Using A\* algorithm
 
@@ -178,7 +182,7 @@ pair_astar<-get_distance_pair(graph,origin,destination,algorithm = "A*",constant
     ## Running A* ...
 
     ##    user  system elapsed 
-    ##   31.64    1.95   33.65
+    ##   30.84    1.72   32.58
 
 #### Using NBA\* algorithm
 
@@ -192,7 +196,7 @@ pair_nba<-get_distance_pair(graph,origin,destination,algorithm = "NBA",constant 
     ## Running NBA* ...
 
     ##    user  system elapsed 
-    ##   17.89    2.88   20.82
+    ##   17.77    2.70   20.47
 
 #### Output
 
@@ -200,13 +204,13 @@ pair_nba<-get_distance_pair(graph,origin,destination,algorithm = "NBA",constant 
 head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_nba))
 ```
 
-    ##      pair_dijkstra pair_bidijkstra pair_astar pair_nba
-    ## [1,]      822.8825        822.8825   822.8825 822.8825
-    ## [2,]      255.7911        255.7911   255.7911 255.7911
-    ## [3,]      410.9381        410.9381   410.9381 410.9381
-    ## [4,]      613.2455        613.2455   613.2455 613.2455
-    ## [5,]      327.6106        327.6106   327.6106 327.6106
-    ## [6,]      357.9866        357.9866   357.9866 357.9866
+    ##      pair_dijkstra pair_bidijkstra pair_astar  pair_nba
+    ## [1,]     291.24281       291.24281  291.24281 291.24281
+    ## [2,]     306.65703       306.65703  306.65703 306.65703
+    ## [3,]      46.83659        46.83659   46.83659  46.83659
+    ## [4,]     387.52275       387.52275  387.52275 387.52275
+    ## [5,]     185.46024       185.46024  185.46024 185.46024
+    ## [6,]     103.39441       103.39441  103.39441 103.39441
 
 ##### In `get_distance_pair` function, all the algorithms can be ran in parallel by setting TRUE to allcores argument.
 
@@ -248,13 +252,57 @@ p
 
 ![](README_files/figure-markdown_github/unnamed-chunk-11-1.png)
 
+### Compute possible detours within a fixed additional cost
+
+`get_detour` function returns all reachable nodes within a fixed detour time around the shortest path between origin and destination nodes. Returned nodes (n) meet the following condition :
+**SP(o,n) + SP(n,d) &lt; SP(o,d) + t**
+with *SP* shortest distance/time, *o* the origin node, *d* the destination node and *t* the extra cost.
+The algorithm used is a slightly modified bidirectional Dijkstra.
+Let's see an example for the path between Dijon and Lyon city :
+
+``` r
+#Compute shortest path
+trajet<-get_path_pair(graph,from="205793",to="212490")
+
+#Compute shortest path
+distance<-get_distance_pair(graph,from="205793",to="212490")
+
+#Compute detour time of 25 and 45 minutes
+det25<-get_detour(graph,from="205793",to="212490",extra=25)
+det45<-get_detour(graph,from="205793",to="212490",extra=45)
+
+#Create sf object of nodes
+pts<-st_as_sf(coord,coords=c("X","Y"),crs=2154)
+pts<-st_transform(pts,crs=4326)
+pts$time<-ifelse(pts$ID %in% unlist(det45),"45","0")
+pts$time<-ifelse(pts$ID %in% unlist(det25),"25",pts$time)
+pts$time<-ifelse(pts$ID %in% unlist(trajet),"Shortest Path",pts$time)
+pts$time<-factor(pts$time,levels = c("25","45","Shortest Path","0"))
+
+#Plot
+dijon=get_map(location=c(lon=5.041140,lat=46.48),zoom=8, source="google",maptype = "toner-2010")
+
+p<-ggmap(dijon)+
+  geom_sf(data=pts[pts$time!="0",],aes(color=time),inherit.aes = FALSE)+
+  ggtitle(paste0("Detours around Dijon-lyon path - ",round(distance,digits = 2)," minutes"))+
+  labs(color="Minutes")+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.y=element_blank(),axis.title.x=element_blank())
+p
+```
+
+![](README_files/figure-markdown_github/unnamed-chunk-12-1.png)
+
 ### Graph simplification
 
 `cpp_simplify`'s internal function performs two major steps :
 
 -   removing non-intersection nodes between two intersection nodes then calculate cost of the new edges,
 -   removing duplicate edges that are potentially created in the first step.
-    In order to remove maximum number of nodes, some iterations are needed until only intersection nodes are remained.
+
+In order to remove maximum number of nodes, some iterations are needed until only intersection nodes are remained.
 
 Let's see a small example :
 
@@ -295,7 +343,7 @@ plot(igr2,edge.arrow.size=.3,edge.label=E(igr2)$dist,main="One iteration - keepi
 box(col="black")
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-12-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-13-1.png)
 
 Here, junction nodes are `e`, `h`, `d`, `k`, `l`, `i` and `m`. So `b`, `c`, `f` and `n` have been contracted in the first step of the function. By contracting `n`, an edge with cost of 2 has been created between `m` and `l` nodes.
 The second step of the function has removed this edge which is greater than the original one (e.g 1), and the whole process now need a second iteration to remove `m` and `l` that aren't intersection nodes anymore.
@@ -321,7 +369,7 @@ plot(igr4,edge.arrow.size=.3,edge.label=E(igr4)$dist,main="Second iteration - re
 box(col="black")
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-13-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-14-1.png)
 
 #### French road network simplification
 
@@ -338,7 +386,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   14.77    0.97   15.79
+    ##   14.34    1.03   15.38
 
 ##### Compare outputs
 
@@ -347,7 +395,7 @@ summary(pair_nba-pair_nba_2)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##       0       0       0       0       0       0      42
+    ##       0       0       0       0       0       0      31
 
 #### Running time
 
@@ -535,7 +583,7 @@ p<-ggplot()+
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-19-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-20-1.png)
 
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
@@ -577,7 +625,7 @@ p<-ggplot()+
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-22-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-23-1.png)
 
 Benchmark with other R packages
 ===============================
@@ -604,7 +652,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   88.33    0.03   88.55
+    ##   85.13    0.02   85.14
 
 ``` r
 #dodgr
@@ -625,7 +673,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##   87.47    0.02   87.70
+    ##   86.38    0.05   86.46
 
 ``` r
 #cppRouting
@@ -635,7 +683,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE)
 ```
 
     ##    user  system elapsed 
-    ##   59.32    0.42   59.80
+    ##   57.71    0.23   58.00
 
 #### Ouput
 
@@ -661,7 +709,7 @@ test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,para
 ```
 
     ##    user  system elapsed 
-    ##  126.10    0.59   33.43
+    ##  126.19    0.59   32.95
 
 ``` r
 #cppRouting
@@ -671,7 +719,7 @@ test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE)
 ```
 
     ##    user  system elapsed 
-    ##    0.14    0.05   22.36
+    ##    0.16    0.05   22.09
 
 Benchmark on computing shortest paths by pairs
 ----------------------------------------------
@@ -687,7 +735,7 @@ test_dodgr<-dodgr_paths(graph=data.frame(roads2),from=origin,to=destination,pair
 ```
 
     ##    user  system elapsed 
-    ##  531.79   18.66  551.76
+    ##  518.03   18.07  536.19
 
 ``` r
 #cppRouting
@@ -699,7 +747,7 @@ test_cpp<-get_path_pair(graph,origin,destination,algorithm = "NBA",constant=110/
     ## Running NBA* ...
 
     ##    user  system elapsed 
-    ##    4.93    0.36    5.29
+    ##    4.77    0.39    5.16
 
 ### Test similarity of the first travel
 
@@ -726,5 +774,4 @@ setdiff(test_dodgr[[1]][[1]],test_cpp[[1]])
 New algorithms `cppRouting` will provide in the future
 ======================================================
 
--   Detours admitting shortest paths : finding the nodes that are reachable under a fixed detour time around the shortest path
 -   Contraction hierarchies implementation

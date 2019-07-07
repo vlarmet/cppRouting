@@ -1,5 +1,5 @@
 ---
-title: "cppRouting package"
+title: "cppRouting package v1.2"
 author: "Vincent LARMET"
 date: "July 6, 2019"
 output: github_document
@@ -57,6 +57,7 @@ Data has to be a 3 columns data.frame or matrix containing from, to and a cost/d
 - `get_multi_paths` : compute shortest paths between all origin nodes and all destination nodes (*one-to-many*),  
 - `get_isochrone` : compute isochrones/isodistances with one or multiple breaks.  
 - `cpp_simplify` : remove non-intersection nodes, duplicated edges and isolated loops in the graph. Graph topology is preserved so distance calculation is faster and remains true. This function can be applied to very large graphs (several millions of nodes).  
+- `get_detour` : return nodes that are reachable within a fixed additional cost around shortest paths. This function can be useful in producing accessibility indicators.  
 
 
 ###Path algorithms                    
@@ -64,7 +65,11 @@ The choice between all the algorithms is available for *one-to-one* calculation 
 In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.  
 `A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a **projection system**.  
 To be accurate and efficient, `A*` and `NBA*` algorithms should use an admissible heuristic function (here the Euclidean distance), e.g cost and heuristic function must be expressed in the same unit.  
-In `cppRouting`, heuristic function `h` is defined such that : h(xi,yi,xdestination,ydestination)/k, with a constant k; so in the case where coordinates are expressed in meters and cost is expressed in time, k is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (for example in meters).  
+In `cppRouting`, heuristic function `h` for a node (n) is defined such that :   
+**h(n,d) = ED(n,d) / k**
+with *h* the heuristic, *ED* the Euclidean distance, *d* the destination node and a constant *k*.  
+
+So in the case where coordinates are expressed in meters and cost is expressed in time, *k* is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (for example in meters).  
   
 If coordinates cannot be provided, bi-directional Dijkstra algorithm can offer a good alternative to A* in terms of performance.
   
@@ -186,12 +191,56 @@ p<-ggmap(dijon)+
 p
 
 ```
+  
+    
+###Compute possible detours within a fixed additional cost
+`get_detour` function returns all reachable nodes within a fixed detour time around the shortest path between origin and destination nodes. Returned nodes (n) meet the following condition :  
+**SP(o,n) + SP(n,d) < SP(o,d) + t**  
+with *SP* shortest distance/time, *o* the origin node, *d* the destination node and *t* the extra cost.  
+The algorithm used is a slightly modified bidirectional Dijkstra.  
+Let's see an example for the path between Dijon and Lyon city :  
+```{r,echo=TRUE,message=FALSE,warning=FALSE}
+#Compute shortest path
+trajet<-get_path_pair(graph,from="205793",to="212490")
+
+#Compute shortest path
+distance<-get_distance_pair(graph,from="205793",to="212490")
+
+#Compute detour time of 25 and 45 minutes
+det25<-get_detour(graph,from="205793",to="212490",extra=25)
+det45<-get_detour(graph,from="205793",to="212490",extra=45)
+
+#Create sf object of nodes
+pts<-st_as_sf(coord,coords=c("X","Y"),crs=2154)
+pts<-st_transform(pts,crs=4326)
+pts$time<-ifelse(pts$ID %in% unlist(det45),"45","0")
+pts$time<-ifelse(pts$ID %in% unlist(det25),"25",pts$time)
+pts$time<-ifelse(pts$ID %in% unlist(trajet),"Shortest Path",pts$time)
+pts$time<-factor(pts$time,levels = c("25","45","Shortest Path","0"))
+
+#Plot
+dijon=get_map(location=c(lon=5.041140,lat=46.48),zoom=8, source="google",maptype = "toner-2010")
+
+p<-ggmap(dijon)+
+  geom_sf(data=pts[pts$time!="0",],aes(color=time),inherit.aes = FALSE)+
+  ggtitle(paste0("Detours around Dijon-lyon path - ",round(distance,digits = 2)," minutes"))+
+  labs(color="Minutes")+
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.y=element_blank(),axis.title.x=element_blank())
+p
+
+```
+
+
 
 ###Graph simplification
 `cpp_simplify`'s internal function performs two major steps :  
   
 - removing non-intersection nodes between two intersection nodes then calculate cost of the new edges,  
 - removing duplicate edges that are potentially created in the first step.   
+  
 In order to remove maximum number of nodes, some iterations are needed until only intersection nodes are remained.  
   
 Let's see a small example :
@@ -463,5 +512,4 @@ setdiff(test_dodgr[[1]][[1]],test_cpp[[1]])
 
 #New algorithms `cppRouting` will provide in the future   
   
-- Detours admitting shortest paths : finding the nodes that are reachable under a fixed detour time around the shortest path  
 - Contraction hierarchies implementation  
