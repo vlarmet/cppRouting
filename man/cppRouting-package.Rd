@@ -15,6 +15,8 @@
 \item shortest paths between origin and destination by pair (one-to-one),
 \item shortest paths between all origin nodes and all destination nodes,
 \item Isochrones/isodistances with one or multiple breaks.
+\item graph simplification by removing non intersection nodes, duplicated edges and isolated loops
+\item find nodes that can be reached under an additional detour time around the shortest path between two nodes
 }
 }
 

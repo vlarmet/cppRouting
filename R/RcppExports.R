@@ -5,8 +5,8 @@ Astar <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k) {
     .Call(`_cppRouting_Astar`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k)
 }
 
-Astar_paths <- function(gfrom, gto, gw, NbNodes, dep, arr, lat, lon, k, dict) {
-    .Call(`_cppRouting_Astar_paths`, gfrom, gto, gw, NbNodes, dep, arr, lat, lon, k, dict)
+Astar_paths <- function(gfrom, gto, gw, NbNodes, dep, arr, lat, lon, k, dict, keep) {
+    .Call(`_cppRouting_Astar_paths`, gfrom, gto, gw, NbNodes, dep, arr, lat, lon, k, dict, keep)
 }
 
 Bidir <- function(dep, arr, gfrom, gto, gw, NbNodes) {
@@ -17,43 +17,91 @@ NBA <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k) {
     .Call(`_cppRouting_NBA`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k)
 }
 
-NBA_path <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k, dict) {
-    .Call(`_cppRouting_NBA_path`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k, dict)
+NBA_path <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k, dict, keep) {
+    .Call(`_cppRouting_NBA_path`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k, dict, keep)
 }
 
-Bidir_path <- function(dep, arr, gfrom, gto, gw, NbNodes, dict) {
-    .Call(`_cppRouting_Bidir_path`, dep, arr, gfrom, gto, gw, NbNodes, dict)
+Bidir_mat3 <- function(dep, arr, gfrom, gto, gw, NbNodes, Rank) {
+    .Call(`_cppRouting_Bidir_mat3`, dep, arr, gfrom, gto, gw, NbNodes, Rank)
+}
+
+Bidir_mod3 <- function(dep, arr, gfrom, gto, gw, NbNodes, Rank) {
+    .Call(`_cppRouting_Bidir_mod3`, dep, arr, gfrom, gto, gw, NbNodes, Rank)
+}
+
+Bidir_mod_path <- function(dep, arr, gfrom, gto, gw, NbNodes, Rank, dict, keep, ShortF, ShortT, ShortC) {
+    .Call(`_cppRouting_Bidir_mod_path`, dep, arr, gfrom, gto, gw, NbNodes, Rank, dict, keep, ShortF, ShortT, ShortC)
+}
+
+Bidir_path <- function(dep, arr, gfrom, gto, gw, NbNodes, dict, keep) {
+    .Call(`_cppRouting_Bidir_path`, dep, arr, gfrom, gto, gw, NbNodes, dict, keep)
+}
+
+Contract_ED <- function(gfrom, gto, gw, NbNodes, display_progress) {
+    .Call(`_cppRouting_Contract_ED`, gfrom, gto, gw, NbNodes, display_progress)
+}
+
+Detour <- function(dep, arr, gfrom, gto, gw, NbNodes, t, dict, keep) {
+    .Call(`_cppRouting_Detour`, dep, arr, gfrom, gto, gw, NbNodes, t, dict, keep)
 }
 
 Dijkstra_early_stop <- function(dep, arr, gfrom, gto, gw, NbNodes) {
     .Call(`_cppRouting_Dijkstra_early_stop`, dep, arr, gfrom, gto, gw, NbNodes)
 }
 
-Dijkstra_early_stop_path <- function(gfrom, gto, gw, NbNodes, dep, arr, dict) {
-    .Call(`_cppRouting_Dijkstra_early_stop_path`, gfrom, gto, gw, NbNodes, dep, arr, dict)
+Dijkstra_early_stop_path <- function(gfrom, gto, gw, NbNodes, dep, arr, dict, keep) {
+    .Call(`_cppRouting_Dijkstra_early_stop_path`, gfrom, gto, gw, NbNodes, dep, arr, dict, keep)
 }
 
 Dijkstra_mat <- function(gfrom, gto, gw, NbNodes, dep, arr) {
     .Call(`_cppRouting_Dijkstra_mat`, gfrom, gto, gw, NbNodes, dep, arr)
 }
 
-Dijkstra_multi_path <- function(gfrom, gto, gw, NbNodes, dep, arr, dict) {
-    .Call(`_cppRouting_Dijkstra_multi_path`, gfrom, gto, gw, NbNodes, dep, arr, dict)
+Dijkstra_multi_path <- function(gfrom, gto, gw, NbNodes, dep, arr, dict, keep) {
+    .Call(`_cppRouting_Dijkstra_multi_path`, gfrom, gto, gw, NbNodes, dep, arr, dict, keep)
 }
 
 Remove_duplicate <- function(gfrom, gto, gw, NbNodes) {
     .Call(`_cppRouting_Remove_duplicate`, gfrom, gto, gw, NbNodes)
 }
 
-Isochrone <- function(gfrom, gto, gw, NbNodes, dep, max_limit, dict) {
-    .Call(`_cppRouting_Isochrone`, gfrom, gto, gw, NbNodes, dep, max_limit, dict)
+Isochrone <- function(gfrom, gto, gw, NbNodes, dep, max_limit, dict, keep) {
+    .Call(`_cppRouting_Isochrone`, gfrom, gto, gw, NbNodes, dep, max_limit, dict, keep)
 }
 
-Isochrone_multi <- function(gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict) {
-    .Call(`_cppRouting_Isochrone_multi`, gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict)
+Isochrone_multi <- function(gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict, keep) {
+    .Call(`_cppRouting_Isochrone_multi`, gfrom, gto, gw, NbNodes, dep, limit_vec, max_limit, setdif, dict, keep)
 }
 
-Simplify2 <- function(gfrom, gto, gw, NbNodes, loop, keep, dict) {
-    .Call(`_cppRouting_Simplify2`, gfrom, gto, gw, NbNodes, loop, keep, dict)
+NBA_par <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k) {
+    .Call(`_cppRouting_NBA_par`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k)
+}
+
+Astar_par <- function(dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k) {
+    .Call(`_cppRouting_Astar_par`, dep, arr, gfrom, gto, gw, NbNodes, lat, lon, k)
+}
+
+Bidir_par <- function(dep, arr, gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Bidir_par`, dep, arr, gfrom, gto, gw, NbNodes)
+}
+
+par_Bidir_mat2 <- function(dep, arr, gfrom, gto, gw, NbNodes, Rank) {
+    .Call(`_cppRouting_par_Bidir_mat2`, dep, arr, gfrom, gto, gw, NbNodes, Rank)
+}
+
+par_Bidir_mod2 <- function(dep, arr, gfrom, gto, gw, NbNodes, Rank) {
+    .Call(`_cppRouting_par_Bidir_mod2`, dep, arr, gfrom, gto, gw, NbNodes, Rank)
+}
+
+Dijkstra_par <- function(dep, arr, gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Dijkstra_par`, dep, arr, gfrom, gto, gw, NbNodes)
+}
+
+Dijkstra_mat_par <- function(dep, arr, gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Dijkstra_mat_par`, dep, arr, gfrom, gto, gw, NbNodes)
+}
+
+Simplify3 <- function(gfrom, gto, gw, NbNodes, loop, keep, iterate, progress) {
+    .Call(`_cppRouting_Simplify3`, gfrom, gto, gw, NbNodes, loop, keep, iterate, progress)
 }
 

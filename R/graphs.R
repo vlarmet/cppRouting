@@ -34,8 +34,8 @@
 #' 
 
 makegraph<-function(df,
-                    directed=TRUE,
-                    coords=NULL){
+                     directed=TRUE,
+                     coords=NULL){
   df<-as.data.frame(df)
   if (ncol(df)!=3) stop("Data should have 3 columns")
   
@@ -48,8 +48,7 @@ makegraph<-function(df,
   if (any(is.na(df))) stop("NAs are not allowed in the graph")
   if (any(df[,3]<0)) stop("Negative cost is not allowed")
   if (sum(df[,1]==df[,2])>0) df<-df[df[,1]!=df[,2],]
-  #if (sum(duplicated(df))>0) stop("Duplicated vertices not allowed")
-  df<-df[!duplicated(df),]
+  
   
   Nodes=unique(c(df[,1],df[,2]))
   
@@ -76,9 +75,16 @@ makegraph<-function(df,
   
   dict<-data.frame(ref=Nodes,id=0:(length(Nodes)-1),stringsAsFactors = F)
   
+  
+  
   df[,1]<-dict[match(df[,1],dict$ref),"id"]
   df[,2]<-dict[match(df[,2],dict$ref),"id"]
   coords<-coords[match(Nodes,coords[,1]),]
+  
+  df<-Remove_duplicate(df[,1],df[,2],df[,3],length(Nodes))
+  
+  
+  
   
   
   return(list(data=df,

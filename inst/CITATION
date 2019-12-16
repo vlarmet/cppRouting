@@ -1,0 +1,5 @@
+bibentry(bibtype = "Misc",
+         title = "{cppRouting}: Fast Implementation of Dijkstra Algorithm in R",
+         author = c(person("Vincent", "Larmet")),
+         year = 2019,
+         url = "https://github.com/vlarmet/cppRouting")

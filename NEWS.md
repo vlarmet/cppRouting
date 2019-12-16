@@ -1,4 +1,13 @@
 
+cppRouting v2.0
+===============
+
+Major changes
+
+-   implementation of contraction hierarchies algorithm
+-   thread-safe implementation of all parallel algorithms with `RcppParallel` package instead of `parallel`
+-   optimization of `cpp_simplify` function
+
 cppRouting v1.2
 ===============
 
