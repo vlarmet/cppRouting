@@ -499,6 +499,7 @@ OSM 'Europe'
 </tr>
 </tbody>
 </table>
+
 ### Contraction hierarchies
 
 Contraction hierarchies is a speed-up technique for finding shortest path on a network. It was proposed by Geisberger & al.(2008).
