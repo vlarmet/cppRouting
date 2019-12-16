@@ -15,7 +15,7 @@ using namespace Rcpp;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::NumericMatrix Remove_duplicate(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes){
+Rcpp::DataFrame Remove_duplicate(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes){
 
   std::vector<std::vector<std::pair<int,double> > > Graph(NbNodes);   
   //std::vector<std::vector<std::pair<int,double> > > Graphr(NbNodes);
@@ -64,15 +64,10 @@ Rcpp::NumericMatrix Remove_duplicate(std::vector<int> gfrom,std::vector<int> gto
     
   }
   
-  Rcpp::NumericMatrix final(From.size(),3);
-  
-  
-  Rcpp::IntegerVector temp=wrap(From);
-  final( _ ,0)=temp;
-  Rcpp::IntegerVector temp2=wrap(To);
-  final( _ ,1)=temp2;
-  Rcpp::NumericVector temp3=wrap(W);
-  final( _ ,2)=temp3;
+  Rcpp::DataFrame final=Rcpp::DataFrame::create(Rcpp::Named("from")=From,
+                                                Rcpp::Named("to")=To,
+                                                Rcpp::Named("dist")=W);
+
   
   return final;
   

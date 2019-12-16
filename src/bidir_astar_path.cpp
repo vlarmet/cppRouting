@@ -15,7 +15,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List NBA_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<double> lat,std::vector<double> lon,double k,std::vector<std::string> dict){
+Rcpp::List NBA_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<double> lat,std::vector<double> lon,double k,std::vector<std::string> dict,std::vector<int> keep){
   
   
   std::vector<std::vector<std::string> > result(dep.size());
@@ -47,7 +47,13 @@ Rcpp::List NBA_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> 
   
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
+  vector <int> Visited(NbNodes,0);
+  vector <int> Visited1check(NbNodes,0);
+  vector <int> Visited2check(NbNodes,0);
+  std::vector<int> Parents(NbNodes, -1);     
+  std::vector<int> Parents2(NbNodes, -1); 
   for (unsigned int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -60,27 +66,12 @@ Rcpp::List NBA_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> 
     double lata2=lat[StartNode];
     double lona2=lon[StartNode];
     
-    
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
-    //std::vector<double> Dh(NbNodes, std::numeric_limits<double>::max()); 
-    std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
-    //std::vector<double> Dh2(NbNodes, std::numeric_limits<double>::max()); 
-    vector <int> Visited(NbNodes,0);
-    vector <int> Visited1check(NbNodes,0);
-    vector <int> Visited2check(NbNodes,0);
     Distances[StartNode] = 0.0;  
     Visited1check[StartNode]=1;
-    //Dh[StartNode]=sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k;
     Distances2[EndNode] = 0.0;
     Visited2check[EndNode]=1;
-    //Dh2[EndNode]=sqrt(pow(lat[EndNode]-lata2,2)+pow(lon[EndNode]-lona2,2))/k;
     
-    std::vector<int> Parents(NbNodes, -1);     
-    std::vector<int> Parents2(NbNodes, -1); 
-    
-    
-    
-    
+
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Qr;
     Q.push(std::make_pair(StartNode, sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k)); 
@@ -196,21 +187,30 @@ Rcpp::List NBA_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> 
     
     std::vector <std::string> result2;
     for (auto p = Parents2[mid]; p != -1; p = Parents2[p]){
-      result2.insert(result2.begin(),dict[p]);
+      
+    if (keep[p]==1)  result2.insert(result2.begin(),dict[p]);
     }
     
     if (Distances[mid]!=std::numeric_limits<double>::max() || Distances2[mid]!=std::numeric_limits<double>::max()){
-      result2.push_back(dict[mid]);
+      if (keep[mid]==1) result2.push_back(dict[mid]);
     }
     
     for (auto p = Parents[mid]; p != -1; p = Parents[p]){
-      result2.push_back(dict[p]);
+      if (keep[p]==1) result2.push_back(dict[p]);
     }
     
     
     
     result[j] = result2;
     
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(Distances2.begin(),Distances2.end(),std::numeric_limits<double>::max());
+    std::fill(Visited.begin(),Visited.end(),0);
+    std::fill(Visited1check.begin(),Visited1check.end(),0);
+    std::fill(Visited2check.begin(),Visited2check.end(),0);
+    std::fill(Parents.begin(),Parents.end(),-1);
+    std::fill(Parents2.begin(),Parents2.end(),-1);
     
     
   }

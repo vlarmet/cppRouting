@@ -15,7 +15,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List Bidir_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<std::string> dict){
+Rcpp::List Bidir_path(std::vector<int> dep, std::vector<int> arr,std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<std::string> dict,std::vector<int> keep){
   
   
   std::vector<std::vector<std::string> > result(dep.size());
@@ -47,7 +47,14 @@ Rcpp::List Bidir_path(std::vector<int> dep, std::vector<int> arr,std::vector<int
   
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector<int> Parents(NbNodes, -1);     
+  std::vector<int> Parents2(NbNodes, -1);     
+  vector <int> Visited(NbNodes,0);
+  vector <int> Visiting(NbNodes,0);
+  vector <int> Visited2(NbNodes,0);
+  vector <int> Visiting2(NbNodes,0);
   for (unsigned int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -55,21 +62,8 @@ Rcpp::List Bidir_path(std::vector<int> dep, std::vector<int> arr,std::vector<int
     
     int StartNode=dep[j];
     int EndNode=arr[j];
-    
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
-    std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
-    
-    
     Distances[StartNode] = 0.0;  
     Distances2[EndNode] = 0.0;
-    
-    std::vector<int> Parents(NbNodes, -1);     
-    std::vector<int> Parents2(NbNodes, -1);     
-    vector <int> Visited(NbNodes,0);
-    vector <int> Visiting(NbNodes,0);
-    vector <int> Visited2(NbNodes,0);
-    vector <int> Visiting2(NbNodes,0);
-    
     
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Qr;
@@ -153,23 +147,30 @@ Rcpp::List Bidir_path(std::vector<int> dep, std::vector<int> arr,std::vector<int
     
     std::vector <std::string> result2;
     for (auto p = Parents2[mid]; p != -1; p = Parents2[p]){
-      result2.insert(result2.begin(),dict[p]);
+      if (keep[p]==1) result2.insert(result2.begin(),dict[p]);
     }
     
     if (Distances[mid]!=std::numeric_limits<double>::max() || Distances2[mid]!=std::numeric_limits<double>::max()){
-      result2.push_back(dict[mid]);
+      if (keep[mid]==1) result2.push_back(dict[mid]);
     }
     
     for (auto p = Parents[mid]; p != -1; p = Parents[p]){
-      result2.push_back(dict[p]);
+      if (keep[p]==1) result2.push_back(dict[p]);
     }
 
     
  
     result[j] = result2;
     
-
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(Distances2.begin(),Distances2.end(),std::numeric_limits<double>::max());
+    std::fill(Visited.begin(),Visited.end(),0);
+    std::fill(Visited2.begin(),Visited2.end(),0);
+    std::fill(Visiting.begin(),Visiting.end(),0);
+    std::fill(Visiting2.begin(),Visiting2.end(),0);
+    std::fill(Parents.begin(),Parents.end(),-1);
+    std::fill(Parents2.begin(),Parents2.end(),-1);
     
     
   }

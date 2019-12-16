@@ -15,7 +15,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List Astar_paths(std::vector<int> gfrom,std::vector<int> gto,std::vector<float> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr,std::vector<float> lat,std::vector<float> lon,float k,std::vector<std::string> dict){
+Rcpp::List Astar_paths(std::vector<int> gfrom,std::vector<int> gto,std::vector<float> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr,std::vector<float> lat,std::vector<float> lon,float k,std::vector<std::string> dict,std::vector<int> keep){
   
   
   std::vector<std::vector<std::string> > result(dep.size());
@@ -44,7 +44,11 @@ Rcpp::List Astar_paths(std::vector<int> gfrom,std::vector<int> gto,std::vector<f
   }
   
   //Boucle sur chaque trajet
-  
+  std::vector<float> Distances(NbNodes, std::numeric_limits<float>::max()); 
+  std::vector<float> Distances2(NbNodes, numeric_limits<float>::max());
+  std::vector<int> Parents(NbNodes, -1);                                             
+  vector <int> closedList(NbNodes,0);
+  vector <int> openList(NbNodes,0);
   for (int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -55,18 +59,13 @@ Rcpp::List Astar_paths(std::vector<int> gfrom,std::vector<int> gto,std::vector<f
     float lata=lat[endNode];
     float lona=lon[endNode];
     
-    std::vector<float> Distances(NbNodes, std::numeric_limits<float>::max()); 
-    std::vector<float> Distances2(NbNodes, numeric_limits<float>::max());
+
     
     
     Distances[StartNode] = 0;                                                     
     Distances2[StartNode] = sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k;
     
-    std::vector<int> Parents(NbNodes, -1);                                             
-    
-   
-    vector <int> closedList(NbNodes,0);
-    vector <int> openList(NbNodes,0);
+
     priority_queue<std::pair<int, float>, vector<std::pair<int, float> >, comp > Q;
     Q.push(make_pair(StartNode,sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k));                                            
     openList[StartNode]=1;
@@ -118,15 +117,20 @@ Rcpp::List Astar_paths(std::vector<int> gfrom,std::vector<int> gto,std::vector<f
     std::vector <std::string> result2;
     
     for (auto p = Parents[endNode]; p != -1; p = Parents[p]){
-      result2.push_back(dict[p]);
+      if (keep[p]==1) result2.push_back(dict[p]);
     }
     
     if (result2.size()>0){
-      result2.insert(result2.begin(),dict[endNode]);
+      if (keep[endNode]==1) result2.insert(result2.begin(),dict[endNode]);
     }
     result[j] = result2;
     
-    
+    //Reinitialize vectors
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(Distances2.begin(),Distances2.end(),std::numeric_limits<double>::max());
+    std::fill(closedList.begin(),closedList.end(),0);
+    std::fill(openList.begin(),openList.end(),0);
+    std::fill(Parents.begin(),Parents.end(),-1);
     
   }
   

@@ -14,7 +14,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List Isochrone_multi(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep,std::vector<double> limit_vec,double max_limit,bool setdif,std::vector<std::string> dict){
+Rcpp::List Isochrone_multi(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep,std::vector<double> limit_vec,double max_limit,bool setdif,std::vector<std::string> dict,std::vector<int> keep){
   
   
   Rcpp::List finalresult(dep.size());
@@ -41,7 +41,7 @@ Rcpp::List Isochrone_multi(std::vector<int> gfrom,std::vector<int> gto,std::vect
   }
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());          
   for (int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -49,12 +49,12 @@ Rcpp::List Isochrone_multi(std::vector<int> gfrom,std::vector<int> gto,std::vect
     
     int StartNode=dep[j];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());                  
+            
    
     
     Distances[StartNode] = 0.0;                                                    
     
-    std::vector<int> Parents(NbNodes, -1);                                             
+                                                
     
     
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
@@ -75,7 +75,7 @@ Rcpp::List Isochrone_multi(std::vector<int> gfrom,std::vector<int> gto,std::vect
           
           if (Distances[v] + w2 < Distances[v2]) {                               
             Distances[v2] = Distances[v] + w2;                                   
-            Parents[v2] = v;                                                     
+                                                                 
             Q.push(make_pair(v2, Distances[v2]));
           }
           
@@ -94,20 +94,25 @@ Rcpp::List Isochrone_multi(std::vector<int> gfrom,std::vector<int> gto,std::vect
       double lim=limit_vec[i];
       
       for (int k=0; k< Distances.size(); k++){
-        if (Distances[k] < lim){
-          if (setdif){
-            Distances[k] = std::numeric_limits<double>::max();
+        if (keep[k]==1){
+          if (Distances[k] < lim){
+            if (setdif){
+              Distances[k] = std::numeric_limits<double>::max();
+            }
+            
+            result[i].push_back(dict[k]);
           }
-          
-          result[i].push_back(dict[k]);
-      }
+        }
+        
+
         
       
       }
     }
     
     finalresult[j] = result;
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
     
     
     

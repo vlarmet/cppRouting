@@ -44,6 +44,7 @@ Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> a
   //Rcpp::Rcerr << "Graph construit!\n";
   
   //Boucle sur chaque trajet
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());      
   
   for (unsigned int j=0; j!=dep.size();j++){
     if (j % 256){
@@ -52,12 +53,8 @@ Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> a
     
     int StartNode=dep[j];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());                   
-    
-    
     Distances[StartNode] = 0.0;                                                     
     
-    std::vector<int> Parents(NbNodes, -1);                                            
     
     
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
@@ -77,7 +74,7 @@ Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> a
           
           if (Distances[v] + w2 < Distances[v2]) {                               
             Distances[v2] = Distances[v] + w2;                                   
-            Parents[v2] = v;                                                   
+                                                              
             Q.push(make_pair(v2, Distances[v2]));
           }
         }
@@ -95,7 +92,8 @@ Rcpp::NumericVector Dijkstra_early_stop(std::vector<int> dep, std::vector<int> a
       result[j]=Distances[EndNode];
     }
     
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
     
   }
   

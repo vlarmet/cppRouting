@@ -43,6 +43,10 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
   }
   
   //Boucle sur chaque trajet
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector<double> Distances2(NbNodes, numeric_limits<double>::max());
+  vector <int> closedList(NbNodes,0);
+  vector <int> openList(NbNodes,0);
   
   for (int j=0; j!=dep.size();j++){
     if (j % 256){
@@ -54,17 +58,8 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
     double lata=lat[endNode];
     double lona=lon[endNode];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
-    std::vector<double> Distances2(NbNodes, numeric_limits<double>::max());
-    
-    
     Distances[StartNode] = 0.0;                                                    
     Distances2[StartNode] = sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k;
-    
-    std::vector<int> Parents(NbNodes, -1);                                             
-   
-    vector <int> closedList(NbNodes,0);
-    vector <int> openList(NbNodes,0);
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
     Q.push(make_pair(StartNode,sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k));                                             
     openList[StartNode]=1;
@@ -99,7 +94,7 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
           continue;
         }
         
-        Parents[v2]=v;
+        
         Distances[v2]=temp;
         Distances2[v2]=Distances[v2]+sqrt(pow(lat[v2]-lata,2)+pow(lon[v2]-lona,2))/k;
         Q.push(make_pair(v2,Distances2[v2]));
@@ -120,6 +115,11 @@ Rcpp::NumericVector Astar(std::vector<int> dep, std::vector<int> arr,std::vector
       result[j]= Distances[endNode];
     }
   
+  //Reinitialize vectors
+  std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+  std::fill(Distances2.begin(),Distances2.end(),std::numeric_limits<double>::max());
+  std::fill(closedList.begin(),closedList.end(),0);
+  std::fill(openList.begin(),openList.end(),0);
     
     
   }

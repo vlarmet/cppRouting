@@ -46,6 +46,11 @@ Rcpp::NumericVector NBA(std::vector<int> dep, std::vector<int> arr,std::vector<i
   
   
   //Boucle sur chaque trajet
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
+  vector <int> Visited(NbNodes,0);
+  vector <int> Visited1check(NbNodes,0);
+  vector <int> Visited2check(NbNodes,0);
   
   for (unsigned int j=0; j!=dep.size();j++){
     if (j % 256){
@@ -54,32 +59,21 @@ Rcpp::NumericVector NBA(std::vector<int> dep, std::vector<int> arr,std::vector<i
     
     int StartNode=dep[j];
     int EndNode=arr[j];
+    
+    if (StartNode==EndNode){
+      result[j]=0;
+      continue;
+    }
+    
     double lata=lat[EndNode];
     double lona=lon[EndNode];
     double lata2=lat[StartNode];
     double lona2=lon[StartNode];
     
-    
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
-    //std::vector<double> Dh(NbNodes, std::numeric_limits<double>::max()); 
-    std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
-    //std::vector<double> Dh2(NbNodes, std::numeric_limits<double>::max()); 
-    vector <int> Visited(NbNodes,0);
-    vector <int> Visited1check(NbNodes,0);
-    vector <int> Visited2check(NbNodes,0);
     Distances[StartNode] = 0.0;  
     Visited1check[StartNode]=1;
-    //Dh[StartNode]=sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k;
     Distances2[EndNode] = 0.0;
     Visited2check[EndNode]=1;
-    //Dh2[EndNode]=sqrt(pow(lat[EndNode]-lata2,2)+pow(lon[EndNode]-lona2,2))/k;
-    
-    std::vector<int> Parents(NbNodes, -1);     
-    std::vector<int> Parents2(NbNodes, -1); 
-    
- 
-    
-    
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Qr;
     Q.push(std::make_pair(StartNode, sqrt(pow(lat[StartNode]-lata,2)+pow(lon[StartNode]-lona,2))/k)); 
@@ -115,7 +109,7 @@ Rcpp::NumericVector NBA(std::vector<int> dep, std::vector<int> arr,std::vector<i
             if (Visited1check[v2]==0  || Distances[v2] > tentative){
               Distances[v2]=tentative;
               Visited1check[v2]=1;
-              Parents[v2]=v;
+              
               Q.push(std::make_pair(v2, tentative + sqrt(pow(lat[v2]-lata,2)+pow(lon[v2]-lona,2))/k));
               
               if (Visited2check[v2]==1){
@@ -165,7 +159,7 @@ Rcpp::NumericVector NBA(std::vector<int> dep, std::vector<int> arr,std::vector<i
               if (Visited2check[vv2]==0  || Distances2[vv2] > tentative){
                 Distances2[vv2]=tentative;
                 Visited2check[vv2]=1;
-                Parents2[vv2]=vv;
+              
                 Qr.push(std::make_pair(vv2, tentative + sqrt(pow(lat[vv2]-lata2,2)+pow(lon[vv2]-lona2,2))/k));
                 
                 if (Visited1check[vv2]==1){
@@ -199,8 +193,12 @@ Rcpp::NumericVector NBA(std::vector<int> dep, std::vector<int> arr,std::vector<i
     else {
       result[j]=mu;
     }
-    
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(Distances2.begin(),Distances2.end(),std::numeric_limits<double>::max());
+    std::fill(Visited.begin(),Visited.end(),0);
+    std::fill(Visited1check.begin(),Visited1check.end(),0);
+    std::fill(Visited2check.begin(),Visited2check.end(),0);
     
   }
   

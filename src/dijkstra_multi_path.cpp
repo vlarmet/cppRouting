@@ -15,7 +15,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr,std::vector<std::string> dict){
+Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr,std::vector<std::string> dict,std::vector<int> keep){
   
   
   
@@ -46,7 +46,8 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
   //Rcpp::Rcerr << "Graph construit!\n";
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());  
+  std::vector<int> Parents(NbNodes, -1);         
   for (unsigned int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -54,12 +55,12 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
     
     int StartNode=dep[j];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());                   
+                     
     
     
     Distances[StartNode] = 0.0;                                                     
     
-    std::vector<int> Parents(NbNodes, -1);                                            
+                                       
     
     
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
@@ -94,11 +95,11 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
       vector <std::string> result2;
       
       for (auto p = Parents[endNode]; p != -1; p = Parents[p]){
-        result2.push_back(dict[p]);
+        if (keep[p]==1) result2.push_back(dict[p]);
       }
       
       if (result2.size()>0){
-        result2.insert(result2.begin(),dict[endNode]);
+        if (keep[endNode]==1) result2.insert(result2.begin(),dict[endNode]);
       }
       
       result[i] = result2;
@@ -106,7 +107,9 @@ Rcpp::List Dijkstra_multi_path(std::vector<int> gfrom,std::vector<int> gto,std::
     
     
     finalresult[j]=result;
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(Parents.begin(),Parents.end(),-1);
     
   }
   

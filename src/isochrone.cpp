@@ -14,7 +14,7 @@ using namespace std;
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 
-Rcpp::List Isochrone(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep,double max_limit,std::vector<std::string> dict){
+Rcpp::List Isochrone(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep,double max_limit,std::vector<std::string> dict,std::vector<int> keep){
   
   
   std::vector<std::vector<std::string> > result(dep.size());
@@ -41,7 +41,7 @@ Rcpp::List Isochrone(std::vector<int> gfrom,std::vector<int> gto,std::vector<dou
   }
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());   
   for (int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -49,12 +49,12 @@ Rcpp::List Isochrone(std::vector<int> gfrom,std::vector<int> gto,std::vector<dou
     
     int StartNode=dep[j];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());     
+      
     
     
     Distances[StartNode] = 0.0;           
     
-    std::vector<int> Parents(NbNodes, -1);                                           
+                                             
     
     
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
@@ -75,7 +75,7 @@ Rcpp::List Isochrone(std::vector<int> gfrom,std::vector<int> gto,std::vector<dou
           
           if (Distances[v] + w2 < Distances[v2]) {                               
             Distances[v2] = Distances[v] + w2;                                   
-            Parents[v2] = v;                                                     
+                                                                
             Q.push(make_pair(v2, Distances[v2]));
           }
           
@@ -91,13 +91,14 @@ Rcpp::List Isochrone(std::vector<int> gfrom,std::vector<int> gto,std::vector<dou
     
     for (int i = 0; i != Distances.size(); i++){
       if (Distances[i] < max_limit){
-        result2.push_back(dict[i]);
+        if (keep[i]==1) result2.push_back(dict[i]);
       }
     }
     result[j] = result2;
     
     
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
     
   }
   

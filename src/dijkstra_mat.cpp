@@ -43,7 +43,7 @@ Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom,std::vector<int> gto,std
   }
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());
   for (int j=0; j!=dep.size();j++){
     if (j % 256){
       Rcpp::checkUserInterrupt ();
@@ -51,12 +51,12 @@ Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom,std::vector<int> gto,std
     
     int StartNode=dep[j];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max());                   
+                       
    
     
     Distances[StartNode] = 0.0;                                                     
     
-    std::vector<int> Parents(NbNodes, -1);                                             
+                                               
     
    
     priority_queue<std::pair<int, double>, vector<std::pair<int, double> >, comp > Q;
@@ -77,7 +77,7 @@ Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom,std::vector<int> gto,std
           
           if (Distances[v] + w2 < Distances[v2]) {                                
             Distances[v2] = Distances[v] + w2;                                    
-            Parents[v2] = v;                                                      
+                                                                
             Q.push(make_pair(v2, Distances[v2]));
           }
           
@@ -102,7 +102,8 @@ Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom,std::vector<int> gto,std
       
     }
     result.row(j) = result2;
-    
+    //Reinitialize
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
   }
   
   

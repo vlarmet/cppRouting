@@ -46,7 +46,9 @@ Rcpp::NumericVector Bidir(std::vector<int> dep, std::vector<int> arr,std::vector
   
   
   //Boucle sur chaque trajet
-  
+  std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
+  std::vector <int> Visited(NbNodes,0);
   for (unsigned int k=0; k!=dep.size();k++){
     if (k % 256){
       Rcpp::checkUserInterrupt ();
@@ -55,17 +57,8 @@ Rcpp::NumericVector Bidir(std::vector<int> dep, std::vector<int> arr,std::vector
     int StartNode=dep[k];
     int EndNode=arr[k];
     
-    std::vector<double> Distances(NbNodes, std::numeric_limits<double>::max()); 
-    std::vector<double> Distances2(NbNodes, std::numeric_limits<double>::max()); 
-    
-    
     Distances[StartNode] = 0.0;  
     Distances2[EndNode] = 0.0;
-    
-    
-    std::vector <int> Visited(NbNodes,0);
-    
-    
     std::priority_queue<std::pair<int, double>, std::vector<std::pair<int, double> >, comp > Q;
     std::priority_queue<std::pair<int, double>, std::vector<std::pair<int, double> >, comp > Qr;
     Q.push(std::make_pair(StartNode, 0.0)); 
@@ -153,7 +146,11 @@ Rcpp::NumericVector Bidir(std::vector<int> dep, std::vector<int> arr,std::vector
       result[k]=mu;
     }
     
-    
+    //Reinitialize vectors
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(Distances2.begin(),Distances2.end(),std::numeric_limits<double>::max());
+    std::fill(Visited.begin(),Visited.end(),0);
+
   }
   
   
