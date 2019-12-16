@@ -856,6 +856,7 @@ nba
 </tfoot>
 </table>
 Here are the plots (in log-log) of query time improvement factor :
+
 ![](README_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
 As we can see on the plot, the larger is the graph, the higher is the benefit of using contraction hierarchies. For OSM Europe, query time can be faster by a factor of 1000 compared to bidirectional Dijkstra and 600 to NBA.
@@ -1032,6 +1033,7 @@ Dijkstra
 </tfoot>
 </table>
 Here are the plots (in log-log) of query time improvement factor for matrix :
+
 ![](README_files/figure-markdown_github/unnamed-chunk-19-1.png)
 
 Benefits are less important than *one-to-one* queries but still interesting. For OSM Europe, query time can be faster by a factor of 90.
