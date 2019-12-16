@@ -1247,7 +1247,7 @@ shortPath<-left_join(shortPath,
 shortPath<-shortPath %>% group_by(INSEE_COM) %>% summarise(flow=sum(flux))
 ```
 
-**Plot the flow of people crossing Bourgogne-Franche-Comte's communes **
+**Plot the flow of people crossing Bourgogne-Franche-Comte's communes**
 
 ``` r
 #Merge to shapefile
