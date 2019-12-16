@@ -314,7 +314,7 @@ plot(igr2,edge.arrow.size=.3,edge.label=E(igr2)$dist,main="One iteration - keepi
 box(col="black")
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-9-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-1-1.png)
 
 Here, junction nodes are `e`, `h`, `d`, `k`, `l`, `i` and `m`. So `b`, `c`, `f` and `n` have been contracted in the first step of the function. By contracting `n`, an edge with cost of 2 has been created between `m` and `l` nodes.
 The second step of the function has removed this edge which is greater than the original one (i.e 1), and the whole process now need a second iteration to remove `m` and `l` that aren't intersection nodes anymore.
