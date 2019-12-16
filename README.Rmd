@@ -113,7 +113,7 @@ med<-read.csv("doctor.csv",colClasses = c("character","numeric","character","num
 #Import materinty ward locations
 maternity<-read.csv("maternity.csv",colClasses = c("character","numeric"))
 #General practitioners locations
-cmt<-read.csv("commuting.csv",colClasses = c("character","character","character","character","numeric"))
+load("commuting.Rds")
 #Import nodes coordinates (projected in EPSG : 2154)
 coord<-read.csv("coordinates.csv",colClasses = c("character","numeric","numeric"))
 ```
