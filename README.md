@@ -59,7 +59,7 @@ devtools::install_github("vlarmet/cppRouting")
 Data
 ====
 
-**This README file and all time measurements were made on a Windows 7 laptop, with i7 (4 cores) processor and 16GB of memory. **
+**This README file and all time measurements were made on a Windows 7 laptop, with i7 (4 cores) processor and 16GB of memory.**
 
 The data presented here is the official french road network describing over 500000 km of roads.
 All data used in this README are free and can be downloaded here :
