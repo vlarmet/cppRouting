@@ -112,7 +112,7 @@ ndcom<-read.csv("node_commune.csv",colClasses = c("character","character","numer
 med<-read.csv("doctor.csv",colClasses = c("character","numeric","character","numeric"))
 #Import materinty ward locations
 maternity<-read.csv("maternity.csv",colClasses = c("character","numeric"))
-#General practitioners locations
+#Commuting data from national census
 load("commuting.Rds")
 #Import nodes coordinates (projected in EPSG : 2154)
 coord<-read.csv("coordinates.csv",colClasses = c("character","numeric","numeric"))
