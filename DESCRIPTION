@@ -17,8 +17,5 @@ LinkingTo: Rcpp, RcppParallel, RcppProgress
 SystemRequirements: GNU make, C++11
 RoxygenNote: 6.1.1
 URL: https://github.com/vlarmet/cppRouting
-Suggests: 
-    knitr,
-    rmarkdown,
-    igraph
+Suggests:knitr, rmarkdown, igraph
 VignetteBuilder: knitr
