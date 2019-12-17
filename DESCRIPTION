@@ -10,9 +10,9 @@ Description: Calculation of distances, shortest paths and isochrones on weighted
   bidirectional Dijkstra (Goldberg, Andrew & Fonseca F. Werneck, Renato (2005) <https://pdfs.semanticscholar.org/0761/18dfbe1d5a220f6ac59b4de4ad07b50283ac.pdf>),
   A* search (P. E. Hart, N. J. Nilsson et B. Raphael (1968) <doi:10.1109/TSSC.1968.300136>),
   new bidirectional A* (Pijls & Post (2009) <http://repub.eur.nl/pub/16100/ei2009-10.pdf>),
-  Contraction hierarchies implementation (Geisberger, Sanders, Schultes & Delling (2008) <doi:10.1007/978-3-540-68552-4_24>).
+  Contraction hierarchies (R. Geisberger, P. Sanders, D. Schultes and D. Delling (2008) <doi:10.1007/978-3-540-68552-4_24>).
 License: GPL (>= 2)
-Imports: Rcpp (>= 1.0.1), RcppParallel, RcppProgress, data.table
+Imports: Rcpp (>= 1.0.1), RcppParallel, RcppProgress , data.table
 LinkingTo: Rcpp, RcppParallel, RcppProgress
 SystemRequirements: GNU make, C++11
 RoxygenNote: 6.1.1
