@@ -24,7 +24,7 @@ get_path_pair(Graph, from, to, algorithm = "bi", constant = 1,
 Default to 1, when cost is expressed in the same unit than coordinates. See details}
 }
 \value{
-List containing shortest path nodes between from and to.
+List or a data.frame containing shortest path nodes between from and to.
 }
 \description{
 Compute shortest path between origin and destination nodes.

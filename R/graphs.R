@@ -3,7 +3,10 @@
 #' @param df  A data.frame or matrix containing 3 columns: from, to, cost. See details.
 #' @param directed logical. If FALSE, then all edges are duplicated by inverting 'from' and 'to' nodes.
 #' @param coords Optional. A data.frame or matrix containing all nodes coordinates. Columns order should be 'node_ID', 'X', 'Y'.
-#' @return List
+#' @return List with two useful attributes for the user : \cr
+#' 
+#' \emph{nbnode} : total number of vertices \cr
+#' \emph{dict$ref} : vertices IDs
 #' @details 'from' and 'to' are character or numeric vector containing nodes IDs. 
 #' 'cost' is a non-negative numeric vector describing the cost (e.g time, distance) between each 'from' and 'to' nodes.
 #' coords should not be angles (e.g latitude and longitude), but expressed in a projection system. 
@@ -29,8 +32,6 @@
 #' 
 #' #Construct graph with coordinates
 #' directed_graph2<-makegraph(edges, directed=TRUE, coords=coord)
-#' 
-#' 
 #' 
 
 makegraph<-function(df,

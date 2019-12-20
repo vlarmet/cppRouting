@@ -14,7 +14,10 @@ makegraph(df, directed = TRUE, coords = NULL)
 \item{coords}{Optional. A data.frame or matrix containing all nodes coordinates. Columns order should be 'node_ID', 'X', 'Y'.}
 }
 \value{
-List
+List with two useful attributes for the user : \cr
+
+\emph{nbnode} : total number of vertices \cr
+\emph{dict$ref} : vertices IDs
 }
 \description{
 Construct graph
@@ -45,7 +48,5 @@ coord<-data.frame(node=c(0,1,2,3,4,5),X=c(2,2,2,0,0,0),Y=c(0,2,2,0,2,4))
 
 #Construct graph with coordinates
 directed_graph2<-makegraph(edges, directed=TRUE, coords=coord)
-
-
 
 }

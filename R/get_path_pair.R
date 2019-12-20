@@ -8,7 +8,7 @@
 #' @param keep numeric or character. Vertices of interest that will be returned. 
 #' @param long logical. If TRUE, a long data.frame is returned instead of a list.
 #' Default to 1, when cost is expressed in the same unit than coordinates. See details
-#' @return List containing shortest path nodes between from and to.
+#' @return List or a data.frame containing shortest path nodes between from and to.
 #' @note 'from' and 'to' must be the same length.
 #' @details If the input graph has been contracted by cpp_contract() function, the algorithm is a modified bidirectional search.
 #' To perform A* and New Bidirectional A star, projected coordinates should be provided in the Graph object.  

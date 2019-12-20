@@ -101,6 +101,14 @@ Dijkstra_mat_par <- function(dep, arr, gfrom, gto, gw, NbNodes) {
     .Call(`_cppRouting_Dijkstra_mat_par`, dep, arr, gfrom, gto, gw, NbNodes)
 }
 
+Phast3 <- function(dep, arr, gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Phast3`, dep, arr, gfrom, gto, gw, NbNodes)
+}
+
+Phast_par <- function(dep, arr, gfrom, gto, gw, NbNodes) {
+    .Call(`_cppRouting_Phast_par`, dep, arr, gfrom, gto, gw, NbNodes)
+}
+
 Simplify3 <- function(gfrom, gto, gw, NbNodes, loop, keep, iterate, progress) {
     .Call(`_cppRouting_Simplify3`, gfrom, gto, gw, NbNodes, loop, keep, iterate, progress)
 }

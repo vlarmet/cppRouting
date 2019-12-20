@@ -449,6 +449,38 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Phast3
+Rcpp::NumericMatrix Phast3(std::vector<int> dep, std::vector<int> arr, std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int NbNodes);
+RcppExport SEXP _cppRouting_Phast3(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    rcpp_result_gen = Rcpp::wrap(Phast3(dep, arr, gfrom, gto, gw, NbNodes));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Phast_par
+Rcpp::NumericMatrix Phast_par(Rcpp::IntegerVector dep, Rcpp::IntegerVector arr, Rcpp::IntegerVector gfrom, Rcpp::IntegerVector gto, Rcpp::NumericVector gw, int NbNodes);
+RcppExport SEXP _cppRouting_Phast_par(SEXP depSEXP, SEXP arrSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    rcpp_result_gen = Rcpp::wrap(Phast_par(dep, arr, gfrom, gto, gw, NbNodes));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Simplify3
 Rcpp::List Simplify3(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes, bool loop, std::vector<int> keep, bool iterate, bool progress);
 RcppExport SEXP _cppRouting_Simplify3(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP loopSEXP, SEXP keepSEXP, SEXP iterateSEXP, SEXP progressSEXP) {
@@ -494,6 +526,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_par_Bidir_mod2", (DL_FUNC) &_cppRouting_par_Bidir_mod2, 7},
     {"_cppRouting_Dijkstra_par", (DL_FUNC) &_cppRouting_Dijkstra_par, 6},
     {"_cppRouting_Dijkstra_mat_par", (DL_FUNC) &_cppRouting_Dijkstra_mat_par, 6},
+    {"_cppRouting_Phast3", (DL_FUNC) &_cppRouting_Phast3, 6},
+    {"_cppRouting_Phast_par", (DL_FUNC) &_cppRouting_Phast_par, 6},
     {"_cppRouting_Simplify3", (DL_FUNC) &_cppRouting_Simplify3, 8},
     {NULL, NULL, 0}
 };

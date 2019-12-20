@@ -78,7 +78,7 @@ get_detour<-function(Graph,from,to,extra=NULL,keep=NULL,long=FALSE){
   }
   
   res<-Detour(from_id,to_id,Graph$data$from,Graph$data$to,Graph$data$dist,Graph$nbnode,t=extra,Graph$dict$ref,to_keep)
-
+  
   
   if (long){
     names(res)<-paste0(from)
@@ -95,4 +95,3 @@ get_detour<-function(Graph,from,to,extra=NULL,keep=NULL,long=FALSE){
   }
   
 }
-

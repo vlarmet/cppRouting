@@ -53,6 +53,7 @@ Rcpp::NumericMatrix Bidir_mat3(std::vector<int> &dep, std::vector<int> &arr,std:
   std::vector <int> Visited(NbNodes,0);
 
   
+  
   for (unsigned int k=0; k!=dep.size();k++){
     if (k % 256){
       Rcpp::checkUserInterrupt ();
@@ -124,16 +125,20 @@ Rcpp::NumericMatrix Bidir_mat3(std::vector<int> &dep, std::vector<int> &arr,std:
 
   //Backward
   
+  
   for (unsigned int k=0; k!=arr.size();k++){
     if (k % 256){
       Rcpp::checkUserInterrupt ();
     }
     
+
+    
+    
     Rcpp::NumericVector Dist(dep.size(), std::numeric_limits<double>::max());
     for (int i=0; i < dep.size();i++) Dist[i]=std::numeric_limits<double>::max();
     
     
-    auto t1 = std::chrono::high_resolution_clock::now();
+    
     int StartNode=arr[k];
 
     Distances[StartNode] = 0.0;  
