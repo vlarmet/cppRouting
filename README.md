@@ -860,6 +860,7 @@ nba
 </tfoot>
 </table>
 Here are the plots (in log-log) of query time improvement factor of *one to one CH* algorithm compared to bidirectional Dijkstra and NBA :
+
 ![](README_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
 As we can see on the plot, the larger is the graph, the higher is the benefit of using contraction hierarchies. For OSM Europe, query time can be faster by a factor of 1000 compared to bidirectional Dijkstra and 600 to NBA.
