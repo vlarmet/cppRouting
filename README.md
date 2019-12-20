@@ -860,6 +860,7 @@ nba
 </tr>
 </tfoot>
 </table>
+
 Here are the plots (in log-log) of query time improvement factor of *one to one CH* algorithm compared to bidirectional Dijkstra and NBA :
 
 ![](README_files/figure-markdown_github/unnamed-chunk-17-1.png)
@@ -1094,6 +1095,7 @@ Dijkstra
 </tr>
 </tfoot>
 </table>
+
 Here are the plots (in log-log) of query time improvement factor of *PHAST* and *many to many CH* compared to Dijkstra algorithm :
 
 ![](README_files/figure-markdown_github/unnamed-chunk-19-1.png)
