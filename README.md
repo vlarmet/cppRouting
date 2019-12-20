@@ -1213,9 +1213,10 @@ p
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
 
-**Shortest travel time matrix**
-The shortest travel time is computed with the `cppRouting` function `get_distance_matrix`. In order to compute multiple distances from one source, original uni-directional Dijkstra algorithm is ran without early stopping.
-We compute travel time from all commune nodes to all maternity ward nodes (i.e ~36000\*400 distances).
+**Shortest travel time matrix**  
+
+The shortest travel time is computed with the `cppRouting` function `get_distance_matrix`.  
+We compute travel time from all commune nodes to all maternity ward nodes (i.e ~36000\*400 distances). Since the matrix is quite rectangular (factor of ~100), we use PHAST algorithm on the contracted graph.
 
 ``` r
 #Distance matrix on contracted graph
