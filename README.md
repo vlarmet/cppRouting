@@ -59,8 +59,7 @@ devtools::install_github("vlarmet/cppRouting")
 Data
 ====
 
-**This README file and all time measurements were made on a Windows 7 laptop, with i7 (4 cores) processor and 16GB of memory.**
-
+**This README file and all time measurements were made on a Windows 7 laptop, with i7 (4 cores) processor and 16GB of memory. **
 The data presented here is the official french road network describing over 500000 km of roads.
 All data used in this README are free and can be downloaded here :
 
@@ -93,23 +92,27 @@ Main functions
 
 Path algorithms proposed by the package are :
 
--   uni-directional Dijkstra algorithm,
--   bi-directional Dijkstra algorithm,
--   uni-directional A\* algorithm
--   New bi-directional A\* algorithm (Piljs & Post, 2009 : see <http://repub.eur.nl/pub/16100/ei2009-10.pdf>)
--   *one-to-one* bi-directional Dijkstra adapted to contraction hierarchies (Geisberger & al., 2008)
--   *many-to-many* bi-directional Dijkstra adapted to contraction hierarchies (Geisberger & al., 2008)
+-   **1** uni-directional Dijkstra algorithm,
+-   **2** bi-directional Dijkstra algorithm,
+-   **3** uni-directional A\* algorithm
+-   **4** New bi-directional A\* algorithm (Piljs & Post, 2009 : see <http://repub.eur.nl/pub/16100/ei2009-10.pdf>)
+-   **5** *one-to-one* bi-directional Dijkstra adapted to contraction hierarchies (Geisberger & al., 2008)
+-   **6** *many-to-many* bi-directional Dijkstra adapted to contraction hierarchies (Geisberger & al., 2008)
+-   **7** PHAST algorithm (Hardware-accelerated shortest path trees), *one-to-all* algorithm adapted to contraction hierarchies (Delling & al., 2011)
 
-The choice between all the algorithms is available for *one-to-one* calculation like `get_distance_pair` and `get_path_pair` on a non-contracted graph.
-In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.
+*1*, *2*, *3* and *4* are available for **one-to-one** calculation in `get_distance_pair` and `get_path_pair` functions on a **non-contracted** graph. In these functions, uni-directional Dijkstra algorithm is stopped when the destination node is reached.
 `A*` and `NBA*` are relevant if geographic coordinates of all nodes are provided. Note that coordinates should be expressed in a **projection system**.
 To be accurate and efficient, `A*` and `NBA*` algorithms should use an admissible heuristic function (here the Euclidean distance), i.e cost and heuristic function must be expressed in the same unit.
 In `cppRouting`, heuristic function `h` for a node (n) is defined such that :
 **h(n,d) = ED(n,d) / k** with *h* the heuristic, *ED* the Euclidean distance, *d* the destination node and a constant *k*.
-
 So in the case where coordinates are expressed in meters and cost is expressed in time, *k* is the maximum speed allowed on the road. By default, constant is 1 and is designed for graphs with cost expressed in the same unit than coordinates (for example in meters).
-
 If coordinates cannot be provided, bi-directional Dijkstra algorithm is the best option in terms of performance.
+
+*5* is used for **one-to-one** calculation in `get_distance_pair` and `get_path_pair` functions on a **contracted** graph.
+
+*1* is used for **one-to-many** calculation in `get_distance_matrix` function on a **non-contracted** graph.
+
+*6* and *7* are available for **one-to-many** calculation in `get_distance_matrix` function on a **contracted** graph.
 
 Examples
 --------
@@ -202,10 +205,10 @@ microbenchmark(dijkstra=pair_dijkstra<-get_distance_pair(graph,origin,destinatio
 
     ## Unit: seconds
     ##      expr      min       lq     mean   median       uq      max neval
-    ##  dijkstra 58.89001 58.89001 58.89001 58.89001 58.89001 58.89001     1
-    ##     bidir 39.32742 39.32742 39.32742 39.32742 39.32742 39.32742     1
-    ##     astar 34.11192 34.11192 34.11192 34.11192 34.11192 34.11192     1
-    ##       nba 18.42268 18.42268 18.42268 18.42268 18.42268 18.42268     1
+    ##  dijkstra 63.52479 63.52479 63.52479 63.52479 63.52479 63.52479     1
+    ##     bidir 42.06078 42.06078 42.06078 42.06078 42.06078 42.06078     1
+    ##     astar 35.70978 35.70978 35.70978 35.70978 35.70978 35.70978     1
+    ##       nba 19.16584 19.16584 19.16584 19.16584 19.16584 19.16584     1
 
 #### Output
 
@@ -213,13 +216,13 @@ microbenchmark(dijkstra=pair_dijkstra<-get_distance_pair(graph,origin,destinatio
 head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_nba))
 ```
 
-    ##      pair_dijkstra pair_bidijkstra pair_astar pair_nba
-    ## [1,]      274.3373        274.3373   274.3373 274.3373
-    ## [2,]      336.5252        336.5252   336.5252 336.5252
-    ## [3,]      287.3360        287.3360   287.3360 287.3360
-    ## [4,]      101.1385        101.1385   101.1385 101.1385
-    ## [5,]      242.4829        242.4829   242.4829 242.4829
-    ## [6,]      508.6448        508.6448   508.6448 508.6448
+    ##      pair_dijkstra pair_bidijkstra pair_astar  pair_nba
+    ## [1,]     379.21781       379.21781  379.21781 379.21781
+    ## [2,]     450.50365       450.50365  450.50365 450.50365
+    ## [3,]     405.87464       405.87464  405.87464 405.87464
+    ## [4,]      90.55674        90.55674   90.55674  90.55674
+    ## [5,]     527.88511       527.88511  527.88511 527.88511
+    ## [6,]     455.01772       455.01772  455.01772 455.01772
 
 So, how to choose the algorithm ? It's simple, the faster, the better. If coordinates are provided, go for `NBA`, else go for bidirectional Dijkstra. Uni-directional Dijkstra and `A*` algorithms should be used if main memory is (almost) full because they require only one graph instead of two (forward and backward).
 
@@ -358,7 +361,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   15.20    0.00   15.23
+    ##   14.60    0.08   14.77
 
 ##### Compare outputs
 
@@ -367,7 +370,7 @@ summary(pair_nba-pair_nba_2)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##       0       0       0       0       0       0      40
+    ##       0       0       0       0       0       0      44
 
 #### Running time
 
@@ -500,7 +503,6 @@ OSM 'Europe'
 </tr>
 </tbody>
 </table>
-
 ### Contraction hierarchies
 
 Contraction hierarchies is a speed-up technique for finding shortest path on a network. It was proposed by Geisberger & al.(2008).
@@ -508,7 +510,7 @@ Initially created for *one-to-one* queries, it has been extended to *many-to-man
 This technique is composed of two phases:
 
 -   preprocessing phase called *contraction* with `cpp_contract` function
--   query phase : a slightly modified version of bidirectional search for `one-to-one` query, available in `get_distance_pair` and `get_path_pair`; and a `many-to-many` algorithm using buckets available in `get_distance_matrix` function.
+-   query phase : a slightly modified version of bidirectional search for `one-to-one` query, available in `get_distance_pair` and `get_path_pair`; PHAST algorithm and a `many-to-many` algorithm using buckets available in `get_distance_matrix` function.
 
 Contraction phase consists of iteratively removing a vertex **v** from the graph and creating a shortcut for each pair **(u,w)** of **v**'s neighborhood if the shortest path from **u** to **w** contains **v**. To be efficient and avoid creating too much shortcuts, vertices have to be ordered according to several heuristics. The two heuristics used by `cppRouting` are :
 
@@ -532,7 +534,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##    0.71    0.02    0.74
+    ##    0.68    0.04    0.72
 
 #### Compare outputs
 
@@ -541,7 +543,7 @@ summary(pair_ch-pair_dijkstra)
 ```
 
     ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##       0       0       0       0       0       0      40
+    ##       0       0       0       0       0       0      44
 
 #### Performance comparison
 
@@ -857,16 +859,16 @@ nba
 </tr>
 </tfoot>
 </table>
-Here are the plots (in log-log) of query time improvement factor :
-
+Here are the plots (in log-log) of query time improvement factor of *one to one CH* algorithm compared to bidirectional Dijkstra and NBA :
 ![](README_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
 As we can see on the plot, the larger is the graph, the higher is the benefit of using contraction hierarchies. For OSM Europe, query time can be faster by a factor of 1000 compared to bidirectional Dijkstra and 600 to NBA.
 
 ##### Distance matrix
 
-Here are the measurements of contraction time and query time (in second) of contraction hierarchies on different graphs.
-Matrix are square (i.e the sets of source and target nodes are of equal length)
+Here are the measurements of query time (in second) of contraction hierarchies on different graphs.
+We compare *PHAST* and *many to many CH* to Dijkstra algorithm on square matrix (i.e the sets of source and target nodes are of equal length).
+
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -900,11 +902,11 @@ algorithm
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="2">
+<td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="3">
 ROUTE 500
 </td>
 <td style="text-align:center;font-weight: bold;">
-ch
+mch
 </td>
 <td style="text-align:center;font-weight: bold;">
 1.5
@@ -917,6 +919,23 @@ ch
 </td>
 <td style="text-align:center;font-weight: bold;">
 65
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+phast
+</td>
+<td style="text-align:center;">
+7.0
+</td>
+<td style="text-align:center;">
+14.0
+</td>
+<td style="text-align:center;">
+34
+</td>
+<td style="text-align:center;">
+70
 </td>
 </tr>
 <tr>
@@ -937,11 +956,11 @@ Dijkstra
 </td>
 </tr>
 <tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="2">
+<td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="3">
 OSM France
 </td>
 <td style="text-align:center;font-weight: bold;">
-ch
+mch
 </td>
 <td style="text-align:center;font-weight: bold;">
 16.0
@@ -954,6 +973,23 @@ ch
 </td>
 <td style="text-align:center;font-weight: bold;">
 277
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+phast
+</td>
+<td style="text-align:center;">
+150.0
+</td>
+<td style="text-align:center;">
+300.0
+</td>
+<td style="text-align:center;">
+722
+</td>
+<td style="text-align:center;">
+1500
 </td>
 </tr>
 <tr>
@@ -974,11 +1010,11 @@ Dijkstra
 </td>
 </tr>
 <tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="2">
+<td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="3">
 OSM Europe
 </td>
 <td style="text-align:center;font-weight: bold;">
-ch
+mch
 </td>
 <td style="text-align:center;font-weight: bold;">
 55.0
@@ -991,6 +1027,23 @@ ch
 </td>
 <td style="text-align:center;font-weight: bold;">
 586
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+phast
+</td>
+<td style="text-align:center;">
+529.0
+</td>
+<td style="text-align:center;">
+1000.0
+</td>
+<td style="text-align:center;">
+2556
+</td>
+<td style="text-align:center;">
+5222
 </td>
 </tr>
 <tr>
@@ -1014,7 +1067,12 @@ Dijkstra
 <tfoot>
 <tr>
 <td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> ch : many-to-many bidirectional search on the contracted graph
+<sup></sup> mch : many-to-many bidirectional search on the contracted graph
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup></sup> phast : phast algorithm on the contracted graph
 </td>
 </tr>
 <tr>
@@ -1034,11 +1092,20 @@ Dijkstra
 </tr>
 </tfoot>
 </table>
-Here are the plots (in log-log) of query time improvement factor for matrix :
+Here are the plots (in log-log) of query time improvement factor of *PHAST* and *many to many CH* compared to Dijkstra algorithm :
 
 ![](README_files/figure-markdown_github/unnamed-chunk-19-1.png)
 
 Benefits are less important than *one-to-one* queries but still interesting. For OSM Europe, query time can be faster by a factor of 90.
+PHAST's improvement is constant since it iteratively perform an *one-to-all* search, just like original Dijkstra.
+*many to many CH* is well adapted for **square matrix**.
+
+Here are the plots of query time of *PHAST* and *many to many CH* on assymetric matrix (i.e. number of source and number of target are unequal) with *|S| / |T|* the number of sources divided by the number of targets :
+
+![](README_files/figure-markdown_github/unnamed-chunk-20-1.png)
+
+Note that this plot is the same for *|T| / |S|*.
+*PHAST* algorithm is much faster for rectangular matrix. The rate *|S| / |T|* where *many to many CH* is better varies according the graph size. For example, if we have to calculate a distance matrix between 10000 sources and 10 targets (or 10 sources and 10000 targets) on OSM France, we must use *PHAST*. On the other hand, if we want a matrix of 10000 sources and 8000 targets, we use *many to many CH* algorithm.
 
 ### Compute isochrones
 
@@ -1076,7 +1143,7 @@ p<-ggmap(dijon)+
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-20-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-21-1.png)
 
 Applications
 ============
@@ -1137,7 +1204,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-23-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-24-1.png)
 
 Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 -----------------------------------------------------------------------------------------
@@ -1147,11 +1214,11 @@ The shortest travel time is computed with the `cppRouting` function `get_distanc
 We compute travel time from all commune nodes to all maternity ward nodes (i.e ~36000\*400 distances).
 
 ``` r
-#Distance matrix (few seconds to compute)
-dists<-get_distance_matrix(graph,
+#Distance matrix on contracted graph
+dists<-get_distance_matrix(graph3,
                            from=ndcom$id_noeud,
                            to=ndcom$id_noeud[ndcom$com %in% maternity$CODGEO],
-                           allcores=TRUE)
+                           algorithm = "phast")#because of the rectangular shape of the matrix
 #We extract each minimum travel time for all the communes
 dists2<-data.frame(node=ndcom$id_noeud,mindist=apply(dists,1,min,na.rm=T))
 #Joining commune IDs to nodes
@@ -1169,7 +1236,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-25-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-26-1.png)
 
 Application 3 : Calculate average commuting time to go to job in France
 -----------------------------------------------------------------------
@@ -1204,7 +1271,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-27-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-28-1.png)
 
 Application 4 : Calculate the flow of people crossing each municipality in the context of commuting in Bourgogne-Franche-Comte region
 -------------------------------------------------------------------------------------------------------------------------------------
@@ -1247,7 +1314,7 @@ shortPath<-left_join(shortPath,
 shortPath<-shortPath %>% group_by(INSEE_COM) %>% summarise(flow=sum(flux))
 ```
 
-**Plot the flow of people crossing Bourgogne-Franche-Comte's communes**
+**Plot the flow of people crossing Bourgogne-Franche-Comte's communes **
 
 ``` r
 #Merge to shapefile
@@ -1259,7 +1326,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![](README_files/figure-markdown_github/unnamed-chunk-30-1.png)
+![](README_files/figure-markdown_github/unnamed-chunk-31-1.png)
 
 Benchmark with other R packages
 ===============================
@@ -1296,17 +1363,20 @@ roads2$to_id<-as.character(roads2$to_id)
 microbenchmark(igraph=test_igraph<-distances(graph_igraph,origin,to=destination,weights = E(graph_igraph)$weight,mode="out"),
                dodgr=test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,parallel=FALSE),
                cpprouting=test_cpp<-get_distance_matrix(graph,origin,destination,allcores = FALSE),
-               contracted=test_cpp_cont<-get_distance_matrix(graph3,origin,destination,allcores = FALSE),
+               contr_mch=test_mch<-get_distance_matrix(graph3,origin,destination,algorithm = "mch",allcores = FALSE),
+               contr_phast=test_phast<-get_distance_matrix(graph3,origin,destination,algorithm = "phast",allcores = FALSE),
                times=1)
 ```
 
     ## Unit: seconds
-    ##        expr       min        lq      mean    median        uq       max
-    ##      igraph 92.208561 92.208561 92.208561 92.208561 92.208561 92.208561
-    ##       dodgr 90.868617 90.868617 90.868617 90.868617 90.868617 90.868617
-    ##  cpprouting 58.604715 58.604715 58.604715 58.604715 58.604715 58.604715
-    ##  contracted  1.668571  1.668571  1.668571  1.668571  1.668571  1.668571
+    ##         expr       min        lq      mean    median        uq       max
+    ##       igraph 91.388226 91.388226 91.388226 91.388226 91.388226 91.388226
+    ##        dodgr 88.494266 88.494266 88.494266 88.494266 88.494266 88.494266
+    ##   cpprouting 56.083602 56.083602 56.083602 56.083602 56.083602 56.083602
+    ##    contr_mch  1.552541  1.552541  1.552541  1.552541  1.552541  1.552541
+    ##  contr_phast  6.961412  6.961412  6.961412  6.961412  6.961412  6.961412
     ##  neval
+    ##      1
     ##      1
     ##      1
     ##      1
@@ -1317,32 +1387,35 @@ Even if we add the preprocessing time (i.e. 20s) to the query time, the whole pr
 **Ouput**
 
 ``` r
-head(cbind(test_igraph[,1],test_dodgr[,1],test_cpp[,1],test_cpp_cont[,1]))
+head(cbind(test_igraph[,1],test_dodgr[,1],test_cpp[,1],test_mch[,1],test_phast[,1]))
 ```
 
-    ##            [,1]     [,2]     [,3]     [,4]
-    ## 210536 258.3182 258.3182 258.3182 258.3182
-    ## 191662 153.5894 153.5894 153.5894 153.5894
-    ## 94621  165.1604 165.1604 165.1604 165.1604
-    ## 62351  400.0621 400.0621 400.0621 400.0621
-    ## 194066 149.2815 149.2815 149.2815 149.2815
-    ## 47812  247.8106 247.8106 247.8106 247.8106
+    ##            [,1]     [,2]     [,3]     [,4]     [,5]
+    ## 210536 258.3182 258.3182 258.3182 258.3182 258.3182
+    ## 191662 153.5894 153.5894 153.5894 153.5894 153.5894
+    ## 94621  165.1604 165.1604 165.1604 165.1604 165.1604
+    ## 62351  400.0621 400.0621 400.0621 400.0621 400.0621
+    ## 194066 149.2815 149.2815 149.2815 149.2815 149.2815
+    ## 47812  247.8106 247.8106 247.8106 247.8106 247.8106
 
 **Distance matrix : parallel**
 
 ``` r
 microbenchmark(dodgr=test_dodgr<-dodgr_dists(graph=data.frame(roads2),from=origin,to=destination,parallel=TRUE),
                cpprouting=test_cpp<-get_distance_matrix(graph,origin,destination,allcores = TRUE),
-               contracted=test_cpp_cont<-get_distance_matrix(graph3,origin,destination,allcores = TRUE),
+               contr_mch=test_mch<-get_distance_matrix(graph3,origin,destination,algorithm = "mch",allcores = TRUE),
+               contr_phast=test_phast<-get_distance_matrix(graph3,origin,destination,algorithm = "phast",allcores = TRUE),
                times=1)
 ```
 
     ## Unit: seconds
-    ##        expr       min        lq      mean    median        uq       max
-    ##       dodgr 34.540935 34.540935 34.540935 34.540935 34.540935 34.540935
-    ##  cpprouting 19.094751 19.094751 19.094751 19.094751 19.094751 19.094751
-    ##  contracted  1.186248  1.186248  1.186248  1.186248  1.186248  1.186248
+    ##         expr       min        lq      mean    median        uq       max
+    ##        dodgr 32.732668 32.732668 32.732668 32.732668 32.732668 32.732668
+    ##   cpprouting 17.216942 17.216942 17.216942 17.216942 17.216942 17.216942
+    ##    contr_mch  1.123271  1.123271  1.123271  1.123271  1.123271  1.123271
+    ##  contr_phast  3.236921  3.236921  3.236921  3.236921  3.236921  3.236921
     ##  neval
+    ##      1
     ##      1
     ##      1
     ##      1
