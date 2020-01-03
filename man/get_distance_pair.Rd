@@ -16,7 +16,7 @@ get_distance_pair(Graph, from, to, algorithm = "bi", constant = 1,
 
 \item{algorithm}{character. "Dijkstra" for uni-directional Dijkstra, "bi" for bi-directional Dijkstra, "A*" for A star unidirectional search or "NBA" for New bi-directional A star .Default to "Dijkstra"}
 
-\item{constant}{numeric. Constant to maintain the heuristic function admissible in A* algorithm. 
+\item{constant}{numeric. Constant to maintain the heuristic function admissible in A* and NBA algorithms. 
 Default to 1, when cost is expressed in the same unit than coordinates. See details}
 
 \item{allcores}{Logical. If TRUE, all cores are used.}
@@ -28,11 +28,18 @@ Vector of shortest distances.
 Compute shortest distance between origin and destination nodes.
 }
 \details{
-If the input graph has been contracted by cpp_contract() function, the algorithm is a modified bidirectional search.
-To perform A* and New Bidirectional A star, projected coordinates should be provided in the Graph object.  
+If graph is not contracted, the user has the choice between : \itemize{
+  \item unidirectional Dijkstra (Dijkstra) 
+  \item A star (A*) : projected coordinates should be provided
+  \item bidirectional Dijkstra (bi)
+  \item New bi-directional A star (NBA) : projected coordinates should be provided
+}
+
+If the input graph has been contracted by cpp_contract() function, the algorithm is a modified bidirectional search.  
+  
 In A* and New Bidirectional A star algorithms, euclidean distance is used as heuristic function.
-To understand how A star algorithm work, see https://en.wikipedia.org/wiki/A*_search_algorithm .
-To understand the importance of constant parameter, see the package description : https://github.com/vlarmet/cppRouting
+To understand how A star algorithm work, see \url{https://en.wikipedia.org/wiki/A*_search_algorithm}.
+To understand the importance of constant parameter, see the package description : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
 }
 \note{
 'from' and 'to' must be the same length.

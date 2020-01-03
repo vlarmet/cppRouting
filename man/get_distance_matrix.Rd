@@ -24,13 +24,13 @@ Matrix of shortest distances.
 \description{
 Compute all shortest distance between origin and destination nodes.
 }
-\note{
+\details{
 If graph is not contracted, get_distance_matrix() recursively perform Dijkstra algorithm for each 'from' nodes.
 If graph is contracted, the user has the choice between : \itemize{
-  \item many to many contraction hierarchies (mch) : should be applied if the matrix is square or 'almost' square.
+  \item many to many contraction hierarchies (mch) : optimal for square matrix.  
   \item PHAST (phast) : outperform mch on rectangular matrix
 }
- See details in package website : https://github.com/vlarmet/cppRouting/blob/master/README.md
+ See details in package website : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
 }
 \examples{
 #Data describing edges of the graph
