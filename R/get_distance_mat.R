@@ -6,12 +6,12 @@
 #' @param algorithm Character. Only for contracted graph, "mch" for Many to many CH, "phast" for PHAST algorithm
 #' @param allcores Logical. If TRUE, all cores are used.
 #' @return Matrix of shortest distances.
-#' @note If graph is not contracted, get_distance_matrix() recursively perform Dijkstra algorithm for each 'from' nodes.
+#' @details If graph is not contracted, get_distance_matrix() recursively perform Dijkstra algorithm for each 'from' nodes.
 #' If graph is contracted, the user has the choice between : \itemize{
-#'   \item many to many contraction hierarchies (mch) : should be applied if the matrix is square or 'almost' square.
+#'   \item many to many contraction hierarchies (mch) : optimal for square matrix.  
 #'   \item PHAST (phast) : outperform mch on rectangular matrix
 #' }
-#'  See details in package website : https://github.com/vlarmet/cppRouting/blob/master/README.md
+#'  See details in package website : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
 #' @examples 
 #' #Data describing edges of the graph
 #' edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
@@ -87,24 +87,24 @@ get_distance_matrix<-function(Graph,from,to,algorithm="phast",allcores=FALSE){
     }
     else{
       
-      test<-data.frame(id=Graph$dict$id,rank=(Graph$nbnode)-Graph$rank)
+      invrank<-(Graph$nbnode)-Graph$rank
       
       if (allcores==TRUE){
         
         if (length(to)< length(from)){
-          res<-Phast_par(test$rank[to_id+1],
-                         test$rank[from_id+1],
-                         test$rank[match(Graph$data$to,test$id)],
-                         test$rank[match(Graph$data$from,test$id)],
+          res<-Phast_par(invrank[to_id+1],
+                         invrank[from_id+1],
+                         invrank[Graph$data$to+1],
+                         invrank[Graph$data$from+1],
                          Graph$data[,3],
                          Graph$nbnode)
           
         }
         else {
-          res<-Phast_par(test$rank[from_id+1],
-                         test$rank[to_id+1],
-                         test$rank[match(Graph$data$from,test$id)],
-                         test$rank[match(Graph$data$to,test$id)],
+          res<-Phast_par(invrank[from_id+1],
+                         invrank[to_id+1],
+                         invrank[Graph$data$from+1],
+                         invrank[Graph$data$to+1],
                          Graph$data[,3],
                          Graph$nbnode)
           
@@ -113,8 +113,8 @@ get_distance_matrix<-function(Graph,from,to,algorithm="phast",allcores=FALSE){
         
       }
       else {
-        if (length(to)< length(from))  res<-Phast3(test$rank[to_id+1],test$rank[from_id+1],test$rank[match(Graph$data$to,test$id)],test$rank[match(Graph$data$from,test$id)],Graph$data[,3],Graph$nbnode)
-        else res<-Phast3(test$rank[from_id+1],test$rank[to_id+1],test$rank[match(Graph$data$from,test$id)],test$rank[match(Graph$data$to,test$id)],Graph$data[,3],Graph$nbnode)
+        if (length(to)< length(from))  res<-Phast3(invrank[to_id+1],invrank[from_id+1],invrank[Graph$data$to+1],invrank[Graph$data$from+1],Graph$data[,3],Graph$nbnode)
+        else res<-Phast3(invrank[from_id+1],invrank[to_id+1],invrank[Graph$data$from+1],invrank[Graph$data$to+1],Graph$data[,3],Graph$nbnode)
       }
     }
 

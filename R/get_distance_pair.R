@@ -4,16 +4,23 @@
 #' @param from A vector of one or more vertices from which distances are calculated (origin).
 #' @param to A vector of one or more vertices (destination).
 #' @param algorithm character. "Dijkstra" for uni-directional Dijkstra, "bi" for bi-directional Dijkstra, "A*" for A star unidirectional search or "NBA" for New bi-directional A star .Default to "Dijkstra"
-#' @param constant numeric. Constant to maintain the heuristic function admissible in A* algorithm. 
+#' @param constant numeric. Constant to maintain the heuristic function admissible in A* and NBA algorithms. 
 #' Default to 1, when cost is expressed in the same unit than coordinates. See details
 #' @param allcores Logical. If TRUE, all cores are used.
 #' @return Vector of shortest distances.
 #' @note 'from' and 'to' must be the same length.
-#' @details If the input graph has been contracted by cpp_contract() function, the algorithm is a modified bidirectional search.
-#' To perform A* and New Bidirectional A star, projected coordinates should be provided in the Graph object.  
+#' @details If graph is not contracted, the user has the choice between : \itemize{
+#'   \item unidirectional Dijkstra (Dijkstra) 
+#'   \item A star (A*) : projected coordinates should be provided
+#'   \item bidirectional Dijkstra (bi)
+#'   \item New bi-directional A star (NBA) : projected coordinates should be provided
+#' }
+#' 
+#' If the input graph has been contracted by cpp_contract() function, the algorithm is a modified bidirectional search.  
+#'   
 #' In A* and New Bidirectional A star algorithms, euclidean distance is used as heuristic function.
-#' To understand how A star algorithm work, see https://en.wikipedia.org/wiki/A*_search_algorithm .
-#' To understand the importance of constant parameter, see the package description : https://github.com/vlarmet/cppRouting
+#' To understand how A star algorithm work, see \url{https://en.wikipedia.org/wiki/A*_search_algorithm}.
+#' To understand the importance of constant parameter, see the package description : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
 #' @examples 
 #' #Data describing edges of the graph
 #' edges<-data.frame(from_vertex=c(0,0,1,1,2,2,3,4,4), 
