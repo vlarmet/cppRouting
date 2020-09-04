@@ -1,10 +1,10 @@
 #!/bin/bash
 shopt -s expand_aliases
 alias lintr="Rscript -e 'lintr::lint(commandArgs(trailingOnly = TRUE))'"
-FILES=R/*.R
+FILES="R/*.R"
 for f in $FILES
 do
   echo "Processing $f file..."
-  lintr $f
-  cat $f
+  lintr "$f"
+  cat "$f"
 done
