@@ -8,3 +8,6 @@ do
   lintr "$f"
   cat "$f"
 done
+
+cd ..
+R CMD check cppRouting/
