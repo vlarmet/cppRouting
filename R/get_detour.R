@@ -34,7 +34,7 @@
 #'
 #' #Compute distance from origin to all nodes
 #' or_to_all<-get_distance_matrix(graph,from = origin, to = 1:400)
-#' 
+#'
 #' #Compute distance from all nodes to destination
 #' all_to_dest<-get_distance_matrix(graph, from = 1:400,to = destination,)
 #'

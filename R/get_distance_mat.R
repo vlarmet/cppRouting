@@ -90,7 +90,7 @@ get_distance_matrix <- function(Graph, from, to, algorithm = "phast", allcores =
                                       Graph$data[, 3], Graph$nbnode, Graph$rank)
                 }
             }
-        } else {# algorithm != mch
+        } else {# algorithm not mch
             invrank <- (Graph$nbnode) - Graph$rank
             if (allcores == TRUE) {
                 if (length(to) < length(from)) {
