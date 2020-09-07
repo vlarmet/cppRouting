@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd ..
+R CMD check cppRouting/
