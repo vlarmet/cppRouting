@@ -14,7 +14,7 @@ Description: Calculation of distances, shortest paths and isochrones on weighted
     PHAST (D. Delling, A.Goldberg, A. Nowatzyk, R. Werneck (2011) <doi:10.1016/j.jpdc.2012.02.007>).
 License: GPL (>= 2)
 Imports: Rcpp (>= 1.0.1), RcppParallel, RcppProgress , data.table
-LinkingTo: Rcpp, RcppParallel, RcppProgress
+LinkingTo: Rcpp, RcppParallel, RcppProgress, testthat
 SystemRequirements: GNU make, C++11
 RoxygenNote: 6.1.1
 URL: https://github.com/vlarmet/cppRouting
