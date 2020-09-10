@@ -1,8 +1,8 @@
 Package: cppRouting
 Type: Package
 Title: Fast Implementation of Dijkstra Algorithm
-Version: 2.0
-Date: 2019-12-06
+Version: 2.1
+Date: 2020-09-07
 Author: Vincent Larmet
 Maintainer: Vincent Larmet <larmet.vincent@gmail.com>
 Description: Calculation of distances, shortest paths and isochrones on weighted graphs using several variants of Dijkstra algorithm.
