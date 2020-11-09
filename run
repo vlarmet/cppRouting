@@ -4,5 +4,4 @@ Rscript -e 'lintr::lint_package()'
 
 cd ..
 R CMD check cppRouting/
-
 cppcheck cppRouting/src/ --language=c++ --enable=warning,performance,portability,information,unusedFunction,missingInclude
