@@ -61,6 +61,10 @@ Dijkstra_multi_path <- function(gfrom, gto, gw, NbNodes, dep, arr, dict, keep) {
     .Call(`_cppRouting_Dijkstra_multi_path`, gfrom, gto, gw, NbNodes, dep, arr, dict, keep)
 }
 
+twoPlusTwo <- function() {
+    .Call(`_cppRouting_twoPlusTwo`)
+}
+
 Remove_duplicate <- function(gfrom, gto, gw, NbNodes) {
     .Call(`_cppRouting_Remove_duplicate`, gfrom, gto, gw, NbNodes)
 }

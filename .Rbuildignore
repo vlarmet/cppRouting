@@ -1,5 +1,4 @@
-^\.lintr$
-^\.Rhistory$
-^\.gitignore$
-^\..*~$
-^\.git$
+\.lintr
+\.Rhistory
+\.gitignore
+\.git

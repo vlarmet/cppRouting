@@ -6,8 +6,7 @@
 #include <functional>
 #include <Rcpp.h>
 #include <string>
-
-
+#include "dijkstra_mat.h"
 
 using namespace std;
 
@@ -15,7 +14,12 @@ using namespace std;
 // [[Rcpp::export]]
 
 Rcpp::NumericMatrix Dijkstra_mat(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr){
-  
+  Rcpp::NumericMatrix result(dep.size(),arr.size());
+  result = InternalDijkstra_mat(gfrom, gto, gw, NbNodes, dep, arr);
+  return result;
+}
+
+Rcpp::NumericMatrix InternalDijkstra_mat(std::vector<int> gfrom,std::vector<int> gto,std::vector<double> gw,int NbNodes,std::vector<int> dep, std::vector<int> arr){
   
   //std::vector<std::vector<int> > result;
   Rcpp::NumericMatrix result(dep.size(),arr.size());
