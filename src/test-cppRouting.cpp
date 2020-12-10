@@ -42,8 +42,7 @@ context("First cppRouting function") {
     Rcpp::NumericVector w = { 1, 2, 3, 4 };
     Rcpp::NumericVector e = { 0, R_NaReal, R_NaReal, R_NaReal, R_NaReal, R_NaReal, R_NaReal, 6,  0, 10,  4,  5, 0, 17, 11,  0, 15, 16, 0, 2,  4,  6,  0,  1, 0, 9,  3,  5,  7,  0, 0, 15,  9, 11, 13,  6,  0 };
     //Rcpp::NumericVector e = { 0, Rcpp::NA, Rcpp::NA, Rcpp::NA, Rcpp::NA, Rcpp::NA, 6,  0, 10,  4,  5, Rcpp::NA, 17, 11,  0, 15, 16, Rcpp::NA, 2,  4,  6,  0,  1, Rcpp::NA, 9,  3,  5,  7,  0, Rcpp::NA, 15,  9, 11, 13,  6,  0 };
-    e.attr("dim") = Rcpp::Dimension(6, 6);
-helloI've     Rcpp::NumericMatrix expected = Rcpp::as<Rcpp::NumericMatrix>(e);
+    e.attr("dim") = Rcpp::Dimension(6, 6);    Rcpp::NumericMatrix expected = Rcpp::as<Rcpp::NumericMatrix>(e);
     Rcpp::NumericMatrix output( 6, 6 );
     output = InternalDijkstra_mat(gfrom, gto, gw, NbNodes, dep, arr);
     //INFO("NbNodes" << NbNodes << "\n");
