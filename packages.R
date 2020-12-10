@@ -1,0 +1,8 @@
+install.packages("Rcpp")
+install.packages("RcppParallel")
+install.packages("RcppProgress")
+install.packages("data.table")
+install.packages("rmarkdown")
+install.packages("igraph")
+install.packages("devtools")
+install.packages("testthat")

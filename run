@@ -28,7 +28,7 @@ function main(){
         help)
             help "$cmd"
             ;;
-        lint|check)
+        lint|check|default)
             run_cmd "$cmd" "$@"
             ;;
          *)
@@ -46,6 +46,12 @@ function cmd_lint(){
 function cmd_check(){
     cd ..
     R CMD check cppRouting/
+}
+
+
+function cmd_default(){
+    run_cmd lint "$@"
+    run_cmd check "$@"
 }
 
 main "$@"
