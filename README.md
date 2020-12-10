@@ -3,6 +3,10 @@ cppRouting package v2.0
 Vincent LARMET
 December 12, 2019
 
+With minor modifications by Paul HEWSON December 2020
+
+![CI](https://github.com/phewson/cppRouting/workflows/CI/badge.svg)
+
 -   [Package presentation](#package-presentation)
 -   [Install](#install)
     -   [Stable version from CRAN](#stable-version-from-cran)
