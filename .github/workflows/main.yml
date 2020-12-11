@@ -15,7 +15,6 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   lint:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -46,10 +45,6 @@ jobs:
           install.packages(c("remotes"))
           remotes::install_deps(dependencies = TRUE)
           remotes::install_cran("lintr")
-        shell: Rscript {0}
-
-      - name: Install package
-        run: R CMD INSTALL .
 
       - name: Lint
         run: lintr::lint_package()
@@ -60,6 +55,8 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: install ubuntu packages
+        run: sudo apt-get install libcurl4-openssl-dev libgit2-dev  
       - uses: actions/checkout@v2
       - uses: r-lib/actions/setup-r@v1
       - name: Install dependencies
