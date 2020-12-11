@@ -1,19 +1,57 @@
 #!/bin/bash
 
-#shopt -s expand_aliases
-#alias lintr="Rscript -e 'lintr::lint(commandArgs(trailingOnly = TRUE))'"
-#FILES="R/*.R"
-#for f in $FILES
-#do
-#  echo "Processing $f file..."
-#  lintr "$f"
-#  cat "$f"
-#done
-Rscript -e 'lintr::lint_package()'
+set -euo pipefail
+THISDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+function run_cmd(){
+    local cmd=$1
+    shift || true
+    (
+        "cmd_$cmd" "$@"
+    )
+}
+
+function help(){
+cat <<EOT
+       Run commands for "$THISDIR"
+
+           lint:             Run R and C++ linters
+           check:            Run R CMD check on the package
+
+EOT
+}
+
+function main(){
+    cmd=${1-default}
+    shift || true
+    case "$cmd" in
+        help)
+            help "$cmd"
+            ;;
+        lint|check|default)
+            run_cmd "$cmd" "$@"
+            ;;
+         *)
+            echo "No-op $cmd"
+            ;;
+    esac
+}
+
+function cmd_lint(){
+    Rscript -e 'lintr::lint_package()'
+    cppcheck src/ -I "$HOME/R/x86_64-pc-linux-gnu-library/3.6/testthat/include" -I "$HOME/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include" --language=c++ --enable=warning,performance,portability,information,unusedFunction,missingInclude
+}
 
 
+function cmd_check(){
+    cd ..
+    R CMD check cppRouting/
+}
 
-cd ..
-R CMD check cppRouting/
 
-cppcheck cppRouting/src/ --language=c++ --enable=warning,performance,portability,information,unusedFunction,missingInclude
+function cmd_default(){
+    run_cmd lint "$@"
+    run_cmd check "$@"
+}
+
+main "$@"

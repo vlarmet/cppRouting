@@ -500,6 +500,8 @@ BEGIN_RCPP
 END_RCPP
 }
 
+RcppExport SEXP run_testthat_tests();
+
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_Astar", (DL_FUNC) &_cppRouting_Astar, 9},
     {"_cppRouting_Astar_paths", (DL_FUNC) &_cppRouting_Astar_paths, 11},
@@ -529,6 +531,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_Phast3", (DL_FUNC) &_cppRouting_Phast3, 6},
     {"_cppRouting_Phast_par", (DL_FUNC) &_cppRouting_Phast_par, 6},
     {"_cppRouting_Simplify3", (DL_FUNC) &_cppRouting_Simplify3, 8},
+    {"run_testthat_tests", (DL_FUNC) &run_testthat_tests, 0},
     {NULL, NULL, 0}
 };
 
