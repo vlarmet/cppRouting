@@ -277,16 +277,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// twoPlusTwo
-int twoPlusTwo();
-RcppExport SEXP _cppRouting_twoPlusTwo() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(twoPlusTwo());
-    return rcpp_result_gen;
-END_RCPP
-}
 // Remove_duplicate
 Rcpp::DataFrame Remove_duplicate(std::vector<int> gfrom, std::vector<int> gto, std::vector<double> gw, int NbNodes);
 RcppExport SEXP _cppRouting_Remove_duplicate(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP) {
@@ -528,7 +518,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_Dijkstra_early_stop_path", (DL_FUNC) &_cppRouting_Dijkstra_early_stop_path, 8},
     {"_cppRouting_Dijkstra_mat", (DL_FUNC) &_cppRouting_Dijkstra_mat, 6},
     {"_cppRouting_Dijkstra_multi_path", (DL_FUNC) &_cppRouting_Dijkstra_multi_path, 8},
-    {"_cppRouting_twoPlusTwo", (DL_FUNC) &_cppRouting_twoPlusTwo, 0},
     {"_cppRouting_Remove_duplicate", (DL_FUNC) &_cppRouting_Remove_duplicate, 4},
     {"_cppRouting_Isochrone", (DL_FUNC) &_cppRouting_Isochrone, 8},
     {"_cppRouting_Isochrone_multi", (DL_FUNC) &_cppRouting_Isochrone_multi, 10},
