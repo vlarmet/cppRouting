@@ -13,7 +13,7 @@ Description: Calculation of distances, shortest paths and isochrones on weighted
     Contraction hierarchies (R. Geisberger, P. Sanders, D. Schultes and D. Delling (2008) <doi:10.1007/978-3-540-68552-4_24>),
     PHAST (D. Delling, A.Goldberg, A. Nowatzyk, R. Werneck (2011) <doi:10.1016/j.jpdc.2012.02.007>).
 License: GPL (>= 2)
-Imports: Rcpp (>= 1.0.1), RcppParallel, RcppProgress, data.table, testthat
+Imports: Rcpp (>= 1.0.1), RcppParallel, data.table
 LinkingTo: Rcpp, RcppParallel, RcppProgress, testthat
 SystemRequirements: GNU make, C++11
 RoxygenNote: 6.1.1
