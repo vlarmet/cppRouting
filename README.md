@@ -5,7 +5,7 @@ December 12, 2019
 
 With minor modifications by Paul HEWSON December 2020
 
-![CI](https://github.com/phewson/cppRouting/workflows/CI/badge.svg)
+![CI](https://github.com/phewson/cppRouting/workflows/CI/badge.svg) [![codecov](https://codecov.io/gh/phewson/cppRouting/branch/master/graph/badge.svg?token=XWQJGN3XL2)](https://codecov.io/gh/phewson/cppRouting)
 
 -   [Package presentation](#package-presentation)
 -   [Install](#install)
