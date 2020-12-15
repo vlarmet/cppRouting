@@ -17,6 +17,7 @@ cat <<EOT
 
            lint:             Run R and C++ linters
            check:            Run R CMD check on the package
+           full_lint         Run C++ linter with information and headers
 
 EOT
 }
@@ -28,7 +29,7 @@ function main(){
         help)
             help "$cmd"
             ;;
-        lint|check|default)
+        lint|check|full_lint|default)
             run_cmd "$cmd" "$@"
             ;;
          *)
@@ -39,7 +40,7 @@ function main(){
 
 function cmd_lint(){
     Rscript -e 'lintr::lint_package()'
-    cppcheck src/ -I "$HOME/R/x86_64-pc-linux-gnu-library/3.6/testthat/include" -I "$HOME/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include" --language=c++ --enable=warning,performance,portability,information,unusedFunction,missingInclude
+    cppcheck src/  --language=c++ --enable=warning,performance,portability,unusedFunction
 }
 
 
@@ -48,6 +49,9 @@ function cmd_check(){
     R CMD check cppRouting/
 }
 
+function cmd_full_lint(){
+    cppcheck src/ -I "$HOME/R/x86_64-pc-linux-gnu-library/3.6/testthat/include" -I "$HOME/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include" --language=c++ --enable=warning,performance,portability,information,unusedFunction,missingInclude
+    }
 
 function cmd_default(){
     run_cmd lint "$@"
