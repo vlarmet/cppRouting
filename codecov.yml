@@ -1,3 +1,3 @@
 fixes:
-  - "src/::cppRouting/src/"
-  - "R/::cppRouting/R/" 
+  - "src/master/src/::src/"
+  - "src/master/R/::R/" 
