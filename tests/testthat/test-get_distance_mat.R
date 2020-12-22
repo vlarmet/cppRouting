@@ -1,6 +1,13 @@
 context("Distance matrices")
 library(cppRouting)
 
+edges <- data.frame(from_vertex = c(0, 0, 1, 1, 2, 2, 3, 4, 4),
+                    to_vertex = c(1, 3, 2, 4, 4, 5, 1, 3, 5),
+                    cost = c(9, 2, 11, 3, 5, 12, 4, 1, 6))
+nodes <- unique(c(edges$from_vertex, edges$to_vertex))
+directed_graph <- makegraph(edges, directed = TRUE)
+non_directed <- makegraph(edges, directed = FALSE)
+
 test_that("directed graph distance matrix", {
     dir_dist <- get_distance_matrix(Graph = directed_graph,
                                     from = nodes, to = nodes, allcores = FALSE)
