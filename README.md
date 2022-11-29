@@ -1550,9 +1550,9 @@ algorithm is 200 times faster than `phast` for a given node.
 
 For resuming :  
 - matrix-like calculation : optimal for dense matrix, run *one-to-many*
-search for `min(length(unique(from)), length(unique(to)))` times, -
-pairwise calculation : optimal for highly sparse matrix, run
-*one-to-one* search for `length(from)` times.
+search for `min(length(unique(from)), length(unique(to)))` times,  
+- pairwise calculation : optimal for highly sparse matrix, run
+*one-to-one* search for `length(from)` times.  
 
 ## User Equilibrium (UE)
 
@@ -1739,9 +1739,9 @@ an acyclic sub-network is created by computing shortest path tree from
 root node to all other nodes.
 
 For each bush :  
-- Topological ordering of the nodes - for each node, shortest path and
-longest path is computed and stored. - given an OD matrix, flows are
-loaded on each bush using shortest path labels.
+- Topological ordering of the nodes  
+- for each node, shortest path and longest path is computed and stored.  
+- given an OD matrix, flows are loaded on each bush using shortest path labels.  
 
 **Iteration**  
 For each bush :  
@@ -1823,7 +1823,7 @@ head(trips)
     ## 5    1  5   4.90
     ## 6    1  6   5.10
 
-Since All-or-Nothing algorithm will be run multiple times, we have to
+Since All-or-Nothing algorithm will be called multiple times, we have to
 choose the fastest AON assignment algorithm.
 
 ``` r
