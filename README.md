@@ -1172,7 +1172,24 @@ shortest distance path. It is now possible to set an auxiliary set of
 edge weights during graph construction in `makegraph()` function and set
 `aggregate_aux` to `TRUE` in `get_distance_*` functions.  
 Let’s see an example where we would like to compute the number of edges
-within each shortest path :
+within each shortest path :  
+
+``` r
+# The weight to be minimized is set in 'df' argument. Additional weights are set in "aux"
+# We set auxiliary weights to 1 in order to count number of edge in shortest paths
+dgr <- makegraph(df = roads, directed = TRUE, coords = coord, aux = 1) 
+
+# Compute number of edge
+hops <- get_distance_pair(Graph = dgr, from = origin, to = destination, aggregate_aux = TRUE)
+
+# plot
+dfp <- data.frame(n_edges = hops, travel_time = pair_nba)
+p <- ggplot(dfp, aes(x = travel_time, y = n_edges))+
+  geom_point()+
+  labs(x = "Travel time (min)", y = "Number of edge")+
+  theme_bw()
+p
+```
 
 ![](README_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
