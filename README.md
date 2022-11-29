@@ -93,7 +93,7 @@ let’s define what a graph is.
 A graph is commonly used to represent a network, which is composed of
 vertices connected by edges.
 
-![](https://www.researchgate.net/profile/Hai-Jun-Zhou/publication/300370830/figure/fig1/AS:613866690080787@1523368632234/An-graph-with-N-12-vertices-and-M-21-weighted-edges-In-this-example-the-two-weights.png)
+![](README_files/figure-gfm/example_graph.png)<!-- -->
 
 In `cppRouting`, an edge has at least three attributes : vertice’s ID
 from which it start, vertice’s ID from which it end and a weight
