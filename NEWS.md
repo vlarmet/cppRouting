@@ -1,3 +1,8 @@
+cppRouting v3.1
+===============
+
+- cppRouting use tinythread as parallel backend
+
 cppRouting v3.0
 ===============
 Major changes
