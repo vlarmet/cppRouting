@@ -1,3 +1,9 @@
+# Support Our Open Source Project
+
+Creating and maintaining an open source project takes significant time and effort. If you find value in our work and would like to see it continue to grow and improve, please consider making a donation. Your support helps us cover hosting costs, development tools, and allows us to dedicate more time to enhancing this project. Every contribution, no matter how small, makes a big difference. Thank you for supporting open source!  
+
+[<img src="https://www.scclive.org/wp-content/uploads/2017/03/PayPal-Donate-Button.png" width="150">](https://www.paypal.com/donate/?hosted_button_id=SNBP8ZWMMYCDA)
+
 cppRouting v3 : Algorithms for Routing and Solving the Traffic
 Assignment Problem
 ================
