@@ -1762,8 +1762,8 @@ longest path using Newton method.
 We compute AON assignment and relative gap.
 
 For detailed explanations of Algorithm B, please see this course ([part
-1](http://civil.iisc.ac.in/~tarunr/CE_272/Lecture_23.pdf), [part
-2](http://civil.iisc.ac.in/~tarunr/CE_272/Lecture_24.pdf)).
+1](https://cistup.iisc.ac.in/tarun/CE_272/Lecture_23.pdf), [part
+2](https://cistup.iisc.ac.in/tarun/CE_272/Lecture_24.pdf)).
 
 **Important note : computation time for algorithm-B is depending of the
 number of origin node AND AON assignment.**
