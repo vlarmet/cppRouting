@@ -317,6 +317,47 @@ Rcpp::NumericMatrix cpppathvaluescch(std::vector<int> &gfrom,
 }
 
 // [[Rcpp::export]]
+Rcpp::List cpppathcch(int NbNodes,
+                      std::vector<int> &gfrom,
+                      std::vector<int> &gto,
+                      std::vector<int> &first_out,
+                      std::vector<int> &adj_head,
+                      std::vector<int> &adj_arc,
+                      std::vector<double> &forward,
+                      std::vector<double> &backward,
+                      std::vector<int> &forward_first_arc,
+                      std::vector<int> &forward_first_dir,
+                      std::vector<int> &forward_second_arc,
+                      std::vector<int> &forward_second_dir,
+                      std::vector<int> &forward_original,
+                      std::vector<int> &backward_first_arc,
+                      std::vector<int> &backward_first_dir,
+                      std::vector<int> &backward_second_arc,
+                      std::vector<int> &backward_second_dir,
+                      std::vector<int> &backward_original,
+                      std::vector<std::string> dict,
+                      std::vector<int> keep,
+                      std::vector<int> dep,
+                      std::vector<int> arr){
+  vector<IVec> result = path_pair_cch(NbNodes, first_out, adj_head, adj_arc, forward, backward,
+                                      gfrom, gto,
+                                      forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                                      backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                                      dep, arr, keep);
+  vector<string> dict_str(dict.begin(), dict.end());
+  vector<SVec> result_str(result.size());
+  for (size_t i = 0; i < result.size(); i++){
+    result_str[i].reserve(result[i].size());
+    for (size_t j = 0; j < result[i].size(); j++){
+      if (result[i][j] >= 0 && result[i][j] < (int)dict_str.size()){
+        result_str[i].push_back(dict_str[result[i][j]]);
+      }
+    }
+  }
+  return Rcpp::wrap(result_str);
+}
+
+// [[Rcpp::export]]
 Rcpp::List cppaoncchelim(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int NbNodes,
                          std::vector<int> &rank,
                          std::vector<int> &first_out, std::vector<int> &adj_head, std::vector<int> &adj_arc,
