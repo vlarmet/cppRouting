@@ -59,9 +59,25 @@ get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux 
 
   if (allcores) message("allcores argument is deprecated since v3.0. \nPlease use RcppParallel::setThreadOptions() to set the number of threads")
 
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_cch_customize() before querying a CCH")
+
+  if (inherits(Graph, "cppRouting_cch_metric")){
+    if (aggregate_aux) stop("aggregate_aux is not supported for CCH metrics")
+    res <- cppdistmatcch(Graph$nbnode,
+                         Graph$first_out,
+                         Graph$adj_head,
+                         Graph$adj_arc,
+                         Graph$weight$forward,
+                         Graph$weight$backward,
+                         from_id,
+                         to_id)
+    rownames(res)<-from
+    colnames(res)<-to
+    return(res)
+  }
 
   # not contracted
-  if (length(Graph) == 5){
+  if (inherits(Graph, "cppRouting_graph")){
     if (aggregate_aux & length(Graph$attrib$aux) == 0) stop("network don't have additional weight")
 
       if (length(from)< length(to)){
@@ -86,7 +102,7 @@ get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux 
   }
 
   # contracted
-  if (length(Graph) == 6){
+  if (inherits(Graph, "cppRouting_contracted")){
     if (aggregate_aux & length(Graph$original$attrib$aux) == 0) stop("network don't have additional weight")
     invrank <- Graph$nbnode - Graph$rank
    # invrank2 <- data.frame(invrank = invrank, id = 0:(length(invrank)-1))

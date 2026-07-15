@@ -1,5 +1,6 @@
 #include "graph.h"
 #include "cgraph.h"
+#include "cch.h"
 #include "aon.h"
 #include "bush.h"
 #include <fstream>
@@ -10,6 +11,14 @@
 using namespace std;
 using namespace RcppParallel;
 
+namespace {
+
+const int AON_DIJKSTRA_GROUPED = 0;
+const int AON_BIDIRECTIONAL = 2;
+const int AON_NBA = 3;
+const int AON_CCH_ELIMINATION = 7;
+
+} // namespace
 
 double Graph::bissection(double tol){
   double inf = 0.0;
@@ -226,26 +235,126 @@ DVec ch_aon(Graph* ptr, IVec dep, IVec arr, DVec &dem, bool phast, int algo){
 }
 
 
+void graph_adjacency_edges(Graph* ptr, IVec &gfrom, IVec &gto){
+  gfrom.resize(ptr->nbedge);
+  gto.resize(ptr->nbedge);
+
+  int count = 0;
+  for (int i = 0; i < ptr->indG.size() - 1; i++){
+    for (int j = ptr->indG[i]; j < ptr->indG[i + 1]; j++){
+      gfrom[count] = i;
+      gto[count] = ptr->nodeG[j];
+      count++;
+    }
+  }
+}
+
+struct CCHAssignmentScratch {
+  DVec forward;
+  DVec backward;
+  IVec forward_first_arc;
+  IVec forward_first_dir;
+  IVec forward_second_arc;
+  IVec forward_second_dir;
+  IVec forward_original;
+  IVec backward_first_arc;
+  IVec backward_first_dir;
+  IVec backward_second_arc;
+  IVec backward_second_dir;
+  IVec backward_original;
+};
+
+DVec cch_aon_current(Graph* ptr,
+                     CCHPrepared &prepared,
+                     IVec &gfrom,
+                     IVec &gto,
+                     IVec &dep,
+                     IVec &arr,
+                     DVec &dem,
+                     IVec &input_arc,
+                     IVec &input_forward,
+                     CCHAssignmentScratch &scratch){
+
+  customize_cch(gfrom, gto, ptr->wG, ptr->nbnode, prepared.rank, prepared.tail, prepared.head,
+                prepared.rank_first_out, prepared.rank_adj_head, prepared.rank_adj_arc,
+                input_arc, input_forward, scratch.forward, scratch.backward,
+                scratch.forward_first_arc, scratch.forward_first_dir, scratch.forward_second_arc, scratch.forward_second_dir, scratch.forward_original,
+                scratch.backward_first_arc, scratch.backward_first_dir, scratch.backward_second_arc, scratch.backward_second_dir, scratch.backward_original);
+
+  return aon_flow_cch_elimination_grouped(gfrom, gto, ptr->wG, ptr->nbnode,
+                                          prepared.rank, prepared.first_out, prepared.adj_head, prepared.adj_arc,
+                                          prepared.elimination_tree_parent, scratch.forward, scratch.backward,
+                                          scratch.forward_first_arc, scratch.forward_first_dir, scratch.forward_second_arc, scratch.forward_second_dir, scratch.forward_original,
+                                          scratch.backward_first_arc, scratch.backward_first_dir, scratch.backward_second_arc, scratch.backward_second_dir, scratch.backward_original,
+                                          dep, arr, dem);
+}
+
+DVec assignment_aon(Graph* ptr,
+                    aonGraph &gr,
+                    IVec &dep,
+                    IVec &arr,
+                    DVec &dem,
+                    int mode,
+                    bool contract,
+                    bool phast,
+                    bool use_cch,
+                    CCHPrepared &prepared,
+                    IVec &input_arc,
+                    IVec &input_forward,
+                    IVec &cch_from,
+                    IVec &cch_to,
+                    CCHAssignmentScratch &cch_scratch){
+  if (use_cch) {
+    return cch_aon_current(ptr, prepared, cch_from, cch_to, dep, arr, dem, input_arc, input_forward, cch_scratch);
+  }
+
+  if (contract) return ch_aon(ptr, dep, arr, dem, phast, mode);
+
+  parallelReduce(0, gr.n_iter, gr);
+  DVec result = gr.m_result;
+  fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
+  return result;
+}
+
 void Graph::assign_traffic(int method, double max_gap, int max_iter,
                            IVec dep, IVec arr, DVec dem, int mode,
                            bool contract, bool phast,
-                           bool verbose){ // 0 : msa, 1 : fw, 2 : cfw, 3 : bfw
+                           bool verbose,
+                           CCHPrepared* prepared_cch){ // 0 : msa, 1 : fw, 2 : cfw, 3 : bfw
   setReverse();
   to_adj_list(true);
 
-  aonGraph gr(this, dep, arr, dem, mode);
+  bool use_cch = mode == AON_CCH_ELIMINATION;
+  int graph_mode = use_cch ? AON_BIDIRECTIONAL : mode;
+  aonGraph gr(this, dep, arr, dem, graph_mode);
+  IVec cch_from;
+  IVec cch_to;
+  CCHPrepared cch_prepared;
+  CCHPrepared* active_cch = &cch_prepared;
+  IVec* cch_input_arc = &cch_prepared.input_arc;
+  IVec* cch_input_forward = &cch_prepared.input_forward;
+  IVec remapped_input_arc;
+  IVec remapped_input_forward;
+  CCHAssignmentScratch cch_scratch;
+
+  if (use_cch){
+    graph_adjacency_edges(this, cch_from, cch_to);
+    if (prepared_cch == NULL){
+      IVec empty_order;
+      cch_prepared = build_cch(cch_from, cch_to, nbnode, empty_order);
+    } else {
+      active_cch = prepared_cch;
+      remap_cch_input_arcs(cch_from, cch_to, *active_cch, remapped_input_arc, remapped_input_forward);
+      cch_input_arc = &remapped_input_arc;
+      cch_input_forward = &remapped_input_forward;
+    }
+  }
 
   // MSA
   if (method == 0)
   { gap = numeric_limits<double>::max();
 
-    if (contract) {
-      aux = ch_aon(this, dep, arr, dem, phast, mode);
-    } else{
-      parallelReduce(0, gr.n_iter, gr);
-      aux = gr.m_result;
-      fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-    }
+    aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
     it = 1;
 
     while (gap > max_gap){
@@ -256,13 +365,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
       update_flow(theta);
       update_cost();
 
-      if (contract) {
-        aux = ch_aon(this, dep, arr, dem, phast, mode);
-      } else{
-        parallelReduce(0, gr.n_iter, gr);
-        aux = gr.m_result;
-        fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-      }
+      aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
       update_tstt();
       update_sptt();
@@ -280,13 +383,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
   { gap = numeric_limits<double>::max();
 
 
-    if (contract) {
-      aux = ch_aon(this, dep, arr, dem, phast, mode);
-    } else{
-      parallelReduce(0, gr.n_iter, gr);
-      aux = gr.m_result;
-      fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-    }
+    aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
     it = 1;
     double theta = 0.0;
@@ -300,13 +397,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
       update_flow(theta);
       update_cost();
 
-      if (contract) {
-        aux = ch_aon(this, dep, arr, dem, phast, mode);
-      } else{
-        parallelReduce(0, gr.n_iter, gr);
-        aux = gr.m_result;
-        fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-      }
+      aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
       update_tstt();
       update_sptt();
@@ -323,13 +414,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
   {
     gap = numeric_limits<double>::max();
 
-    if (contract) {
-      aux = ch_aon(this, dep, arr, dem, phast, mode);
-    } else{
-      parallelReduce(0, gr.n_iter, gr);
-      aux = gr.m_result;
-      fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-    }
+    aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
     it = 1;
     double theta = 0.0;
@@ -349,13 +434,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
       update_cost();
       aux_prev = aux;
 
-      if (contract) {
-        aux = ch_aon(this, dep, arr, dem, phast, mode);
-      } else{
-        parallelReduce(0, gr.n_iter, gr);
-        aux = gr.m_result;
-        fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-      }
+      aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
       update_tstt();
       update_sptt();
@@ -373,13 +452,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
   {
     gap = numeric_limits<double>::max();
 
-    if (contract) {
-      aux = ch_aon(this, dep, arr, dem, phast, mode);
-    } else{
-      parallelReduce(0, gr.n_iter, gr);
-      aux = gr.m_result;
-      fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-    }
+    aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
 
     it = 1;
@@ -403,13 +476,7 @@ void Graph::assign_traffic(int method, double max_gap, int max_iter,
       aux_prev2 = aux_prev;
       aux_prev = aux;
 
-      if (contract) {
-        aux = ch_aon(this, dep, arr, dem, phast, mode);
-      } else{
-        parallelReduce(0, gr.n_iter, gr);
-        aux = gr.m_result;
-        fill(gr.m_result.begin(), gr.m_result.end(), 0.0);
-      }
+      aux = assignment_aon(this, gr, dep, arr, dem, graph_mode, contract, phast, use_cch, *active_cch, *cch_input_arc, *cch_input_forward, cch_from, cch_to, cch_scratch);
 
       update_tstt();
       update_sptt();

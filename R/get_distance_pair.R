@@ -73,8 +73,22 @@ get_distance_pair<-function(Graph, from, to, aggregate_aux = FALSE, algorithm="b
   from_id <- Graph$dict$id[match(from,Graph$dict$ref)]
   to_id <- Graph$dict$id[match(to,Graph$dict$ref)]
 
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_cch_customize() before querying a CCH")
 
-  if (length(Graph) == 5) {
+  if (inherits(Graph, "cppRouting_cch_metric")){
+    if (aggregate_aux) stop("aggregate_aux is not supported for CCH metrics")
+    res <- cppdistcch(Graph$nbnode,
+                      Graph$first_out,
+                      Graph$adj_head,
+                      Graph$adj_arc,
+                      Graph$weight$forward,
+                      Graph$weight$backward,
+                      from_id,
+                      to_id)
+    return(res)
+  }
+
+  if (inherits(Graph, "cppRouting_graph")) {
     if (aggregate_aux & length(Graph$attrib$aux) == 0) stop("network don't have additional weight")
     if (!is.null(Graph$coords)){
       if (algorithm %in% c("NBA","A*","bi")){
@@ -161,7 +175,7 @@ get_distance_pair<-function(Graph, from, to, aggregate_aux = FALSE, algorithm="b
   }
 
 
-  if (length(Graph) == 6){
+  if (inherits(Graph, "cppRouting_contracted")){
     if (aggregate_aux & length(Graph$original$attrib$aux) == 0) stop("network don't have additional weight")
 
     if (aggregate_aux){

@@ -124,10 +124,12 @@ makegraph<-function(df,
   coords<-coords[match(Nodes,coords[,1]),]
 
 
-  return(list(data=df,
-              coords=coords,
-              nbnode=length(Nodes),
-              dict=dict,
-              attrib = attrib))
+  Graph <- list(data=df,
+                coords=coords,
+                nbnode=length(Nodes),
+                dict=dict,
+                attrib = attrib)
+  class(Graph) <- "cppRouting_graph"
+  return(Graph)
 
 }

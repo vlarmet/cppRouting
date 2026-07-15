@@ -75,7 +75,7 @@ get_path_pair<-function(Graph,from,to,algorithm="bi",constant=1,keep=NULL,long=F
     to_keep<-rep(1,Graph$nbnode)
   }
 
-  if (length(Graph) == 5){
+  if (inherits(Graph, "cppRouting_graph")){
     if (!is.null(Graph$coords)){
       if (algorithm %in% c("NBA","A*","bi")){
         if (algorithm=="A*"){
@@ -118,7 +118,7 @@ get_path_pair<-function(Graph,from,to,algorithm="bi",constant=1,keep=NULL,long=F
   }
 
 
-  if (length(Graph) == 6){
+  if (inherits(Graph, "cppRouting_contracted")){
     res <- cpppathC(Graph$data$from, Graph$data$to, Graph$data$dist, Graph$nbnode,
                     Graph$rank, Graph$shortcuts$shortf, Graph$shortcuts$shortt, Graph$shortcuts$shortc,
                     FALSE, Graph$dict$ref, to_keep, from_id, to_id, 0)
