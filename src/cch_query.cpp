@@ -170,29 +170,46 @@ Rcpp::NumericMatrix distance_matrix_cch(int nb,
                                         DVec &backward,
                                         IVec dep,
                                         IVec arr){
-  // Distance matrix helper. It precomputes one backward upward search per
-  // destination, then combines it with each origin search.
+  // Distance matrix helper (RPHAST-style many-to-many). It precomputes one
+  // backward upward search per destination and, for every node it touches,
+  // drops (destination column, distance) into that node's bucket. Each
+  // origin then runs a single forward upward search and only combines with
+  // the buckets of the nodes it actually touches, instead of rescanning
+  // every node in the graph for every (origin, destination) pair.
   Rcpp::NumericMatrix result(dep.size(), arr.size());
-  DVec dist_forward(nb, INF);
+  fill(result.begin(), result.end(), INF);
+
+  vector<IVec> bucket_col(nb);
+  vector<DVec> bucket_dist(nb);
   DVec dist_backward(nb, INF);
-  vector<DVec> backward_dist(arr.size(), DVec(nb, INF));
+  IVec touched;
 
   for (int j = 0; j < arr.size(); j++){
-    dijkstra_up(arr[j], nb, first_out, adj_head, adj_arc, backward, backward_dist[j]);
+    dijkstra_up(arr[j], nb, first_out, adj_head, adj_arc, backward, dist_backward, touched);
+    for (int t = 0; t < touched.size(); t++){
+      int node = touched[t];
+      bucket_col[node].push_back(j);
+      bucket_dist[node].push_back(dist_backward[node]);
+      dist_backward[node] = INF;
+    }
+    touched.clear();
   }
 
+  DVec dist_forward(nb, INF);
   for (int i = 0; i < dep.size(); i++){
-    dijkstra_up(dep[i], nb, first_out, adj_head, adj_arc, forward, dist_forward);
-    for (int j = 0; j < arr.size(); j++){
-      double best = INF;
-      for (int node = 0; node < nb; node++){
-        if (dist_forward[node] == INF || backward_dist[j][node] == INF) continue;
-        double candidate = dist_forward[node] + backward_dist[j][node];
-        if (candidate < best) best = candidate;
+    dijkstra_up(dep[i], nb, first_out, adj_head, adj_arc, forward, dist_forward, touched);
+    for (int t = 0; t < touched.size(); t++){
+      int node = touched[t];
+      double from_dist = dist_forward[node];
+      IVec &cols = bucket_col[node];
+      DVec &dists = bucket_dist[node];
+      for (int k = 0; k < cols.size(); k++){
+        double candidate = from_dist + dists[k];
+        if (candidate < result(i, cols[k])) result(i, cols[k]) = candidate;
       }
-      result(i, j) = best;
+      dist_forward[node] = INF;
     }
-    fill(dist_forward.begin(), dist_forward.end(), INF);
+    touched.clear();
   }
 
   return result;

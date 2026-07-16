@@ -119,8 +119,14 @@ inline void dijkstra_up(int start,
                  IVec &adj_head,
                  IVec &adj_arc,
                  DVec &weight,
-                 DVec &distances){
+                 DVec &distances,
+                 IVec &touched){
+  // Unidirectional Dijkstra restricted to the upward CCH graph. Also records
+  // which nodes were actually reached, so callers can combine many such
+  // searches (e.g. a many-to-many distance matrix) without rescanning the
+  // full node set for every pair.
   distances[start] = 0.0;
+  touched.push_back(start);
   PQ queue;
   queue.push(make_pair(start, 0.0));
 
@@ -139,6 +145,7 @@ inline void dijkstra_up(int start,
 
       double tentative = dist + edge_weight;
       if (tentative < distances[next]){
+        if (distances[next] == INF) touched.push_back(next);
         distances[next] = tentative;
         queue.push(make_pair(next, tentative));
       }
