@@ -92,8 +92,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cppsimplify
-Rcpp::List cppsimplify(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int> keep, bool rm_loop, bool iterate, bool progress);
-RcppExport SEXP _cppRouting_cppsimplify(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP keepSEXP, SEXP rm_loopSEXP, SEXP iterateSEXP, SEXP progressSEXP) {
+Rcpp::List cppsimplify(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int> keep, bool rm_loop, bool iterate, bool progress, Rcpp::NumericMatrix aux);
+RcppExport SEXP _cppRouting_cppsimplify(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP keepSEXP, SEXP rm_loopSEXP, SEXP iterateSEXP, SEXP progressSEXP, SEXP auxSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -105,7 +105,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type rm_loop(rm_loopSEXP);
     Rcpp::traits::input_parameter< bool >::type iterate(iterateSEXP);
     Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
-    rcpp_result_gen = Rcpp::wrap(cppsimplify(gfrom, gto, gw, nb, keep, rm_loop, iterate, progress));
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type aux(auxSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppsimplify(gfrom, gto, gw, nb, keep, rm_loop, iterate, progress, aux));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -641,7 +642,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpppath", (DL_FUNC) &_cppRouting_cpppath, 13},
     {"_cppRouting_cppdistmat", (DL_FUNC) &_cppRouting_cppdistmat, 6},
     {"_cppRouting_cpppathmat", (DL_FUNC) &_cppRouting_cpppathmat, 12},
-    {"_cppRouting_cppsimplify", (DL_FUNC) &_cppRouting_cppsimplify, 8},
+    {"_cppRouting_cppsimplify", (DL_FUNC) &_cppRouting_cppsimplify, 9},
     {"_cppRouting_cppcontract", (DL_FUNC) &_cppRouting_cppcontract, 5},
     {"_cppRouting_cppcchprepare", (DL_FUNC) &_cppRouting_cppcchprepare, 4},
     {"_cppRouting_cppcchcustomize", (DL_FUNC) &_cppRouting_cppcchcustomize, 12},

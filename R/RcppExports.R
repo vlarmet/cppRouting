@@ -17,8 +17,8 @@ cpppathmat <- function(gfrom, gto, gw, nb, dict, keep, dep, arr, lim, setdif, al
     .Call(`_cppRouting_cpppathmat`, gfrom, gto, gw, nb, dict, keep, dep, arr, lim, setdif, algo, reverse)
 }
 
-cppsimplify <- function(gfrom, gto, gw, nb, keep, rm_loop, iterate, progress) {
-    .Call(`_cppRouting_cppsimplify`, gfrom, gto, gw, nb, keep, rm_loop, iterate, progress)
+cppsimplify <- function(gfrom, gto, gw, nb, keep, rm_loop, iterate, progress, aux) {
+    .Call(`_cppRouting_cppsimplify`, gfrom, gto, gw, nb, keep, rm_loop, iterate, progress, aux)
 }
 
 cppcontract <- function(gfrom, gto, gw, NbNodes, display_progress) {

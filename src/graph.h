@@ -48,6 +48,13 @@ public:
   SVec dict;
   G dataR;
 
+  // For each stored edge in `data`, the row indices into the original input
+  // edge table it represents. A fresh edge maps to itself; simplify() folds
+  // chains of edges into one and concatenates their origin lists so
+  // auxiliary edge weights can be summed once, after simplification, instead
+  // of being carried arithmetically through every intermediate merge.
+  vector<vector<IVec> > edge_origin;
+
   // Parallel graph : 3 vectors (adjacency list)
   IVec nodeG;
   IVec indG;
@@ -97,6 +104,11 @@ public:
 
   // return edge description from current graph
   Rcpp::List getEdges();
+
+  // same as getEdges(), plus the origin edge-index list for every surviving
+  // edge (see edge_origin above). Used by cpp_simplify() to sum auxiliary
+  // weights over the original edges once simplification is done.
+  Rcpp::List getEdgesWithOrigin();
 
   // routing algorithms, grouped by return type
   DVec routing_dvec(IVec dep, IVec arr, int algo);

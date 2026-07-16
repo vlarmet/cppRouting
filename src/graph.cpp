@@ -26,6 +26,7 @@ Graph::Graph(IVec &gfrom, IVec &gto, DVec &gw, int nb, bool rm_dup){
   nbedge = gfrom.size();
   nbnode = nb;
   data = G(nbnode);
+  edge_origin = vector<vector<IVec> >(nbnode);
   add.resize(0);
   addr.resize(0);
 
@@ -36,11 +37,15 @@ Graph::Graph(IVec &gfrom, IVec &gto, DVec &gw, int nb, bool rm_dup){
         exist = true;
         if (data[gfrom[i]][j].second > gw[i]){
           data[gfrom[i]][j].second = gw[i];
+          edge_origin[gfrom[i]][j] = IVec(1, i);
         }
         break;
       }
     }
-    if (!exist) data[gfrom[i]].push_back(make_pair(gto[i], gw[i]));
+    if (!exist) {
+      data[gfrom[i]].push_back(make_pair(gto[i], gw[i]));
+      edge_origin[gfrom[i]].push_back(IVec(1, i));
+    }
   }
 }
 
@@ -216,6 +221,39 @@ Rcpp::List Graph::getEdges(){
   edges[0] = Newfrom;
   edges[1] = Newto;
   edges[2] = Neww;
+
+  return edges;
+}
+
+Rcpp::List Graph::getEdgesWithOrigin(){
+  nbedge = 0;
+  for (int i=0; i < data.size(); i++){
+    nbedge += data[i].size();
+  }
+
+  IVec Newfrom(nbedge);
+  IVec Newto(nbedge);
+  DVec Neww(nbedge);
+  Rcpp::List origin(nbedge);
+
+  int index=0;
+  for (int i=0; i < data.size();i++){
+    for (int j=0; j < data[i].size();j++){
+
+      Newfrom[index]=i;
+      Newto[index]= data[i][j].first;
+      Neww[index]= data[i][j].second;
+      origin[index] = edge_origin[i][j];
+      index+=1;
+
+    }
+  }
+
+  Rcpp::List edges(4);
+  edges[0] = Newfrom;
+  edges[1] = Newto;
+  edges[2] = Neww;
+  edges[3] = origin;
 
   return edges;
 }

@@ -7,7 +7,10 @@
 #' @param silent Logical. If \code{TRUE} and iterate set to \code{TRUE}, number of iteration and number of removed nodes are printed to the console.
 #' @return The simplified cppRouting graph
 #' @details To understand why process can be iterated, see the package description : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
-#' @note Additional edge attributes like \code{aux}, \code{alpha}, \code{beta} and \code{capacity} will be removed.
+#' @note \code{aux} is preserved through simplification: when a chain of edges is
+#' collapsed into one, its \code{aux} value(s) are summed over the collapsed
+#' edges, the same way \code{aggregate_aux} sums them over a shortest path.
+#' \code{alpha}, \code{beta} and \code{capacity} are still removed.
 #' The first iteration usually eliminates the majority of non-intersection nodes and is therefore faster.
 #' @examples
 #' #Simple directed graph
@@ -58,11 +61,33 @@ cpp_simplify<-function(Graph,keep=NULL,rm_loop=TRUE,iterate=FALSE,silent=TRUE){
     to_keep[Graph$dict$ref %in% keep]<-1
   }
 
+  # aux is carried through simplification (summed over collapsed edges), same
+  # as get_distance_pair(aggregate_aux=TRUE) sums it over a path. Accept both
+  # today's single vector and a data.frame of several columns.
+  aux_in <- Graph$attrib$aux
+  aux_was_df <- is.data.frame(aux_in)
+  if (is.null(aux_in)) {
+    aux_mat <- matrix(numeric(0), nrow = nrow(Graph$data), ncol = 0)
+  } else if (aux_was_df) {
+    aux_mat <- as.matrix(aux_in)
+    storage.mode(aux_mat) <- "double"
+  } else {
+    aux_mat <- matrix(as.double(aux_in), ncol = 1, dimnames = list(NULL, "aux"))
+  }
 
-  simp <- cppsimplify(Graph$data$from,Graph$data$to,Graph$data$dist,Graph$nbnode,
-                      keep = to_keep, rm_loop=rm_loop, iterate, !silent)
-  simp <- data.frame(simp)
-  colnames(simp) <- c("from","to","dist")
+  simp_raw <- cppsimplify(Graph$data$from,Graph$data$to,Graph$data$dist,Graph$nbnode,
+                          keep = to_keep, rm_loop=rm_loop, iterate, !silent, aux = aux_mat)
+  simp <- data.frame(from = simp_raw[[1]], to = simp_raw[[2]], dist = simp_raw[[3]])
+
+  aux_out <- simp_raw[[4]]
+  if (ncol(aux_out) == 0) {
+    new_aux <- NULL
+  } else if (aux_was_df) {
+    new_aux <- as.data.frame(aux_out)
+    colnames(new_aux) <- colnames(aux_in)
+  } else {
+    new_aux <- as.numeric(aux_out[, 1])
+  }
 
 
   if (nrow(simp)==0) stop("All nodes have been removed")
@@ -94,7 +119,7 @@ cpp_simplify<-function(Graph,keep=NULL,rm_loop=TRUE,iterate=FALSE,silent=TRUE){
                          coords=coords,
                          nbnode=length(Nodes),
                          dict=dict,
-                         attrib = list(aux = NULL, alpha = NULL, beta = NULL, cap = NULL)),
+                         attrib = list(aux = new_aux, alpha = NULL, beta = NULL, cap = NULL)),
                     class = c("cppRouting_simplified", "cppRouting_graph")))
 
 }

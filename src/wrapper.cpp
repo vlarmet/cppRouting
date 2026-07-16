@@ -163,14 +163,37 @@ Rcpp::List cpppathmat(std::vector<int> &gfrom, std::vector<int> &gto, std::vecto
 // [[Rcpp::export]]
 
 Rcpp::List cppsimplify(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int nb,
-                       std::vector<int> keep, bool rm_loop, bool iterate, bool progress){
+                       std::vector<int> keep, bool rm_loop, bool iterate, bool progress,
+                       Rcpp::NumericMatrix aux){
 
   Graph network(gfrom, gto, gw, nb, true);
 
   network.simplify(rm_loop, keep, iterate, progress);
-  Rcpp::List res = network.getEdges();
+  Rcpp::List res = network.getEdgesWithOrigin();
 
-  return res;
+  Rcpp::List result(4);
+  result[0] = res[0];
+  result[1] = res[1];
+  result[2] = res[2];
+
+  int n_aux = aux.ncol();
+  if (n_aux > 0){
+    Rcpp::List origin = res[3];
+    Rcpp::NumericMatrix summed_aux(origin.size(), n_aux);
+    for (int i = 0; i < origin.size(); i++){
+      std::vector<int> rows = origin[i];
+      for (int col = 0; col < n_aux; col++){
+        double total = 0.0;
+        for (int r = 0; r < rows.size(); r++) total += aux(rows[r], col);
+        summed_aux(i, col) = total;
+      }
+    }
+    result[3] = summed_aux;
+  } else {
+    result[3] = Rcpp::NumericMatrix(0, 0);
+  }
+
+  return result;
 }
 
 
