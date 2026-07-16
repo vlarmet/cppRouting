@@ -90,10 +90,11 @@ cpp_simplify<-function(Graph,keep=NULL,rm_loop=TRUE,iterate=FALSE,silent=TRUE){
 
 
 
-  return (list(data=simp,
-               coords=coords,
-               nbnode=length(Nodes),
-               dict=dict,
-               attrib = list(aux = NULL, alpha = NULL, beta = NULL, cap = NULL)))
+  return (structure(list(data=simp,
+                         coords=coords,
+                         nbnode=length(Nodes),
+                         dict=dict,
+                         attrib = list(aux = NULL, alpha = NULL, beta = NULL, cap = NULL)),
+                    class = c("cppRouting_simplified", "cppRouting_graph")))
 
 }
