@@ -265,10 +265,12 @@ Rcpp::List cppcchcustomize(std::vector<int> &gfrom, std::vector<int> &gto, std::
 
 // [[Rcpp::export]]
 Rcpp::NumericVector cppdistcch(int NbNodes,
+                               std::vector<int> &rank,
                                std::vector<int> &first_out, std::vector<int> &adj_head, std::vector<int> &adj_arc,
+                               std::vector<int> &elimination_tree_parent,
                                std::vector<double> &forward, std::vector<double> &backward,
                                std::vector<int> dep, std::vector<int> arr){
-  Rcpp::NumericVector result = Rcpp::wrap(distance_pair_cch(NbNodes, first_out, adj_head, adj_arc, forward, backward, dep, arr));
+  Rcpp::NumericVector result = Rcpp::wrap(distance_pair_cch(NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, dep, arr));
   check_nas_vec(result);
   return result;
 }
@@ -318,11 +320,13 @@ Rcpp::NumericMatrix cpppathvaluescch(std::vector<int> &gfrom,
 
 // [[Rcpp::export]]
 Rcpp::List cpppathcch(int NbNodes,
+                      std::vector<int> &rank,
                       std::vector<int> &gfrom,
                       std::vector<int> &gto,
                       std::vector<int> &first_out,
                       std::vector<int> &adj_head,
                       std::vector<int> &adj_arc,
+                      std::vector<int> &elimination_tree_parent,
                       std::vector<double> &forward,
                       std::vector<double> &backward,
                       std::vector<int> &forward_first_arc,
@@ -339,7 +343,7 @@ Rcpp::List cpppathcch(int NbNodes,
                       std::vector<int> keep,
                       std::vector<int> dep,
                       std::vector<int> arr){
-  vector<IVec> result = path_pair_cch(NbNodes, first_out, adj_head, adj_arc, forward, backward,
+  vector<IVec> result = path_pair_cch(NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward,
                                       gfrom, gto,
                                       forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
                                       backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,

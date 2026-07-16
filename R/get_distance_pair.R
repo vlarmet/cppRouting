@@ -78,9 +78,11 @@ get_distance_pair<-function(Graph, from, to, aggregate_aux = FALSE, algorithm="b
   if (inherits(Graph, "cppRouting_cch_metric")){
     if (aggregate_aux) stop("aggregate_aux is not supported for CCH metrics")
     res <- cppdistcch(Graph$nbnode,
+                      Graph$rank,
                       Graph$first_out,
                       Graph$adj_head,
                       Graph$adj_arc,
+                      Graph$elimination_tree_parent,
                       Graph$weight$forward,
                       Graph$weight$backward,
                       from_id,

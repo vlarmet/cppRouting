@@ -3,160 +3,160 @@
 using namespace cch_internal;
 
 struct CCHDistancePairWorker : public Worker {
-  // One-to-one distance queries on a customized CCH metric. This is useful for
-  // distance APIs and correctness checks, but it does not recover paths and is
-  // not the traffic-assignment path.
+  // One-to-one distance queries on a customized CCH metric, using the
+  // elimination-tree query (RoutingKit-style): pairs are grouped by shared
+  // source or shared target so the ancestor-chain relaxation is shared
+  // across a whole group, instead of running a full bidirectional Dijkstra
+  // per pair. This is useful for distance APIs and correctness checks, but
+  // it does not recover paths and is not the traffic-assignment path.
   int nb;
+  IVec &rank;
   IVec &first_out;
   IVec &adj_head;
   IVec &adj_arc;
+  IVec &elimination_tree_parent;
   DVec &forward;
   DVec &backward;
-  IVec dep;
-  IVec arr;
+  IVec &dep;
+  IVec &arr;
+  vector<IVec> &groups;
+  bool group_sources;
   DVec &result;
 
   CCHDistancePairWorker(int nb,
+                        IVec &rank,
                         IVec &first_out,
                         IVec &adj_head,
                         IVec &adj_arc,
+                        IVec &elimination_tree_parent,
                         DVec &forward,
                         DVec &backward,
-                        IVec dep,
-                        IVec arr,
+                        IVec &dep,
+                        IVec &arr,
+                        vector<IVec> &groups,
+                        bool group_sources,
                         DVec &result)
-    : nb(nb), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
-      forward(forward), backward(backward), dep(dep), arr(arr), result(result) {}
+    : nb(nb), rank(rank), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
+      elimination_tree_parent(elimination_tree_parent), forward(forward), backward(backward),
+      dep(dep), arr(arr), groups(groups), group_sources(group_sources), result(result) {}
+
+  CCHDistancePairWorker(CCHDistancePairWorker &other, Split)
+    : nb(other.nb), rank(other.rank), first_out(other.first_out), adj_head(other.adj_head), adj_arc(other.adj_arc),
+      elimination_tree_parent(other.elimination_tree_parent), forward(other.forward), backward(other.backward),
+      dep(other.dep), arr(other.arr), groups(other.groups), group_sources(other.group_sources), result(other.result) {}
 
   void operator()(std::size_t begin, std::size_t end){
-    DVec dist_forward(nb, INF);
-    DVec dist_backward(nb, INF);
-    IVec seen_forward(nb, 0);
-    IVec seen_backward(nb, 0);
+    DVec dist(nb, INF);
+    IVec pred_node(nb, -1);
+    IVec pred_arc(nb, -1);
+    IVec pred_dir(nb, -1);
     IVec is_touched(nb, 0);
     IVec touched;
-    touched.reserve(1024);
+    IVec is_pinned_ancestor(nb, 0);
+    IVec pinned_stack;
+    IVec pinned_touched;
 
-    for (std::size_t k = begin; k != end; k++){
-      int source = dep[k];
-      int target = arr[k];
+    for (std::size_t group_id = begin; group_id != end; group_id++){
+      if (groups[group_id].size() == 0) continue;
 
-      dist_forward[source] = 0.0;
-      dist_backward[target] = 0.0;
-      seen_forward[source] = 1;
-      seen_backward[target] = 1;
-      touch_node(source, is_touched, touched);
-      touch_node(target, is_touched, touched);
+      int root = static_cast<int>(group_id);
+      touch_distance_node(root, dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      dist[root] = 0.0;
 
-      PQ forward_queue;
-      PQ backward_queue;
-      forward_queue.push(make_pair(source, 0.0));
-      backward_queue.push(make_pair(target, 0.0));
+      if (group_sources){
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      } else {
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      }
 
-      double best = source == target ? 0.0 : INF;
-
-      while (!forward_queue.empty() || !backward_queue.empty()){
-        double forward_min = forward_queue.empty() ? INF : forward_queue.top().second;
-        double backward_min = backward_queue.empty() ? INF : backward_queue.top().second;
-        if (forward_min >= best && backward_min >= best) break;
-
-        if (!forward_queue.empty() && forward_min <= backward_min){
-          int node = forward_queue.top().first;
-          double dist = forward_queue.top().second;
-          forward_queue.pop();
-
-          if (dist > dist_forward[node]) continue;
-
-          if (seen_backward[node] == 1){
-            double candidate = dist_forward[node] + dist_backward[node];
-            if (candidate < best) best = candidate;
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int pinned = group_sources ? arr[k] : dep[k];
+        for_ancestors(elimination_tree_parent, pinned, [&](int node){
+          if (is_pinned_ancestor[node] == 0){
+            is_pinned_ancestor[node] = 1;
+            pinned_touched.push_back(node);
+            pinned_stack.push_back(node);
           }
+          return true;
+        });
+      }
 
-          for (int i = first_out[node]; i < first_out[node + 1]; i++){
-            int arc = adj_arc[i];
-            double edge_weight = forward[arc];
-            if (edge_weight == INF) continue;
-
-            int next = adj_head[i];
-            double tentative = dist + edge_weight;
-            if (tentative < dist_forward[next]){
-              dist_forward[next] = tentative;
-              seen_forward[next] = 1;
-              touch_node(next, is_touched, touched);
-              forward_queue.push(make_pair(next, tentative));
-
-              if (seen_backward[next] == 1){
-                double candidate = tentative + dist_backward[next];
-                if (candidate < best) best = candidate;
-              }
-            }
-          }
-        } else if (!backward_queue.empty()){
-          int node = backward_queue.top().first;
-          double dist = backward_queue.top().second;
-          backward_queue.pop();
-
-          if (dist > dist_backward[node]) continue;
-
-          if (seen_forward[node] == 1){
-            double candidate = dist_forward[node] + dist_backward[node];
-            if (candidate < best) best = candidate;
-          }
-
-          for (int i = first_out[node]; i < first_out[node + 1]; i++){
-            int arc = adj_arc[i];
-            double edge_weight = backward[arc];
-            if (edge_weight == INF) continue;
-
-            int next = adj_head[i];
-            double tentative = dist + edge_weight;
-            if (tentative < dist_backward[next]){
-              dist_backward[next] = tentative;
-              seen_backward[next] = 1;
-              touch_node(next, is_touched, touched);
-              backward_queue.push(make_pair(next, tentative));
-
-              if (seen_forward[next] == 1){
-                double candidate = dist_forward[next] + tentative;
-                if (candidate < best) best = candidate;
-              }
-            }
-          }
+      sort(pinned_stack.begin(), pinned_stack.end(), [&](int a, int b){
+        return rank[a] > rank[b];
+      });
+      for (int stack_pos = 0; stack_pos < pinned_stack.size(); stack_pos++){
+        int node = pinned_stack[stack_pos];
+        if (group_sources){
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        } else {
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
         }
       }
 
-      result[k] = best;
-
-      for (int i = 0; i < touched.size(); i++){
-        int node = touched[i];
-        dist_forward[node] = INF;
-        dist_backward[node] = INF;
-        seen_forward[node] = 0;
-        seen_backward[node] = 0;
-        is_touched[node] = 0;
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int start = group_sources ? arr[k] : dep[k];
+        result[k] = dist[start];
       }
-      touched.clear();
+
+      clear_elimination_state(dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      for (int i = 0; i < pinned_touched.size(); i++) is_pinned_ancestor[pinned_touched[i]] = 0;
+      pinned_touched.clear();
+      pinned_stack.clear();
     }
   }
 };
 
 DVec distance_pair_cch(int nb,
+                       IVec &rank,
                        IVec &first_out,
                        IVec &adj_head,
                        IVec &adj_arc,
+                       IVec &elimination_tree_parent,
                        DVec &forward,
                        DVec &backward,
                        IVec dep,
                        IVec arr){
-  // Distance-only pair query. It computes shortest path costs but intentionally
-  // does not recover original road edges, so it cannot be used for AON flow
-  // loading.
+  // Distance-only pair query, using the elimination-tree query grouped by
+  // shared source or shared target. It computes shortest path costs but
+  // intentionally does not recover original road edges, so it cannot be
+  // used for AON flow loading.
+  IVec source_count(nb, 0);
+  IVec target_count(nb, 0);
+  int unique_sources = 0;
+  int unique_targets = 0;
+  for (int i = 0; i < dep.size(); i++){
+    if (source_count[dep[i]] == 0) unique_sources++;
+    if (target_count[arr[i]] == 0) unique_targets++;
+    source_count[dep[i]]++;
+    target_count[arr[i]]++;
+  }
+
+  bool group_sources = unique_sources <= unique_targets;
+  vector<IVec> groups(nb);
+  for (int i = 0; i < dep.size(); i++){
+    int group_id = group_sources ? dep[i] : arr[i];
+    groups[group_id].push_back(i);
+  }
+
   DVec result(dep.size(), INF);
-  CCHDistancePairWorker worker(nb, first_out, adj_head, adj_arc, forward, backward, dep, arr, result);
-  if (dep.size() <= 1000){
-    worker(0, dep.size());
+  CCHDistancePairWorker worker(nb, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                               forward, backward, dep, arr, groups, group_sources, result);
+  if (dep.size() <= 1000 || nb <= 1000){
+    worker(0, nb);
   } else {
-    parallelFor(0, dep.size(), worker);
+    parallelFor(0, nb, worker);
   }
 
   return result;
@@ -470,18 +470,24 @@ Rcpp::NumericMatrix path_values_pair_cch(IVec &gfrom,
 }
 
 struct CCHPathPairWorker : public Worker {
-  // Pair query that recovers the original node path on a customized CCH metric.
-  // It uses bidirectional Dijkstra on the CCH, then unpacks each CCH arc to
-  // original edges and converts them to nodes via gfrom/gto.
+  // Pair query that recovers the original node path on a customized CCH
+  // metric, using the elimination-tree query grouped by shared source or
+  // shared target (same algorithm as CCHPathValuesPairWorker), then unpacks
+  // each CCH arc on the resulting path to original edges and converts them
+  // to nodes via gfrom/gto.
   int nb;
+  IVec &rank;
   IVec &first_out;
   IVec &adj_head;
   IVec &adj_arc;
+  IVec &elimination_tree_parent;
   DVec &forward;
   DVec &backward;
-  IVec dep;
-  IVec arr;
-  IVec keep;
+  IVec &dep;
+  IVec &arr;
+  IVec &keep;
+  vector<IVec> &groups;
+  bool group_sources;
   vector<IVec> &result;
   // For unpacking CCH arcs to original edges and then to nodes
   IVec &gfrom;
@@ -498,14 +504,18 @@ struct CCHPathPairWorker : public Worker {
   IVec &backward_original;
 
   CCHPathPairWorker(int nb,
+                    IVec &rank,
                     IVec &first_out,
                     IVec &adj_head,
                     IVec &adj_arc,
+                    IVec &elimination_tree_parent,
                     DVec &forward,
                     DVec &backward,
-                    IVec dep,
-                    IVec arr,
-                    IVec keep,
+                    IVec &dep,
+                    IVec &arr,
+                    IVec &keep,
+                    vector<IVec> &groups,
+                    bool group_sources,
                     vector<IVec> &result,
                     IVec &gfrom,
                     IVec &gto,
@@ -519,8 +529,10 @@ struct CCHPathPairWorker : public Worker {
                     IVec &backward_second_arc,
                     IVec &backward_second_dir,
                     IVec &backward_original)
-    : nb(nb), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
-      forward(forward), backward(backward), dep(dep), arr(arr), keep(keep), result(result),
+    : nb(nb), rank(rank), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
+      elimination_tree_parent(elimination_tree_parent),
+      forward(forward), backward(backward), dep(dep), arr(arr), keep(keep),
+      groups(groups), group_sources(group_sources), result(result),
       gfrom(gfrom), gto(gto),
       forward_first_arc(forward_first_arc), forward_first_dir(forward_first_dir),
       forward_second_arc(forward_second_arc), forward_second_dir(forward_second_dir),
@@ -530,8 +542,10 @@ struct CCHPathPairWorker : public Worker {
       backward_original(backward_original) {}
 
   CCHPathPairWorker(CCHPathPairWorker &other, Split)
-    : nb(other.nb), first_out(other.first_out), adj_head(other.adj_head), adj_arc(other.adj_arc),
-      forward(other.forward), backward(other.backward), dep(other.dep), arr(other.arr), keep(other.keep), result(other.result),
+    : nb(other.nb), rank(other.rank), first_out(other.first_out), adj_head(other.adj_head), adj_arc(other.adj_arc),
+      elimination_tree_parent(other.elimination_tree_parent),
+      forward(other.forward), backward(other.backward), dep(other.dep), arr(other.arr), keep(other.keep),
+      groups(other.groups), group_sources(other.group_sources), result(other.result),
       gfrom(other.gfrom), gto(other.gto),
       forward_first_arc(other.forward_first_arc), forward_first_dir(other.forward_first_dir),
       forward_second_arc(other.forward_second_arc), forward_second_dir(other.forward_second_dir),
@@ -577,184 +591,111 @@ struct CCHPathPairWorker : public Worker {
   }
 
   void operator()(std::size_t begin, std::size_t end){
-    DVec dist_forward(nb, INF);
-    DVec dist_backward(nb, INF);
-    IVec seen_forward(nb, 0);
-    IVec seen_backward(nb, 0);
+    DVec dist(nb, INF);
+    IVec pred_node(nb, -1);
+    IVec pred_arc(nb, -1);
+    IVec pred_dir(nb, -1);
     IVec is_touched(nb, 0);
     IVec touched;
-    IVec pred_forward(nb, -1);
-    IVec pred_arc_forward(nb, -1);
-    IVec pred_dir_forward(nb, -1);
-    IVec pred_backward(nb, -1);
-    IVec pred_arc_backward(nb, -1);
-    IVec pred_dir_backward(nb, -1);
+    IVec is_pinned_ancestor(nb, 0);
+    IVec pinned_stack;
+    IVec pinned_touched;
+    IVec path_arcs;
+    IVec path_dirs;
 
-    for (std::size_t k = begin; k != end; k++){
-      int start = dep[k];
-      int end_node = arr[k];
-      dist_forward[start] = 0.0;
-      dist_backward[end_node] = 0.0;
-      seen_forward[start] = 1;
-      seen_backward[end_node] = 1;
-      touch_node(start, is_touched, touched);
-      touch_node(end_node, is_touched, touched);
+    for (std::size_t group_id = begin; group_id != end; group_id++){
+      if (groups[group_id].size() == 0) continue;
 
-      PQ forward_queue;
-      PQ backward_queue;
-      forward_queue.push(make_pair(start, 0.0));
-      backward_queue.push(make_pair(end_node, 0.0));
+      int root = static_cast<int>(group_id);
+      touch_distance_node(root, dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      dist[root] = 0.0;
 
-      int mid = start == end_node ? start : -1;
-      double best = start == end_node ? 0.0 : INF;
+      if (group_sources){
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      } else {
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      }
 
-      while (!forward_queue.empty() || !backward_queue.empty()){
-        double forward_min = forward_queue.empty() ? INF : forward_queue.top().second;
-        double backward_min = backward_queue.empty() ? INF : backward_queue.top().second;
-        if (forward_min >= best && backward_min >= best) break;
-
-        if (!forward_queue.empty() && forward_min <= backward_min){
-          int node = forward_queue.top().first;
-          double dist = forward_queue.top().second;
-          forward_queue.pop();
-
-          if (dist > dist_forward[node]) continue;
-
-          if (seen_backward[node] == 1){
-            double candidate = dist_forward[node] + dist_backward[node];
-            if (candidate < best){
-              best = candidate;
-              mid = node;
-            }
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int pinned = group_sources ? arr[k] : dep[k];
+        for_ancestors(elimination_tree_parent, pinned, [&](int node){
+          if (is_pinned_ancestor[node] == 0){
+            is_pinned_ancestor[node] = 1;
+            pinned_touched.push_back(node);
+            pinned_stack.push_back(node);
           }
+          return true;
+        });
+      }
 
-          for (int i = first_out[node]; i < first_out[node + 1]; i++){
-            int arc = adj_arc[i];
-            double edge_weight = forward[arc];
-            if (edge_weight == INF) continue;
+      sort(pinned_stack.begin(), pinned_stack.end(), [&](int a, int b){
+        return rank[a] > rank[b];
+      });
+      for (int stack_pos = 0; stack_pos < pinned_stack.size(); stack_pos++){
+        int node = pinned_stack[stack_pos];
+        if (group_sources){
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        } else {
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        }
+      }
 
-            int next = adj_head[i];
-            double tentative = dist + edge_weight;
-            if (tentative < dist_forward[next]){
-              dist_forward[next] = tentative;
-              seen_forward[next] = 1;
-              touch_node(next, is_touched, touched);
-              forward_queue.push(make_pair(next, tentative));
-              pred_forward[next] = node;
-              pred_arc_forward[next] = arc;
-              pred_dir_forward[next] = 1; // forward direction
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int start = group_sources ? arr[k] : dep[k];
 
-              if (seen_backward[next] == 1){
-                double candidate = tentative + dist_backward[next];
-                if (candidate < best){
-                  best = candidate;
-                  mid = next;
-                }
+        IVec path_result;
+        if (dist[start] != INF){
+          if (start != root){
+            path_arcs.clear();
+            path_dirs.clear();
+
+            int node = start;
+            while (node != root && pred_node[node] != -1){
+              path_arcs.push_back(pred_arc[node]);
+              path_dirs.push_back(pred_dir[node]);
+              node = pred_node[node];
+            }
+            if (node == root){
+              // group_sources: start=target, root=source, so the chain above
+              // was built target->source and needs reversing to source->target.
+              if (group_sources){
+                reverse(path_arcs.begin(), path_arcs.end());
+                reverse(path_dirs.begin(), path_dirs.end());
               }
+              unpack_arcs_to_nodes(path_arcs, path_dirs, path_result);
             }
           }
-        } else if (!backward_queue.empty()){
-          int node = backward_queue.top().first;
-          double dist = backward_queue.top().second;
-          backward_queue.pop();
-
-          if (dist > dist_backward[node]) continue;
-
-          if (seen_forward[node] == 1){
-            double candidate = dist_forward[node] + dist_backward[node];
-            if (candidate < best){
-              best = candidate;
-              mid = node;
-            }
-          }
-
-          for (int i = first_out[node]; i < first_out[node + 1]; i++){
-            int arc = adj_arc[i];
-            double edge_weight = backward[arc];
-            if (edge_weight == INF) continue;
-
-            int next = adj_head[i];
-            double tentative = dist + edge_weight;
-            if (tentative < dist_backward[next]){
-              dist_backward[next] = tentative;
-              seen_backward[next] = 1;
-              touch_node(next, is_touched, touched);
-              backward_queue.push(make_pair(next, tentative));
-              pred_backward[next] = node;
-              pred_arc_backward[next] = arc;
-              pred_dir_backward[next] = 0; // backward direction
-
-              if (seen_forward[next] == 1){
-                double candidate = dist_forward[next] + tentative;
-                if (candidate < best){
-                  best = candidate;
-                  mid = next;
-                }
-              }
-            }
-          }
+          if (path_result.empty()) path_result.push_back(start);
         }
+        result[k] = path_result;
       }
 
-      IVec path_result;
-      if (mid != -1){
-        // Reconstruct path as sequence of CCH arcs with directions using pred_arc/pred_dir
-        IVec path_arcs;
-        IVec path_dirs;
-
-        // Forward part: from start to mid (follow pred_forward backwards)
-        {
-          int node = mid;
-          while (node != start && pred_forward[node] != -1){
-            path_arcs.push_back(pred_arc_forward[node]);
-            path_dirs.push_back(pred_dir_forward[node]);
-            node = pred_forward[node];
-          }
-          // Reverse to get forward order
-          reverse(path_arcs.begin(), path_arcs.end());
-          reverse(path_dirs.begin(), path_dirs.end());
-        }
-
-        // Backward part: from mid to end_node (follow pred_backward forwards)
-        {
-          int node = mid;
-          while (node != end_node && pred_backward[node] != -1){
-            path_arcs.push_back(pred_arc_backward[node]);
-            path_dirs.push_back(pred_dir_backward[node]);
-            node = pred_backward[node];
-          }
-        }
-
-        // Unpack CCH arcs to original edges, then to nodes
-        unpack_arcs_to_nodes(path_arcs, path_dirs, path_result);
-        if (path_result.empty()) path_result.push_back(start);
-      }
-
-      result[k] = path_result;
-
-      for (int i = 0; i < touched.size(); i++){
-        int node = touched[i];
-        dist_forward[node] = INF;
-        dist_backward[node] = INF;
-        seen_forward[node] = 0;
-        seen_backward[node] = 0;
-        pred_forward[node] = -1;
-        pred_arc_forward[node] = -1;
-        pred_dir_forward[node] = -1;
-        pred_backward[node] = -1;
-        pred_arc_backward[node] = -1;
-        pred_dir_backward[node] = -1;
-        is_touched[node] = 0;
-      }
-      touched.clear();
+      clear_elimination_state(dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      for (int i = 0; i < pinned_touched.size(); i++) is_pinned_ancestor[pinned_touched[i]] = 0;
+      pinned_touched.clear();
+      pinned_stack.clear();
     }
   }
 };
 
 vector<IVec> path_pair_cch(int nb,
+                           IVec &rank,
                            IVec &first_out,
                            IVec &adj_head,
                            IVec &adj_arc,
+                           IVec &elimination_tree_parent,
                            DVec &forward,
                            DVec &backward,
                            IVec &gfrom,
@@ -772,14 +713,33 @@ vector<IVec> path_pair_cch(int nb,
                            IVec dep,
                            IVec arr,
                            IVec keep){
+  IVec source_count(nb, 0);
+  IVec target_count(nb, 0);
+  int unique_sources = 0;
+  int unique_targets = 0;
+  for (int i = 0; i < dep.size(); i++){
+    if (source_count[dep[i]] == 0) unique_sources++;
+    if (target_count[arr[i]] == 0) unique_targets++;
+    source_count[dep[i]]++;
+    target_count[arr[i]]++;
+  }
+
+  bool group_sources = unique_sources <= unique_targets;
+  vector<IVec> groups(nb);
+  for (int i = 0; i < dep.size(); i++){
+    int group_id = group_sources ? dep[i] : arr[i];
+    groups[group_id].push_back(i);
+  }
+
   vector<IVec> result(dep.size());
-  CCHPathPairWorker worker(nb, first_out, adj_head, adj_arc, forward, backward, dep, arr, keep, result,
+  CCHPathPairWorker worker(nb, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                           forward, backward, dep, arr, keep, groups, group_sources, result,
                            gfrom, gto, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
                            backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original);
-  if (dep.size() <= 1000){
-    worker(0, dep.size());
+  if (dep.size() <= 1000 || nb <= 1000){
+    worker(0, nb);
   } else {
-    parallelFor(0, dep.size(), worker);
+    parallelFor(0, nb, worker);
   }
   return result;
 }

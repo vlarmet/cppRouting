@@ -70,9 +70,11 @@ void customize_cch(IVec &gfrom,
                    IVec &backward_original);
 
 DVec distance_pair_cch(int nb,
+                       IVec &rank,
                        IVec &first_out,
                        IVec &adj_head,
                        IVec &adj_arc,
+                       IVec &elimination_tree_parent,
                        DVec &forward,
                        DVec &backward,
                        IVec dep,
@@ -88,9 +90,11 @@ Rcpp::NumericMatrix distance_matrix_cch(int nb,
                                         IVec arr);
 
 vector<IVec> path_pair_cch(int nb,
+                           IVec &rank,
                            IVec &first_out,
                            IVec &adj_head,
                            IVec &adj_arc,
+                           IVec &elimination_tree_parent,
                            DVec &forward,
                            DVec &backward,
                            IVec &gfrom,

@@ -125,7 +125,8 @@ get_path_pair<-function(Graph,from,to,algorithm="bi",constant=1,keep=NULL,long=F
   }
 
   if (inherits(Graph, "cppRouting_cch_metric")){
-    res <- cpppathcch(Graph$nbnode, Graph$original$data$from, Graph$original$data$to, Graph$first_out, Graph$adj_head, Graph$adj_arc,
+    res <- cpppathcch(Graph$nbnode, Graph$rank, Graph$original$data$from, Graph$original$data$to, Graph$first_out, Graph$adj_head, Graph$adj_arc,
+                      Graph$elimination_tree_parent,
                       Graph$weight$forward, Graph$weight$backward,
                       Graph$weight$forward_first_arc, Graph$weight$forward_first_dir, Graph$weight$forward_second_arc, Graph$weight$forward_second_dir, Graph$weight$forward_original,
                       Graph$weight$backward_first_arc, Graph$weight$backward_first_dir, Graph$weight$backward_second_arc, Graph$weight$backward_second_dir, Graph$weight$backward_original,

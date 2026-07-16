@@ -33,8 +33,8 @@ cppcchcustomize <- function(gfrom, gto, gw, NbNodes, rank, tail, head, rank_firs
     .Call(`_cppRouting_cppcchcustomize`, gfrom, gto, gw, NbNodes, rank, tail, head, rank_first_out, rank_adj_head, rank_adj_arc, input_arc, input_forward)
 }
 
-cppdistcch <- function(NbNodes, first_out, adj_head, adj_arc, forward, backward, dep, arr) {
-    .Call(`_cppRouting_cppdistcch`, NbNodes, first_out, adj_head, adj_arc, forward, backward, dep, arr)
+cppdistcch <- function(NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, dep, arr) {
+    .Call(`_cppRouting_cppdistcch`, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, dep, arr)
 }
 
 cppdistmatcch <- function(NbNodes, first_out, adj_head, adj_arc, forward, backward, dep, arr) {
@@ -45,8 +45,8 @@ cpppathvaluescch <- function(gfrom, NbNodes, rank, first_out, adj_head, adj_arc,
     .Call(`_cppRouting_cpppathvaluescch`, gfrom, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dep, arr, values)
 }
 
-cpppathcch <- function(NbNodes, gfrom, gto, first_out, adj_head, adj_arc, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dict, keep, dep, arr) {
-    .Call(`_cppRouting_cpppathcch`, NbNodes, gfrom, gto, first_out, adj_head, adj_arc, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dict, keep, dep, arr)
+cpppathcch <- function(NbNodes, rank, gfrom, gto, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dict, keep, dep, arr) {
+    .Call(`_cppRouting_cpppathcch`, NbNodes, rank, gfrom, gto, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dict, keep, dep, arr)
 }
 
 cppaoncchelim <- function(gfrom, gto, gw, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dep, arr, dem) {
