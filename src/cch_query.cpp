@@ -605,7 +605,7 @@ struct CCHPathPairWorker : public Worker {
       forward_queue.push(make_pair(start, 0.0));
       backward_queue.push(make_pair(end_node, 0.0));
 
-      int mid = -1;
+      int mid = start == end_node ? start : -1;
       double best = start == end_node ? 0.0 : INF;
 
       while (!forward_queue.empty() || !backward_queue.empty()){
@@ -727,9 +727,26 @@ struct CCHPathPairWorker : public Worker {
 
         // Unpack CCH arcs to original edges, then to nodes
         unpack_arcs_to_nodes(path_arcs, path_dirs, path_result);
+        if (path_result.empty()) path_result.push_back(start);
       }
 
       result[k] = path_result;
+
+      for (int i = 0; i < touched.size(); i++){
+        int node = touched[i];
+        dist_forward[node] = INF;
+        dist_backward[node] = INF;
+        seen_forward[node] = 0;
+        seen_backward[node] = 0;
+        pred_forward[node] = -1;
+        pred_arc_forward[node] = -1;
+        pred_dir_forward[node] = -1;
+        pred_backward[node] = -1;
+        pred_arc_backward[node] = -1;
+        pred_dir_backward[node] = -1;
+        is_touched[node] = 0;
+      }
+      touched.clear();
     }
   }
 };

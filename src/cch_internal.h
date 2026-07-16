@@ -39,20 +39,30 @@ inline IVec min_degree_order(IVec &gfrom, IVec &gto, int nb){
   order.reserve(nb);
   IVec removed(nb, 0);
 
+  // Bucket-by-degree queue: buckets[d] holds, in ascending node-id order, the
+  // unremoved nodes whose current degree is d. This finds the minimum-degree
+  // node (ties broken by smallest id, same as a linear scan) in amortized
+  // near-O(1) instead of rescanning every node at each of the nb elimination
+  // steps, which made preparation O(nb^2) and dominated cpp_cch_prepare's
+  // runtime on large road networks.
+  IVec degree(nb);
+  int max_degree = 0;
+  for (int node = 0; node < nb; node++){
+    degree[node] = (int)graph[node].size();
+    max_degree = max(max_degree, degree[node]);
+  }
+
+  vector<set<int> > buckets(max_degree + 1);
+  for (int node = 0; node < nb; node++) buckets[degree[node]].insert(node);
+
+  int min_ptr = 0;
+
   for (int step = 0; step < nb; step++){
-    int best = -1;
-    size_t best_degree = numeric_limits<size_t>::max();
+    while (min_ptr < (int)buckets.size() && buckets[min_ptr].empty()) min_ptr++;
+    if (min_ptr >= (int)buckets.size()) break;
 
-    for (int node = 0; node < nb; node++){
-      if (removed[node] == 1) continue;
-      size_t degree = graph[node].size();
-      if (degree < best_degree){
-        best = node;
-        best_degree = degree;
-      }
-    }
-
-    if (best == -1) break;
+    int best = *buckets[min_ptr].begin();
+    buckets[min_ptr].erase(buckets[min_ptr].begin());
 
     IVec neighbors;
     for (set<int>::iterator it = graph[best].begin(); it != graph[best].end(); ++it){
@@ -70,6 +80,20 @@ inline IVec min_degree_order(IVec &gfrom, IVec &gto, int nb){
     graph[best].clear();
     removed[best] = 1;
     order.push_back(best);
+
+    // Fill-in only changes the degree of best's former neighbors: they lose
+    // the arc to best and gain any new clique edges among themselves.
+    for (int i = 0; i < neighbors.size(); i++){
+      int node = neighbors[i];
+      int new_degree = (int)graph[node].size();
+      if (new_degree == degree[node]) continue;
+
+      buckets[degree[node]].erase(node);
+      if (new_degree >= (int)buckets.size()) buckets.resize(new_degree + 1);
+      buckets[new_degree].insert(node);
+      degree[node] = new_degree;
+      if (new_degree < min_ptr) min_ptr = new_degree;
+    }
   }
 
   return order;
