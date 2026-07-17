@@ -46,6 +46,11 @@ If graph is not contracted, the user has the choice between : \itemize{
 
 If the input graph has been contracted by \link{cpp_contract} function, the algorithm is a modified bidirectional search.
 
+When several shortest paths tie on the main edge weight, the exact node sequence returned for a
+given \code{from}/\code{to} pair can differ between algorithms and graph representations (normal,
+contracted or CCH), since each may break the tie differently. All of these paths are equally
+optimal in terms of the main shortest distance.
+
 In \code{A*} and \code{NBA} algorithms, euclidean distance is used as heuristic function.
 
 All algorithms are \strong{multithreaded.} Please use \code{RcppParallel::setThreadOptions()} to set the number of threads.

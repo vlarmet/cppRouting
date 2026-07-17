@@ -1,7 +1,7 @@
 Package: cppRouting
 Type: Package
 Title: Algorithms for Routing and Solving the Traffic Assignment Problem
-Version: 3.2
+Version: 4.0
 Date: 2025-11-28
 Authors@R: person(given = "Vincent",family = "Larmet",role = c("aut", "cre"),email = "larmet.vincent@gmail.com")
 Description: Calculation of distances, shortest paths and isochrones on weighted graphs using several variants of Dijkstra algorithm.
@@ -15,7 +15,8 @@ Description: Calculation of distances, shortest paths and isochrones on weighted
     Method of Successive Averages,
     Frank-Wolfe algorithm (M. Fukushima (1984) <doi:10.1016/0191-2615(84)90029-8>),
     Conjugate and Bi-Conjugate Frank-Wolfe algorithms (M. Mitradjieva, P. O. Lindberg (2012) <doi:10.1287/trsc.1120.0409>),
-    Algorithm-B (R. B. Dial (2006) <doi:10.1016/j.trb.2006.02.008>).
+    Algorithm-B (R. B. Dial (2006) <doi:10.1016/j.trb.2006.02.008>),
+    Customizable Contraction Hierarchies (J. Dibbelt, B. Strasser, D. Wagner (2014) <doi:10.1145/2886843>).
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true

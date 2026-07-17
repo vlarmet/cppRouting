@@ -53,6 +53,12 @@ If the input graph has been contracted by \link{cpp_contract} function, the algo
 Shortest path is always computed according to the main edge weights, corresponding to the 3rd column of \code{df} argument in \link{makegraph} function.
 If \code{aggregate_aux} argument is \code{TRUE}, the values returned are the sum of auxiliary weights along shortest paths.
 
+When several shortest paths tie on the main edge weight, \code{aggregate_aux} is summed along
+whichever tied path the search happens to settle on. Normal, \link{cpp_contract}-contracted and
+CCH graphs can break such ties differently, so the aggregated value for a given \code{from}/\code{to}
+pair may occasionally differ between them, even though the main shortest distance always matches
+exactly. This is expected: it reflects a genuine choice between equally short paths, not an error.
+
 
 In A* and New Bidirectional A star algorithms, euclidean distance is used as heuristic function.
 
