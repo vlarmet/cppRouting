@@ -114,6 +114,74 @@ Graph::Graph(IVec &gfrom, IVec &gto, DVec &gw, DVec &gadd, int nb){
 
 }
 
+Graph::Graph(IVec &gfrom, IVec &gto, DVec &gw, DVec &gauxflat, int n_aux, int nb){
+  nbedge = gfrom.size();
+  nbnode = nb;
+  n_add = n_aux;
+  data = G(nbnode);
+  vector<IVec> data2(nbnode);
+  vector<IVec> data3(nbnode); // reversed
+  for (int i = 0; i != nbedge; ++i) {
+    data[gfrom[i]].push_back(std::make_pair(gto[i], gw[i]));
+    data2[gfrom[i]].push_back(i);
+    data3[gto[i]].push_back(i);
+  }
+
+  // adj list
+  int count = 0;
+  for (int i = 0; i < nbnode; i++){
+    count += data[i].size();
+  }
+  int total = count; // == nbedge here (this constructor never merges edges)
+
+  nodeG.resize(count);
+  wG.resize(count);
+  add.assign((size_t)total * n_aux, 0.0);
+  indG.resize(nbnode + 1);
+
+  count=0;
+
+  for (int i=0; i < data2.size();i++){
+    indG[i] = count;
+
+    for (int j = 0; j < data2[i].size(); j++){
+      int orig_row = data2[i][j];
+      nodeG[count] = gto[orig_row];
+      wG[count] = gw[orig_row];
+      for (int col = 0; col < n_aux; col++){
+        add[(size_t)col * total + count] = gauxflat[(size_t)col * nbedge + orig_row];
+      }
+      count += 1;
+    }
+  }
+  indG[nbnode]=count;
+
+  // reversed
+
+  nodeGr.resize(nodeG.size());
+  wGr.resize(nodeG.size());
+  addr.assign((size_t)total * n_aux, 0.0);
+  indGr.resize(nbnode + 1);
+
+  count=0;
+
+  for (int i=0; i < data3.size();i++){
+    indGr[i] = count;
+
+    for (int j = 0; j < data3[i].size(); j++){
+      int orig_row = data3[i][j];
+      nodeGr[count] = gfrom[orig_row];
+      wGr[count] = gw[orig_row];
+      for (int col = 0; col < n_aux; col++){
+        addr[(size_t)col * total + count] = gauxflat[(size_t)col * nbedge + orig_row];
+      }
+      count += 1;
+    }
+  }
+  indGr[nbnode]=count;
+
+}
+
 Graph::Graph(IVec &gfrom, IVec &gto, DVec &gw,
              DVec &gflow, DVec &gaux, DVec &gftt,
              DVec &galpha, DVec &gbeta, DVec &gcap, int nb){

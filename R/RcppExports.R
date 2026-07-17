@@ -73,16 +73,32 @@ cpppadd <- function(gfrom, gto, gw, gadd, nb, dep, arr) {
     .Call(`_cppRouting_cpppadd`, gfrom, gto, gw, gadd, nb, dep, arr)
 }
 
+cppmataddmulti <- function(gfrom, gto, gw, aux, nb, dep, arr) {
+    .Call(`_cppRouting_cppmataddmulti`, gfrom, gto, gw, aux, nb, dep, arr)
+}
+
 cppdistadd <- function(gfrom, gto, gw, gadd, nb, lat, lon, k, dep, arr, algo) {
     .Call(`_cppRouting_cppdistadd`, gfrom, gto, gw, gadd, nb, lat, lon, k, dep, arr, algo)
+}
+
+cppdistaddmulti <- function(gfrom, gto, gw, aux, nb, lat, lon, k, dep, arr, algo) {
+    .Call(`_cppRouting_cppdistaddmulti`, gfrom, gto, gw, aux, nb, lat, lon, k, dep, arr, algo)
 }
 
 cppdistaddC <- function(orfrom, orto, orw, gadd, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr, algo) {
     .Call(`_cppRouting_cppdistaddC`, orfrom, orto, orw, gadd, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr, algo)
 }
 
+cppdistaddCmulti <- function(orfrom, orto, orw, aux, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr) {
+    .Call(`_cppRouting_cppdistaddCmulti`, orfrom, orto, orw, aux, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr)
+}
+
 cppaddC <- function(orfrom, orto, orw, gadd, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr, algo) {
     .Call(`_cppRouting_cppaddC`, orfrom, orto, orw, gadd, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr, algo)
+}
+
+cppmataddCmulti <- function(orfrom, orto, orw, aux, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr) {
+    .Call(`_cppRouting_cppmataddCmulti`, orfrom, orto, orw, aux, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr)
 }
 
 cppaon <- function(gfrom, gto, gw, nb, lat, lon, k, dep, arr, dem, algo) {

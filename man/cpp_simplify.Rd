@@ -33,7 +33,10 @@ Reduce the number of edges by removing non-intersection nodes, duplicated edges 
 To understand why process can be iterated, see the package description : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
 }
 \note{
-Additional edge attributes like \code{aux}, \code{alpha}, \code{beta} and \code{capacity} will be removed.
+\code{aux} is preserved through simplification: when a chain of edges is
+collapsed into one, its \code{aux} value(s) are summed over the collapsed
+edges, the same way \code{aggregate_aux} sums them over a shortest path.
+\code{alpha}, \code{beta} and \code{capacity} are still removed.
 The first iteration usually eliminates the majority of non-intersection nodes and is therefore faster.
 }
 \examples{

@@ -13,6 +13,7 @@ assign_traffic(
   max_gap = 0.001,
   max_it = .Machine$integer.max,
   aon_method = "bi",
+  cch = NULL,
   constant = 1,
   dial_params = NULL,
   verbose = TRUE

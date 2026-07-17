@@ -22,8 +22,8 @@ LazyData: true
 Imports: Rcpp (>= 1.0.7), RcppParallel, RcppProgress, data.table
 LinkingTo: Rcpp, RcppParallel, RcppProgress
 SystemRequirements: GNU make
-RoxygenNote: 7.2.1
 URL: https://github.com/vlarmet/cppRouting
 Suggests: knitr, rmarkdown, igraph
 VignetteBuilder: knitr
 NeedsCompilation: yes
+Config/roxygen2/version: 8.0.0

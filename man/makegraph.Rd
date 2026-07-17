@@ -21,7 +21,8 @@ makegraph(
 
 \item{coords}{Optional. A data.frame or matrix containing all nodes coordinates. Columns order should be 'node_ID', 'X', 'Y'.}
 
-\item{aux}{Optional. A vector or a single value describing an additional edge weight.}
+\item{aux}{Optional. A vector, a single value, or a data.frame with one or
+more columns, describing one or more additional edge weights.}
 
 \item{capacity}{Optional. A vector or a single value describing edge capacity. Used for traffic assignment.}
 

@@ -3,6 +3,8 @@
 #include "cch.h"
 #include "aon.h"
 #include "aggc.h"
+#include "distance_pair.h"
+#include "distance_mat.h"
 #include <string>
 #include <vector>
 #include <RcppParallel.h>
@@ -497,6 +499,23 @@ Rcpp::NumericMatrix cpppadd(std::vector<int> &gfrom, std::vector<int> &gto, std:
   return result;
 }
 
+// [[Rcpp::export]]
+Rcpp::NumericVector cppmataddmulti(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw,
+                                   Rcpp::NumericMatrix aux, int nb,
+                                   std::vector<int> dep, std::vector<int> arr){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(gfrom, gto, gw, aux_flat, n_aux, nb);
+
+  distanceMatAdd dijfunc(&network, dep, arr);
+  parallelFor(0, dep.size(), dijfunc, 1, 12);
+
+  Rcpp::NumericVector result = Rcpp::wrap(dijfunc.m_result);
+  result.attr("dim") = Rcpp::IntegerVector::create((int)dep.size(), (int)arr.size(), n_aux);
+  check_nas_vec(result);
+  return result;
+}
+
 
 
 // [[Rcpp::export]]
@@ -519,6 +538,34 @@ Rcpp::NumericVector cppdistadd(std::vector<int> &gfrom, std::vector<int> &gto, s
 }
 
 
+
+// [[Rcpp::export]]
+
+Rcpp::NumericMatrix cppdistaddmulti(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw,
+                                    Rcpp::NumericMatrix aux, int nb,
+                                    std::vector<double> lat, std::vector<double> lon, double k,
+                                    std::vector<int> dep, std::vector<int> arr, int algo){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(gfrom, gto, gw, aux_flat, n_aux, nb);
+
+  if (algo == 2 || algo == 3){
+    network.setLatLon(lat, lon);
+    network.k = k;
+  }
+
+  distancePairAdd dijfunc(&network, dep, arr, algo);
+  parallelFor(0, dep.size(), dijfunc, 1, 12);
+
+  Rcpp::NumericMatrix result(dep.size(), n_aux);
+  for (int col = 0; col < n_aux; col++){
+    for (int row = 0; row < (int)dep.size(); row++){
+      result(row, col) = dijfunc.m_result[(size_t)col * dep.size() + row];
+    }
+  }
+  check_nas_mat(result);
+  return result;
+}
 
 // [[Rcpp::export]]
 
@@ -546,6 +593,42 @@ Rcpp::NumericVector cppdistaddC(std::vector<int> &orfrom, std::vector<int> &orto
   return result;
 }
 
+// [[Rcpp::export]]
+
+Rcpp::NumericMatrix cppdistaddCmulti(std::vector<int> &orfrom, std::vector<int> &orto, std::vector<double> &orw, Rcpp::NumericMatrix aux,
+                                     std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int nb,
+                                     std::vector<int> &rank, std::vector<int> &shortf, std::vector<int> &shortt, std::vector<int> &shortc,
+                                     bool phast,
+                                     std::vector<int> dep, std::vector<int> arr){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(orfrom, orto, orw, aux_flat, n_aux, nb);
+
+  CGraph networkc(gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast);
+  networkc.n_add = n_aux;
+  networkc.construct_shortcuts();
+  networkc.to_adj_list(false, phast);
+  networkc.to_adj_list(true, phast);
+
+  aggCAdd dijfunc(&networkc, &network);
+  parallelFor(0, networkc.nbnode, dijfunc);
+
+  networkc.add = dijfunc.m_result;
+  networkc.addr = dijfunc.m_result2;
+
+  distancePairCAdd distfunc(&networkc, dep, arr);
+  parallelFor(0, dep.size(), distfunc, 1, 12);
+
+  Rcpp::NumericMatrix result(dep.size(), n_aux);
+  for (int col = 0; col < n_aux; col++){
+    for (int row = 0; row < (int)dep.size(); row++){
+      result(row, col) = distfunc.m_result[(size_t)col * dep.size() + row];
+    }
+  }
+  check_nas_mat(result);
+  return result;
+}
+
 
 // [[Rcpp::export]]
 
@@ -570,6 +653,38 @@ Rcpp::NumericMatrix cppaddC(std::vector<int> &orfrom, std::vector<int> &orto, st
   Rcpp::NumericMatrix result = Rcpp::wrap(networkc.routing_dmat(dep, arr, algo));
   check_nas_mat(result);
 
+  return result;
+}
+
+// [[Rcpp::export]]
+
+Rcpp::NumericVector cppmataddCmulti(std::vector<int> &orfrom, std::vector<int> &orto, std::vector<double> &orw, Rcpp::NumericMatrix aux,
+                                    std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int nb,
+                                    std::vector<int> &rank, std::vector<int> &shortf, std::vector<int> &shortt, std::vector<int> &shortc,
+                                    bool phast,
+                                    std::vector<int> dep, std::vector<int> arr){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(orfrom, orto, orw, aux_flat, n_aux, nb);
+
+  CGraph networkc(gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast);
+  networkc.n_add = n_aux;
+  networkc.construct_shortcuts();
+  networkc.to_adj_list(false, phast);
+  networkc.to_adj_list(true, phast);
+
+  aggCAdd dijfunc(&networkc, &network);
+  parallelFor(0, networkc.nbnode, dijfunc);
+
+  networkc.add = dijfunc.m_result;
+  networkc.addr = dijfunc.m_result2;
+
+  phastCAdd distfunc(&networkc, dep, arr);
+  parallelFor(0, dep.size(), distfunc, 1, 12);
+
+  Rcpp::NumericVector result = Rcpp::wrap(distfunc.m_result);
+  result.attr("dim") = Rcpp::IntegerVector::create((int)dep.size(), (int)arr.size(), n_aux);
+  check_nas_vec(result);
   return result;
 }
 

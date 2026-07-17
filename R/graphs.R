@@ -3,7 +3,8 @@
 #' @param df  A data.frame or matrix containing 3 columns: from, to, cost. See details.
 #' @param directed logical. If \code{FALSE}, then all edges are duplicated by inverting 'from' and 'to' nodes.
 #' @param coords Optional. A data.frame or matrix containing all nodes coordinates. Columns order should be 'node_ID', 'X', 'Y'.
-#' @param aux Optional. A vector or a single value describing an additional edge weight.
+#' @param aux Optional. A vector, a single value, or a data.frame with one or
+#' more columns, describing one or more additional edge weights.
 #' @param capacity Optional. A vector or a single value describing edge capacity. Used for traffic assignment.
 #' @param alpha Optional. A vector or a single value describing alpha parameter. Used for traffic assignment.
 #' @param beta Optional. A vector or a single value describing beta parameter. Used for traffic assignment.
@@ -65,7 +66,17 @@ makegraph<-function(df,
 
   Nodes=unique(c(df[,1],df[,2]))
 
-  if (!is.null(aux)){
+  aux_is_df <- is.data.frame(aux)
+  if (!is.null(aux) && aux_is_df){
+    if (ncol(aux) == 0) stop("aux data.frame must have at least one column")
+    if (nrow(aux) == 1) aux <- aux[rep(1, nrow(df)), , drop = FALSE]
+    if (nrow(aux) != nrow(df)) stop("nrow(aux) must equal 1 or nrow(df)")
+    if (is.null(colnames(aux)) || any(colnames(aux) == "")) stop("aux columns must be named")
+    for (col in colnames(aux)) {
+      if (!is.numeric(aux[[col]])) stop("aux columns must be numeric")
+      if (sum(aux[[col]] < 0) > 0) warning(sprintf("aux column '%s' contains negative values, this weight is aggregate-only and cannot be minimized", col))
+    }
+  } else if (!is.null(aux)){
     if (length(aux) == 1) aux <- rep(aux, nrow(df))
     if (length(aux) != nrow(df)) stop("length(aux) must equal 1 or nrow(df)")
     if (sum(aux < 0) > 0) warning("aux contains negative values, this weight is aggregate-only and cannot be minimized")
@@ -96,7 +107,7 @@ makegraph<-function(df,
     df2<-df[,c(2,1,3)]
     colnames(df2)<-colnames(df)
     df<-rbind(df,df2)
-    attrib <- lapply(attrib, rep, 2)
+    attrib <- lapply(attrib, function(x) if (is.data.frame(x)) rbind(x, x) else rep(x, 2))
 
   }
 

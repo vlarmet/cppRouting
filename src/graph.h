@@ -71,6 +71,7 @@ public:
   // additional weight
   DVec add;
   DVec addr;
+  int n_add = 1; // number of columns flattened into add/addr (multi-column aggregate_aux path only)
 
   /// reversed
   IVec nodeGr;
@@ -90,6 +91,13 @@ public:
 
   // Constructor with additional weight
   Graph(IVec &gfrom, IVec &gto, DVec &gw, DVec &gadd, int nb);
+
+  // Constructor with N additional weight columns (flattened, nbedge x n_aux,
+  // column-major). add/addr become flattened nbedge x n_aux matrices instead
+  // of a single column; used only by the multi-column aggregate_aux path so
+  // the single-column constructor above (and everything that depends on add
+  // being one value per edge) stays untouched.
+  Graph(IVec &gfrom, IVec &gto, DVec &gw, DVec &gauxflat, int n_aux, int nb);
 
   // constructor with full edges description
   Graph(IVec &gfrom, IVec &gto, DVec &gw,
