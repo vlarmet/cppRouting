@@ -77,7 +77,7 @@ get_distance_pair<-function(Graph, from, to, aggregate_aux = FALSE, algorithm="b
   from_id <- Graph$dict$id[match(from,Graph$dict$ref)]
   to_id <- Graph$dict$id[match(to,Graph$dict$ref)]
 
-  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_cch_customize() before querying a CCH")
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_customize() before querying a CCH")
 
   if (inherits(Graph, "cppRouting_cch_metric")){
     if (isFALSE(aggregate_aux)){

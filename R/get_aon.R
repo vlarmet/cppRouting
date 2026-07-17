@@ -60,7 +60,7 @@ get_aon<-function(Graph, from, to, demand, algorithm = "bi",constant = 1){
   from_id <- Graph$dict$id[match(from,Graph$dict$ref)]
   to_id <- Graph$dict$id[match(to,Graph$dict$ref)]
 
-  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_cch_customize() before querying a CCH")
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_customize() before querying a CCH")
 
   if (inherits(Graph, "cppRouting_cch_metric")){
     res <- cppaoncchelim(Graph$original$data$from,

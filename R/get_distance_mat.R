@@ -63,7 +63,7 @@ get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux 
 
   if (allcores) message("allcores argument is deprecated since v3.0. \nPlease use RcppParallel::setThreadOptions() to set the number of threads")
 
-  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_cch_customize() before querying a CCH")
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_customize() before querying a CCH")
 
   if (inherits(Graph, "cppRouting_cch_metric")){
     if (isFALSE(aggregate_aux)){
