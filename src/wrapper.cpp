@@ -221,8 +221,8 @@ Rcpp::List cppcontract(std::vector<int> &gfrom,std::vector<int> &gto,std::vector
 
 
 // [[Rcpp::export]]
-Rcpp::List cppcchprepare(std::vector<int> &gfrom, std::vector<int> &gto, int NbNodes, std::vector<int> order){
-  CCHPrepared prepared = build_cch(gfrom, gto, NbNodes, order);
+Rcpp::List cppcchprepare(std::vector<int> &gfrom, std::vector<int> &gto, int NbNodes, std::vector<int> order, bool display_progress = false){
+  CCHPrepared prepared = build_cch(gfrom, gto, NbNodes, order, display_progress);
 
   Rcpp::List result(12);
   result[0] = prepared.rank;

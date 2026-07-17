@@ -34,7 +34,7 @@ struct CCHPrepared {
   IVec elimination_tree_parent;
 };
 
-CCHPrepared build_cch(IVec &gfrom, IVec &gto, int nb, IVec order);
+CCHPrepared build_cch(IVec &gfrom, IVec &gto, int nb, IVec order, bool display_progress = false);
 
 void remap_cch_input_arcs(IVec &gfrom, IVec &gto, CCHPrepared &prepared);
 

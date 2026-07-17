@@ -25,8 +25,8 @@ cppcontract <- function(gfrom, gto, gw, NbNodes, display_progress) {
     .Call(`_cppRouting_cppcontract`, gfrom, gto, gw, NbNodes, display_progress)
 }
 
-cppcchprepare <- function(gfrom, gto, NbNodes, order) {
-    .Call(`_cppRouting_cppcchprepare`, gfrom, gto, NbNodes, order)
+cppcchprepare <- function(gfrom, gto, NbNodes, order, display_progress = FALSE) {
+    .Call(`_cppRouting_cppcchprepare`, gfrom, gto, NbNodes, order, display_progress)
 }
 
 cppcchcustomize <- function(gfrom, gto, gw, NbNodes, rank, tail, head, rank_first_out, rank_adj_head, rank_adj_arc, input_arc, input_forward) {

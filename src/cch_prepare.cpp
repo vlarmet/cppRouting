@@ -2,7 +2,8 @@
 
 using namespace cch_internal;
 
-CCHPrepared build_cch(IVec &gfrom, IVec &gto, int nb, IVec order){
+// [[Rcpp::depends(RcppProgress)]]
+CCHPrepared build_cch(IVec &gfrom, IVec &gto, int nb, IVec order, bool display_progress){
   // Preparation phase.
   //
   // Input:
@@ -16,7 +17,10 @@ CCHPrepared build_cch(IVec &gfrom, IVec &gto, int nb, IVec order){
   //
   // No travel-time/congestion weight is stored here. That is intentional: the
   // result can be saved and reused as long as the road topology is unchanged.
-  if (order.size() == 0) order = min_degree_order(gfrom, gto, nb);
+  if (order.size() == 0){
+    if (display_progress) Rcpp::Rcout << "Computing elimination order..." << endl;
+    order = min_degree_order(gfrom, gto, nb, display_progress);
+  }
 
   CCHPrepared result;
   result.nbnode = nb;
@@ -41,7 +45,12 @@ CCHPrepared build_cch(IVec &gfrom, IVec &gto, int nb, IVec order){
   vector<pair<int, int> > rank_arcs;
   rank_arcs.reserve(gfrom.size());
 
+  if (display_progress) Rcpp::Rcout << "Eliminating nodes..." << endl;
+  Progress p(nb, display_progress);
   for (int node_rank = 0; node_rank < nb; node_rank++){
+    Rcpp::checkUserInterrupt();
+    p.increment();
+
     IVec &neighbors = upward[node_rank];
     if (neighbors.size() == 0) continue;
 

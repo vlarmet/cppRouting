@@ -8,6 +8,8 @@
 #include <set>
 #include <stdexcept>
 #include <unordered_map>
+#include <progress.hpp>
+#include <progress_bar.hpp>
 
 using namespace std;
 using namespace RcppParallel;
@@ -27,7 +29,8 @@ inline IVec identity_order(int nb){
   return order;
 }
 
-inline IVec min_degree_order(IVec &gfrom, IVec &gto, int nb){
+// [[Rcpp::depends(RcppProgress)]]
+inline IVec min_degree_order(IVec &gfrom, IVec &gto, int nb, bool display_progress = false){
   vector<set<int> > graph(nb);
   for (int i = 0; i < gfrom.size(); i++){
     if (gfrom[i] == gto[i]) continue;
@@ -57,7 +60,11 @@ inline IVec min_degree_order(IVec &gfrom, IVec &gto, int nb){
 
   int min_ptr = 0;
 
+  Progress p(nb, display_progress);
   for (int step = 0; step < nb; step++){
+    Rcpp::checkUserInterrupt();
+    p.increment();
+
     while (min_ptr < (int)buckets.size() && buckets[min_ptr].empty()) min_ptr++;
     if (min_ptr >= (int)buckets.size()) break;
 

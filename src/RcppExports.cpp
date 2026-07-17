@@ -126,8 +126,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cppcchprepare
-Rcpp::List cppcchprepare(std::vector<int>& gfrom, std::vector<int>& gto, int NbNodes, std::vector<int> order);
-RcppExport SEXP _cppRouting_cppcchprepare(SEXP gfromSEXP, SEXP gtoSEXP, SEXP NbNodesSEXP, SEXP orderSEXP) {
+Rcpp::List cppcchprepare(std::vector<int>& gfrom, std::vector<int>& gto, int NbNodes, std::vector<int> order, bool display_progress);
+RcppExport SEXP _cppRouting_cppcchprepare(SEXP gfromSEXP, SEXP gtoSEXP, SEXP NbNodesSEXP, SEXP orderSEXP, SEXP display_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -135,7 +135,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< std::vector<int> >::type order(orderSEXP);
-    rcpp_result_gen = Rcpp::wrap(cppcchprepare(gfrom, gto, NbNodes, order));
+    Rcpp::traits::input_parameter< bool >::type display_progress(display_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppcchprepare(gfrom, gto, NbNodes, order, display_progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -732,7 +733,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpppathmat", (DL_FUNC) &_cppRouting_cpppathmat, 12},
     {"_cppRouting_cppsimplify", (DL_FUNC) &_cppRouting_cppsimplify, 9},
     {"_cppRouting_cppcontract", (DL_FUNC) &_cppRouting_cppcontract, 5},
-    {"_cppRouting_cppcchprepare", (DL_FUNC) &_cppRouting_cppcchprepare, 4},
+    {"_cppRouting_cppcchprepare", (DL_FUNC) &_cppRouting_cppcchprepare, 5},
     {"_cppRouting_cppcchcustomize", (DL_FUNC) &_cppRouting_cppcchcustomize, 12},
     {"_cppRouting_cppdistcch", (DL_FUNC) &_cppRouting_cppdistcch, 10},
     {"_cppRouting_cppdistmatcch", (DL_FUNC) &_cppRouting_cppdistmatcch, 8},
