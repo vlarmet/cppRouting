@@ -1,5 +1,6 @@
 #' Construct a graph from a shapefile of linestrings
 #'
+#' Internal implementation for the \code{.shp} source of \link{cpp_extract}; not exported directly.
 #' @param path Path to the \code{.shp} file (the companion \code{.dbf} must sit next to it, same base name).
 #' @param cost_field Optional. Name of a numeric attribute column to use directly as edge cost.
 #' @param speed_field Optional. Name of a numeric attribute column holding a speed. Used with \code{length_field}
@@ -30,7 +31,7 @@
 #' @details The shapefile is assumed to already be topologically clean, i.e. lines only meet at their
 #' endpoints (the convention of reference road networks such as ROUTE500/BD TOPO). Junctions in the middle of
 #' a line are not detected -- for that, see the OSM PBF import functions instead.
-#' @export
+#' @noRd
 graph_from_shapefile <- function(path,
                                   cost_field = NULL,
                                   speed_field = NULL,
@@ -62,67 +63,17 @@ graph_from_shapefile <- function(path,
   attrs <- dbf[geom$record + 1L, , drop = FALSE]
 
   prj_path <- paste0(base, ".prj")
-  if (file.exists(prj_path) && is.null(length_field) && is.null(cost_field)) {
+  is_geographic <- FALSE
+  if (file.exists(prj_path)) {
     prj_txt <- readLines(prj_path, warn = FALSE)
-    if (grepl("GEOGCS", prj_txt[1], fixed = TRUE) && !grepl("PROJCS", prj_txt[1], fixed = TRUE)) {
-      warning("Coordinates appear to be geographic (degrees), not projected. ",
-              "Geometric length computed from these coordinates will not be a reliable planar distance; ",
-              "consider reprojecting first or supplying length_field/cost_field directly.")
-    }
+    is_geographic <- grepl("GEOGCS", prj_txt[1], fixed = TRUE) && !grepl("PROJCS", prj_txt[1], fixed = TRUE)
   }
+  warn_if_geographic_without_length(is_geographic, length_field, cost_field)
 
-  if (!is.null(cost_field)) {
-    if (!cost_field %in% names(attrs)) stop("cost_field '", cost_field, "' not found in .dbf attributes")
-    cost <- as.numeric(attrs[[cost_field]])
-  } else if (!is.null(speed_field)) {
-    if (!speed_field %in% names(attrs)) stop("speed_field '", speed_field, "' not found in .dbf attributes")
-    length_val <- if (!is.null(length_field)) {
-      if (!length_field %in% names(attrs)) stop("length_field '", length_field, "' not found in .dbf attributes")
-      as.numeric(attrs[[length_field]])
-    } else geom$length
-    cost <- 60 * length_val / as.numeric(attrs[[speed_field]])
-  } else {
-    cost <- geom$length
-  }
-  if (any(is.na(cost)) || any(cost < 0)) stop("Resolved cost contains NA or negative values")
-
-  n <- length(geom$x1)
-  direction_code <- rep(if (directed) 1L else 0L, n)
-  if (!is.null(direction_field)) {
-    if (!direction_field %in% names(attrs)) stop("direction_field '", direction_field, "' not found in .dbf attributes")
-    if (is.null(direction_values)) stop("direction_values must be provided together with direction_field")
-    dvals <- as.character(attrs[[direction_field]])
-    direction_code <- rep(0L, n)
-    if (!is.null(direction_values$forward)) direction_code[dvals %in% direction_values$forward] <- 1L
-    if (!is.null(direction_values$backward)) direction_code[dvals %in% direction_values$backward] <- 2L
-    known <- unlist(direction_values[c("forward", "backward", "twoway")], use.names = FALSE)
-    unmatched <- !dvals %in% known
-    if (any(unmatched)) {
-      warning(sum(unmatched), " edge(s) have a direction_field value not listed in direction_values; ",
-              "treated as twoway (", paste(unique(dvals[unmatched]), collapse = ", "), ")")
-    }
-  }
+  cost <- resolve_geom_cost(attrs, geom$length, cost_field, speed_field, length_field)
+  direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, length(geom$x1))
 
   result <- cpp_build_geom_graph(geom$x1, geom$y1, geom$x2, geom$y2, cost, direction_code, snap_digits)
 
-  edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
-  coords <- data.frame(node_id = result$node_id, X = result$X, Y = result$Y)
-
-  aux <- NULL
-  if (!is.null(keep_fields)) {
-    missing_fields <- setdiff(keep_fields, names(attrs))
-    if (length(missing_fields) > 0) stop("keep_fields not found in .dbf attributes: ", paste(missing_fields, collapse = ", "))
-    aux <- attrs[result$origin + 1L, keep_fields, drop = FALSE]
-    rownames(aux) <- NULL
-  }
-
-  if (output == "data.frame") return(list(data = edges, coords = coords, aux = aux))
-
-  if (output == "csv") {
-    data.table::fwrite(edges, paste0(out_prefix, "_edges.csv"))
-    data.table::fwrite(coords, paste0(out_prefix, "_coords.csv"))
-    return(invisible(c(paste0(out_prefix, "_edges.csv"), paste0(out_prefix, "_coords.csv"))))
-  }
-
-  makegraph(edges, directed = TRUE, coords = coords, aux = aux)
+  finalize_geom_graph(result, attrs, keep_fields, output, out_prefix)
 }
