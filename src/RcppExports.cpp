@@ -10,6 +10,45 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// cpp_build_geom_graph
+Rcpp::List cpp_build_geom_graph(std::vector<double> x1, std::vector<double> y1, std::vector<double> x2, std::vector<double> y2, std::vector<double> cost, std::vector<int> direction, int snap_digits);
+RcppExport SEXP _cppRouting_cpp_build_geom_graph(SEXP x1SEXP, SEXP y1SEXP, SEXP x2SEXP, SEXP y2SEXP, SEXP costSEXP, SEXP directionSEXP, SEXP snap_digitsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<double> >::type x1(x1SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type y1(y1SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type x2(x2SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type y2(y2SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type cost(costSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type direction(directionSEXP);
+    Rcpp::traits::input_parameter< int >::type snap_digits(snap_digitsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_build_geom_graph(x1, y1, x2, y2, cost, direction, snap_digits));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_read_shp_geometry
+Rcpp::List cpp_read_shp_geometry(std::string path);
+RcppExport SEXP _cppRouting_cpp_read_shp_geometry(SEXP pathSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_read_shp_geometry(path));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_read_dbf
+Rcpp::DataFrame cpp_read_dbf(std::string path);
+RcppExport SEXP _cppRouting_cpp_read_dbf(SEXP pathSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_read_dbf(path));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cppdist
 Rcpp::NumericVector cppdist(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<double> lat, std::vector<double> lon, double k, std::vector<int> dep, std::vector<int> arr, int algo);
 RcppExport SEXP _cppRouting_cppdist(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP kSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP algoSEXP) {
@@ -727,6 +766,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_cppRouting_cpp_build_geom_graph", (DL_FUNC) &_cppRouting_cpp_build_geom_graph, 7},
+    {"_cppRouting_cpp_read_shp_geometry", (DL_FUNC) &_cppRouting_cpp_read_shp_geometry, 1},
+    {"_cppRouting_cpp_read_dbf", (DL_FUNC) &_cppRouting_cpp_read_dbf, 1},
     {"_cppRouting_cppdist", (DL_FUNC) &_cppRouting_cppdist, 10},
     {"_cppRouting_cpppath", (DL_FUNC) &_cppRouting_cpppath, 13},
     {"_cppRouting_cppdistmat", (DL_FUNC) &_cppRouting_cppdistmat, 6},
