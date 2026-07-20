@@ -15,7 +15,12 @@
 #' (see \link{makegraph}). Has no effect when \code{output = "csv"} (that path never carries \code{aux}).
 #' @param output One of \code{"graph"} (default), \code{"data.frame"} or \code{"csv"}.
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
-#' @param progress logical. Print progress messages for each of the 3 read passes.
+#' @param max_memory Optional. A budget in megabytes for the disk-backed pipeline (see Details). When set,
+#' \code{output} must be \code{"csv"}: the whole point is to never materialize the result (or the
+#' intermediate node/way tables) beyond this budget, so returning a graph/data.frame to R would defeat it.
+#' @param temp_dir Directory for the disk-backed pipeline's temporary files when \code{max_memory} is set.
+#' Defaults to \code{tempdir()}.
+#' @param progress logical. Print progress messages for each read pass.
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details Unlike \link{graph_from_shapefile}/\link{graph_from_sf}, topology comes from OSM's own stable
@@ -23,10 +28,21 @@
 #' (a node referenced by >= 2 kept ways, or a way's own endpoint) and split into separate edges accordingly.
 #' A way referencing a node outside the file (a regional extract cut through a way) is dropped entirely, a
 #' small, expected loss limited to the extract's edge. Turn restrictions, barriers and non-car profiles are
-#' not supported yet. \code{output = "csv"} streams edges/coordinates directly to disk as pass 3 produces
-#' them rather than building the full result in R memory first, keeping peak RAM bounded by passes 1/2's
-#' structures alone -- meant for files too large to comfortably materialize as an R object (e.g. a whole
-#' country/continent).
+#' not supported yet.
+#'
+#' \code{output = "csv"} (without \code{max_memory}) streams edges/coordinates directly to disk as pass 3
+#' produces them rather than building the full result in R memory first, keeping peak RAM bounded by passes
+#' 1/2's in-RAM structures alone -- suitable for country-scale extracts (a few GB peak RAM even for all of
+#' France).
+#'
+#' \code{max_memory} goes further: instead of holding the referenced-node table and kept ways in RAM at all
+#' (passes 1/2 above), every intermediate table is spilled to disk via external (chunked) sort and
+#' sequential merge-joins, keeping peak RAM close to the stated budget regardless of the input file's total
+#' size -- meant for files that don't fit in RAM even after the passes-1/2-only optimization above (e.g. a
+#' full-planet extract, or a country-scale extract on a memory-constrained machine). This is slower (more
+#' disk I/O, several sort/merge passes) and requires nodes to appear in strictly increasing id order in the
+#' file, which is standard for osmium/osmconvert/Geofabrik extracts but not guaranteed by the PBF format
+#' itself -- violated files raise a clear error rather than silently producing a wrong graph.
 #' @noRd
 graph_from_osmpbf <- function(path,
                                profile = osm_car_profile(),
@@ -35,13 +51,32 @@ graph_from_osmpbf <- function(path,
                                keep_clazz = FALSE,
                                output = c("graph", "data.frame", "csv"),
                                out_prefix = NULL,
+                               max_memory = NULL,
+                               temp_dir = tempdir(),
                                progress = TRUE){
 
   output <- match.arg(output)
   if (output == "csv" && is.null(out_prefix)) stop("out_prefix must be provided when output = 'csv'")
+  if (!is.null(max_memory) && output != "csv") {
+    stop("max_memory requires output = 'csv': the disk-backed pipeline never materializes the full result ",
+         "in R memory, by design -- read the CSV files back yourself afterward if you know they'll fit.")
+  }
   if (!file.exists(path)) stop("File not found: ", path)
   if (!all(c("highway", "clazz", "speed") %in% names(profile))) {
     stop("profile must have columns 'highway', 'clazz', 'speed'")
+  }
+
+  if (!is.null(max_memory)) {
+    edges_path <- paste0(out_prefix, "_edges.csv")
+    coords_path <- paste0(out_prefix, "_coords.csv")
+    cpp_build_osm_graph_disk_csv(path,
+                                  as.character(profile$highway),
+                                  as.integer(profile$clazz),
+                                  as.numeric(profile$speed),
+                                  use_maxspeed, assume_oneway_motorway,
+                                  as.numeric(max_memory), temp_dir,
+                                  edges_path, coords_path, progress)
+    return(invisible(c(edges_path, coords_path)))
   }
 
   if (output == "csv") {

@@ -21,6 +21,10 @@ cpp_build_osm_graph_from_data <- function(way_refs, way_tag_keys, way_tag_vals, 
     .Call(`_cppRouting_cpp_build_osm_graph_from_data`, way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway)
 }
 
+cpp_build_osm_graph_disk_csv <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir, edges_path, coords_path, progress) {
+    .Call(`_cppRouting_cpp_build_osm_graph_disk_csv`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir, edges_path, coords_path, progress)
+}
+
 cpp_osmpbf_counts <- function(path) {
     .Call(`_cppRouting_cpp_osmpbf_counts`, path)
 }
@@ -31,6 +35,10 @@ cpp_read_shp_geometry <- function(path) {
 
 cpp_read_dbf <- function(path) {
     .Call(`_cppRouting_cpp_read_dbf`, path)
+}
+
+cpp_test_external_sort <- function(values, chunk_capacity, temp_dir) {
+    .Call(`_cppRouting_cpp_test_external_sort`, values, chunk_capacity, temp_dir)
 }
 
 cppdist <- function(gfrom, gto, gw, nb, lat, lon, k, dep, arr, algo) {

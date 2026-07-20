@@ -20,6 +20,8 @@ cpp_extract(
   use_maxspeed = TRUE,
   assume_oneway_motorway = TRUE,
   keep_clazz = FALSE,
+  max_memory = NULL,
+  temp_dir = tempdir(),
   progress = TRUE
 )
 }
@@ -90,6 +92,15 @@ profile's default speed when present and parseable.}
 
 \item{keep_clazz}{OSM sources only. If \code{TRUE}, keep each edge's resolved highway class id as
 \code{aux}.}
+
+\item{max_memory}{\code{.pbf} sources only. A budget in megabytes for a disk-backed pipeline that spills
+every intermediate table (not just the final result) to disk, keeping peak RAM close to this budget
+regardless of the input file's size -- for files too large to fit in RAM even with the default pipeline
+(e.g. a full-planet extract). Requires \code{output = "csv"}. See \code{graph_from_osmpbf} for details
+and the (rare but possible) requirement that nodes appear in increasing id order in the file.}
+
+\item{temp_dir}{\code{.pbf} sources only. Directory for temporary files when \code{max_memory} is set.
+Defaults to \code{tempdir()}.}
 
 \item{progress}{OSM sources only. Print progress messages while reading/matching.}
 }

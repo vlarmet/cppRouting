@@ -58,6 +58,13 @@
 #' \code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.
 #' @param keep_clazz OSM sources only. If \code{TRUE}, keep each edge's resolved highway class id as
 #' \code{aux}.
+#' @param max_memory \code{.pbf} sources only. A budget in megabytes for a disk-backed pipeline that spills
+#' every intermediate table (not just the final result) to disk, keeping peak RAM close to this budget
+#' regardless of the input file's size -- for files too large to fit in RAM even with the default pipeline
+#' (e.g. a full-planet extract). Requires \code{output = "csv"}. See \code{graph_from_osmpbf} for details
+#' and the (rare but possible) requirement that nodes appear in increasing id order in the file.
+#' @param temp_dir \code{.pbf} sources only. Directory for temporary files when \code{max_memory} is set.
+#' Defaults to \code{tempdir()}.
 #' @param progress OSM sources only. Print progress messages while reading/matching.
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
@@ -86,6 +93,8 @@ cpp_extract <- function(x,
                          use_maxspeed = TRUE,
                          assume_oneway_motorway = TRUE,
                          keep_clazz = FALSE,
+                         max_memory = NULL,
+                         temp_dir = tempdir(),
                          progress = TRUE){
 
   output <- match.arg(output)
@@ -129,7 +138,9 @@ cpp_extract <- function(x,
       stop("GeoPackage is not supported. Convert it to a shapefile first, e.g. ",
            "sf::st_write(sf::st_read('file.gpkg'), 'file.shp'), and pass that .shp path instead.")
     }
-    if (ext == "pbf") return(do.call(graph_from_osmpbf, c(list(path = x), osm_args)))
+    if (ext == "pbf") {
+      return(do.call(graph_from_osmpbf, c(list(path = x, max_memory = max_memory, temp_dir = temp_dir), osm_args)))
+    }
     if (ext == "osm") stop("Plain OSM XML (.osm) is not supported, only the binary .osm.pbf format")
     stop("Unrecognized file extension '.", ext, "'. Supported: .shp, .pbf")
   }
