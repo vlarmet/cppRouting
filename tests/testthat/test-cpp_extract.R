@@ -25,7 +25,8 @@ test_that("cpp_extract dispatches sf objects to the sf reader", {
 
 test_that("cpp_extract rejects unsupported extensions/objects with a clear error", {
   expect_error(cpp_extract("network.gpkg"), "not implemented yet")
-  expect_error(cpp_extract("network.pbf"), "not implemented yet")
+  expect_error(cpp_extract("network.pbf"), "File not found") # .pbf IS implemented, this one just doesn't exist
+  expect_error(cpp_extract("network.osm"), "Plain OSM XML")
   expect_error(cpp_extract("network.txt"), "Unrecognized file extension")
   expect_error(cpp_extract(list(a = 1)), "does not know how to handle")
 })
