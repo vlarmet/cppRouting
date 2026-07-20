@@ -18,11 +18,14 @@
 #'   node osmdata downloaded (including untagged vertices in the middle of a way), which is what lets
 #'   \code{cpp_extract} recover real OSM topology and detect junctions;
 #'   \item for \strong{\code{osmextract}}: not a distinct input type -- get the path to the \strong{raw
-#'   cached \code{.pbf}} (e.g. \code{osmextract::oe_get(..., download_only = TRUE)}) and pass that path like
-#'   any other \code{.pbf} file. Do not let osmextract convert it to \code{sf}/GeoPackage via GDAL first:
-#'   that conversion only keeps tagged nodes by default, which is not enough to reconstruct topology.
+#'   cached \code{.pbf}} with \code{osmextract::oe_get(..., download_only = TRUE, skip_vectortranslate =
+#'   TRUE)} (\strong{both} flags are required: \code{download_only} alone still runs the GDAL conversion and
+#'   returns a \code{.gpkg} path instead) and pass that \code{.pbf} path like any other \code{.pbf} file.
+#'   Do not let osmextract convert it to \code{sf}/GeoPackage via GDAL first: that conversion only keeps
+#'   tagged nodes by default, which is not enough to reconstruct topology.
 #' }
-#' GeoPackage paths are not implemented yet (deferred).
+#' GeoPackage is not supported and has no plans to be: convert it to a shapefile first (e.g. via
+#' \code{sf::st_write(sf::st_read("file.gpkg"), "file.shp")}, or with any GIS tool) and use that instead.
 #' @param cost_field Optional. Name of a numeric attribute column to use directly as edge cost.
 #' @param speed_field Optional. Name of a numeric attribute column holding a speed. Used with \code{length_field}
 #' (or the geometric length of each line, if \code{length_field} is \code{NULL}) to derive a cost as
@@ -109,9 +112,10 @@ cpp_extract <- function(x,
       stop("This sf object has an 'osm_id' column but isn't the full osmdata result (class 'osmdata'). ",
            "Topology reconstruction needs $osm_points alongside $osm_lines -- pass the whole result of ",
            "osmdata::osmdata_sf() instead of just its $osm_lines element. If this came from osmextract ",
-           "instead, don't let it convert to sf/gpkg via GDAL: get the raw cached .pbf path (e.g. ",
-           "osmextract::oe_get(..., download_only = TRUE)) and pass that .pbf path to cpp_extract() ",
-           "directly -- treating this sf object as a plain topologically-clean network (like ",
+           "instead, don't let it convert to sf/gpkg via GDAL: get the raw cached .pbf path with ",
+           "osmextract::oe_get(..., download_only = TRUE, skip_vectortranslate = TRUE) (both flags are ",
+           "required) and pass that .pbf path to cpp_extract() directly -- treating this sf object as a ",
+           "plain topologically-clean network (like ",
            "graph_from_sf() does) would silently produce a wrong graph, since OSM ways can have ",
            "junctions in the middle of a line.")
     }
@@ -121,7 +125,10 @@ cpp_extract <- function(x,
   if (is.character(x) && length(x) == 1) {
     ext <- tolower(tools::file_ext(x))
     if (ext == "shp") return(do.call(graph_from_shapefile, c(list(path = x), args)))
-    if (ext == "gpkg") stop("GeoPackage sources are not implemented yet")
+    if (ext == "gpkg") {
+      stop("GeoPackage is not supported. Convert it to a shapefile first, e.g. ",
+           "sf::st_write(sf::st_read('file.gpkg'), 'file.shp'), and pass that .shp path instead.")
+    }
     if (ext == "pbf") return(do.call(graph_from_osmpbf, c(list(path = x), osm_args)))
     if (ext == "osm") stop("Plain OSM XML (.osm) is not supported, only the binary .osm.pbf format")
     stop("Unrecognized file extension '.", ext, "'. Supported: .shp, .pbf")

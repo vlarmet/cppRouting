@@ -36,11 +36,14 @@ cpp_extract(
   node osmdata downloaded (including untagged vertices in the middle of a way), which is what lets
   \code{cpp_extract} recover real OSM topology and detect junctions;
   \item for \strong{\code{osmextract}}: not a distinct input type -- get the path to the \strong{raw
-  cached \code{.pbf}} (e.g. \code{osmextract::oe_get(..., download_only = TRUE)}) and pass that path like
-  any other \code{.pbf} file. Do not let osmextract convert it to \code{sf}/GeoPackage via GDAL first:
-  that conversion only keeps tagged nodes by default, which is not enough to reconstruct topology.
+  cached \code{.pbf}} with \code{osmextract::oe_get(..., download_only = TRUE, skip_vectortranslate =
+  TRUE)} (\strong{both} flags are required: \code{download_only} alone still runs the GDAL conversion and
+  returns a \code{.gpkg} path instead) and pass that \code{.pbf} path like any other \code{.pbf} file.
+  Do not let osmextract convert it to \code{sf}/GeoPackage via GDAL first: that conversion only keeps
+  tagged nodes by default, which is not enough to reconstruct topology.
 }
-GeoPackage paths are not implemented yet (deferred).}
+GeoPackage is not supported and has no plans to be: convert it to a shapefile first (e.g. via
+\code{sf::st_write(sf::st_read("file.gpkg"), "file.shp")}, or with any GIS tool) and use that instead.}
 
 \item{cost_field}{Optional. Name of a numeric attribute column to use directly as edge cost.}
 
