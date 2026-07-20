@@ -202,17 +202,38 @@ Rcpp::List read_shp_geometry(std::string path){
   std::vector<size_t> part_row_offset;
   size_t total_parts = 0;
 
+  // All bounds validation happens here, sequentially on the main thread
+  // (safe to call Rcpp::stop) -- by construction, once a record passes
+  // these checks, the parallel worker below never needs to re-validate
+  // anything itself before reading the parts/points arrays it declares.
+  // A corrupt or truncated .shp file (a real risk: partial downloads,
+  // interrupted writes) would otherwise let a garbage NumPoints/NumParts
+  // value drive an out-of-bounds read.
   size_t offset = 100;
   while (offset + 8 <= buf.size()){
     int32_t content_length_words = read_be_i32(buf.data() + offset + 4);
+    if (content_length_words < 0)
+      Rcpp::stop("Corrupt .shp file: negative record content length at byte offset " + std::to_string(offset));
     size_t content_length_bytes = static_cast<size_t>(content_length_words) * 2;
     size_t content_start = offset + 8;
-    if (content_start + content_length_bytes > buf.size()) break;
+    if (content_start + content_length_bytes > buf.size())
+      Rcpp::stop("Corrupt or truncated .shp file: record at byte offset " + std::to_string(offset) +
+                 " claims more data than the file contains");
 
-    int32_t rec_shape_type = read_le_i32(buf.data() + content_start);
     int num_parts = 0;
-    if (rec_shape_type == 3 || rec_shape_type == 13 || rec_shape_type == 23){
-      num_parts = read_le_i32(buf.data() + content_start + 36);
+    if (content_length_bytes >= 4){
+      int32_t rec_shape_type = read_le_i32(buf.data() + content_start);
+      if (rec_shape_type == 3 || rec_shape_type == 13 || rec_shape_type == 23){
+        if (content_length_bytes < PARTS_OFFSET)
+          Rcpp::stop("Corrupt .shp file: record at byte offset " + std::to_string(offset) +
+                     " is too small to hold a PolyLine header");
+        num_parts = read_le_i32(buf.data() + content_start + 36);
+        int32_t num_points = read_le_i32(buf.data() + content_start + 40);
+        if (num_parts < 0 || num_points < 0 ||
+            content_length_bytes < PARTS_OFFSET + 4 * static_cast<size_t>(num_parts) + 16 * static_cast<size_t>(num_points))
+          Rcpp::stop("Corrupt .shp file: record at byte offset " + std::to_string(offset) +
+                     " declares more parts/points than its content length allows");
+      }
     }
 
     rec_content_start.push_back(content_start);
@@ -250,6 +271,17 @@ Rcpp::DataFrame read_dbf(std::string path){
   int16_t header_size; std::memcpy(&header_size, buf.data() + 8, 2);
   int16_t record_size; std::memcpy(&record_size, buf.data() + 10, 2);
 
+  // Validated once, up front: every (record, field) byte range accessed
+  // below is then guaranteed to be within buf. A corrupt or truncated .dbf
+  // (partial download, interrupted write) would otherwise let a garbage
+  // header_size/record_size/num_records drive an out-of-bounds read.
+  if (num_records < 0) Rcpp::stop("Corrupt .dbf file (negative record count): " + path);
+  if (header_size < 32 || static_cast<size_t>(header_size) > buf.size())
+    Rcpp::stop("Corrupt .dbf file (invalid header size): " + path);
+  if (record_size <= 0) Rcpp::stop("Corrupt .dbf file (invalid record size): " + path);
+  if (static_cast<size_t>(header_size) + static_cast<size_t>(num_records) * static_cast<size_t>(record_size) > buf.size())
+    Rcpp::stop("Corrupt or truncated .dbf file: header declares more records than the file contains: " + path);
+
   struct Field { std::string name; char type; int length; size_t offset; };
   std::vector<Field> fields;
   size_t desc_offset = 32;
@@ -258,6 +290,8 @@ Rcpp::DataFrame read_dbf(std::string path){
     std::string name = trim(reinterpret_cast<const char*>(buf.data() + desc_offset), 11);
     char type = static_cast<char>(buf[desc_offset + 11]);
     int length = buf[desc_offset + 16];
+    if (length < 0 || field_offset + static_cast<size_t>(length) > static_cast<size_t>(record_size))
+      Rcpp::stop("Corrupt .dbf file: field '" + name + "' does not fit within the declared record size: " + path);
     fields.push_back(Field{name, type, length, field_offset});
     field_offset += static_cast<size_t>(length);
     desc_offset += 32;

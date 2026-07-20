@@ -49,7 +49,24 @@ graph_from_osmdata <- function(x,
   key <- function(x, y) sprintf("%.*f_%.*f", snap_digits, round(x, snap_digits), snap_digits, round(y, snap_digits))
 
   pt_xy <- sf::st_coordinates(points)
-  pt_id <- stats::setNames(as.character(points$osm_id), key(pt_xy[, 1], pt_xy[, 2]))
+  pt_key <- key(pt_xy[, 1], pt_xy[, 2])
+
+  # A coordinate key shared by two DIFFERENT osm_id values (not the same
+  # node repeated) means the lookup below can only keep one of them --
+  # whichever vertex matching happens to land on that key silently gets
+  # the wrong node id, with no error. This only bites when snap_digits is
+  # too coarse for how densely packed the actual points are (a real risk
+  # in dense urban areas), so it's worth surfacing rather than staying quiet.
+  collisions <- data.table::data.table(coord_key = pt_key, id = as.character(points$osm_id))[
+    , list(n_distinct = length(unique(id))), by = coord_key][n_distinct > 1]
+  if (nrow(collisions) > 0) {
+    warning(nrow(collisions), " coordinate location(s) in $osm_points are shared by multiple distinct osm_id ",
+            "values at snap_digits = ", snap_digits, " precision -- only one id is kept at each such location, ",
+            "which can silently misattribute any way vertex that lands there to the wrong node. Increase ",
+            "snap_digits if this count seems too high for the data's actual density.")
+  }
+
+  pt_id <- stats::setNames(as.character(points$osm_id), pt_key)
 
   extract_refs <- function(lines_sub, orig_index){
     xy <- data.table::as.data.table(sf::st_coordinates(lines_sub))

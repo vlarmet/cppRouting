@@ -98,3 +98,30 @@ test_that("graph_from_shapefile warns on geographic CRS without an explicit leng
     "geographic"
   )
 })
+
+test_that("cpp_read_shp_geometry rejects a record whose declared NumPoints exceeds its content length", {
+  raw <- readBin(test_shp, "raw", file.info(test_shp)$size)
+  # First record starts right after the 100-byte file header; its content
+  # (past the 8-byte record header of record-number + content-length, both
+  # big-endian int32) starts at byte 108. NumPoints for a PolyLine record
+  # sits at content_start + 40, little-endian int32 -- inflate it far beyond
+  # what the record's actual content length could hold.
+  content_start <- 100L + 8L
+  bad <- raw
+  bad[(content_start + 40 + 1):(content_start + 40 + 4)] <- as.raw(c(0xFF, 0xFF, 0xFF, 0x7F))
+  bad_path <- tempfile(fileext = ".shp")
+  on.exit(unlink(bad_path))
+  writeBin(bad, bad_path)
+  expect_error(cppRouting:::cpp_read_shp_geometry(bad_path), "declares more parts/points")
+})
+
+test_that("cpp_read_dbf rejects a record_size too small to hold its own declared fields", {
+  dbf_path <- test_path("testdata", "test_network.dbf")
+  raw <- readBin(dbf_path, "raw", file.info(dbf_path)$size)
+  bad <- raw
+  bad[11:12] <- as.raw(c(0x01, 0x00)) # record_size = 1, too small for any real field
+  bad_path <- tempfile(fileext = ".dbf")
+  on.exit(unlink(bad_path))
+  writeBin(bad, bad_path)
+  expect_error(cppRouting:::cpp_read_dbf(bad_path), "does not fit within the declared record size")
+})

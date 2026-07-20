@@ -52,3 +52,19 @@ test_that("cpp_extract dispatches a full osmdata object the same way", {
   g2 <- cppRouting:::graph_from_osmdata(x, output = "data.frame", progress = FALSE)
   expect_equal(g1, g2)
 })
+
+test_that("graph_from_osmdata warns when snap_digits collapses two distinct osm_id points onto the same key", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+  # Duplicate node "3"'s coordinate under a different osm_id -- a genuine
+  # collision at the default snap_digits precision, which the lookup below
+  # can only resolve by silently keeping one of the two ids.
+  extra <- sf::st_sf(osm_id = "999",
+                      geometry = sf::st_sfc(sf::st_point(c(5.00, 47.02)), crs = 4326))
+  x$osm_points <- rbind(x$osm_points, extra)
+
+  expect_warning(
+    cppRouting:::graph_from_osmdata(x, output = "data.frame", progress = FALSE),
+    "shared by multiple distinct osm_id"
+  )
+})

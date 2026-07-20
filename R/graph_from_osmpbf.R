@@ -57,9 +57,14 @@ graph_from_osmpbf <- function(path,
 
   output <- match.arg(output)
   if (output == "csv" && is.null(out_prefix)) stop("out_prefix must be provided when output = 'csv'")
-  if (!is.null(max_memory) && output != "csv") {
-    stop("max_memory requires output = 'csv': the disk-backed pipeline never materializes the full result ",
-         "in R memory, by design -- read the CSV files back yourself afterward if you know they'll fit.")
+  if (!is.null(max_memory)) {
+    if (output != "csv") {
+      stop("max_memory requires output = 'csv': the disk-backed pipeline never materializes the full result ",
+           "in R memory, by design -- read the CSV files back yourself afterward if you know they'll fit.")
+    }
+    if (!is.numeric(max_memory) || length(max_memory) != 1 || is.na(max_memory) || max_memory <= 0) {
+      stop("max_memory must be a single positive number (megabytes), not: ", paste(deparse(max_memory), collapse = " "))
+    }
   }
   if (!file.exists(path)) stop("File not found: ", path)
   if (!all(c("highway", "clazz", "speed") %in% names(profile))) {

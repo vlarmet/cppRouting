@@ -236,6 +236,16 @@ std::vector<unsigned char> parse_blob(const unsigned char *d, size_t n){
     else r.skip(wt); // lzma(4)/obsolete bzip2(5)/lz4(6)/zstd(7) -- not produced by standard extracts
   }
 
+  // The OSM PBF spec caps uncompressed blob size at 32 MiB (osmium/osmconvert
+  // enforce this on write); a genuine Geofabrik/osmium-produced file never
+  // exceeds it. A corrupt or truncated file can carry a garbage raw_size
+  // field, which would otherwise drive a huge, possibly memory-exhausting
+  // allocation before decompression even confirms the data is valid.
+  const int32_t kMaxBlobSize = 64 * 1024 * 1024;
+  if (raw_size < 0 || raw_size > kMaxBlobSize)
+    Rcpp::stop("Corrupt or unsupported PBF file: a blob declares an implausible uncompressed size (" +
+               std::to_string(raw_size) + " bytes)");
+
   if (zlib_ptr){
     std::vector<unsigned char> out(raw_size > 0 ? static_cast<size_t>(raw_size) : zlib_len * 4);
     uLongf destlen = static_cast<uLongf>(out.size());
@@ -266,11 +276,25 @@ void stream_osmpbf(const std::string &path,
     uint32_t header_len = (static_cast<uint32_t>(len_buf[0]) << 24) | (static_cast<uint32_t>(len_buf[1]) << 16) |
                            (static_cast<uint32_t>(len_buf[2]) << 8)  |  static_cast<uint32_t>(len_buf[3]);
 
+    // The PBF spec caps BlobHeader at 64 KiB; a corrupt/truncated file (a
+    // real risk: partial downloads) can otherwise carry a garbage 4-byte
+    // length prefix that would drive a huge allocation before there is any
+    // actual data to justify it.
+    const uint32_t kMaxBlobHeaderSize = 64 * 1024;
+    if (header_len > kMaxBlobHeaderSize)
+      Rcpp::stop("Corrupt or truncated PBF file: implausible blob header length (" +
+                 std::to_string(header_len) + " bytes) in: " + path);
+
     std::vector<unsigned char> header_buf(header_len);
     f.read(reinterpret_cast<char*>(header_buf.data()), header_len);
     if (static_cast<uint32_t>(f.gcount()) != header_len) Rcpp::stop("Truncated PBF blob header in: " + path);
 
     BlobHeaderInfo bh = parse_blob_header(header_buf.data(), header_len);
+
+    const int32_t kMaxBlobSize = 64 * 1024 * 1024;
+    if (bh.datasize < 0 || bh.datasize > kMaxBlobSize)
+      Rcpp::stop("Corrupt or truncated PBF file: implausible blob size (" +
+                 std::to_string(bh.datasize) + " bytes) in: " + path);
 
     std::vector<unsigned char> blob_buf(static_cast<size_t>(bh.datasize));
     f.read(reinterpret_cast<char*>(blob_buf.data()), bh.datasize);

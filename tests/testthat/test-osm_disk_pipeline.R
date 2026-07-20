@@ -60,3 +60,12 @@ test_that("cpp_extract() requires output='csv' when max_memory is set", {
   expect_error(cpp_extract("dummy.pbf", max_memory = 300), "requires output")
   expect_error(cpp_extract("dummy.pbf", max_memory = 300, output = "graph"), "requires output")
 })
+
+test_that("cpp_extract() rejects an invalid max_memory", {
+  out_prefix <- tempfile()
+  expect_error(cpp_extract("dummy.pbf", max_memory = -1, output = "csv", out_prefix = out_prefix), "positive number")
+  expect_error(cpp_extract("dummy.pbf", max_memory = 0, output = "csv", out_prefix = out_prefix), "positive number")
+  expect_error(cpp_extract("dummy.pbf", max_memory = NA_real_, output = "csv", out_prefix = out_prefix), "positive number")
+  expect_error(cpp_extract("dummy.pbf", max_memory = "300", output = "csv", out_prefix = out_prefix), "positive number")
+  expect_error(cpp_extract("dummy.pbf", max_memory = c(100, 200), output = "csv", out_prefix = out_prefix), "positive number")
+})

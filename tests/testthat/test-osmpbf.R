@@ -37,3 +37,42 @@ test_that("cpp_extract on a .pbf resolves oneway correctly and drops non-profile
   expect_equal(nrow(res$data), 0L)
   expect_equal(nrow(res$coords), 0L)
 })
+
+test_that("stream_osmpbf rejects an implausibly large blob header length", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+  raw <- readBin(path, "raw", file.info(path)$size)
+  bad <- raw
+  # First 4 bytes are the BlobHeader length prefix, big-endian -- set it well
+  # past the 64 KiB sanity bound (the PBF spec's own cap on BlobHeader size).
+  bad[1:4] <- as.raw(c(0x00, 0x10, 0x00, 0x00)) # 1,048,576
+  bad_path <- tempfile(fileext = ".pbf")
+  on.exit(unlink(bad_path), add = TRUE)
+  writeBin(bad, bad_path)
+  expect_error(cppRouting:::cpp_osmpbf_counts(bad_path), "implausible blob header length")
+})
+
+test_that("stream_osmpbf rejects an implausibly large blob datasize", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+  raw <- readBin(path, "raw", file.info(path)$size)
+  header_len <- sum(as.integer(raw[1:4]) * c(2^24, 2^16, 2^8, 1))
+  header_bytes <- raw[5:(4 + header_len)]
+  # BlobHeader body ends with tag(3,0) + varint(datasize) -- its last byte is
+  # the (single-byte, since the real blob is tiny) datasize varint. Replace
+  # just that value with a properly-encoded varint comfortably past the 64
+  # MiB blob-size sanity cap, keeping the preceding tag byte intact, and
+  # rewrite the leading big-endian header-length prefix to match the new
+  # (longer) header.
+  new_datasize_varint <- pbf_varint(100L * 1024L * 1024L)
+  new_header <- c(header_bytes[seq_len(length(header_bytes) - 1)], new_datasize_varint)
+  new_header_len <- length(new_header)
+  len_be <- as.raw(c(bitwAnd(bitwShiftR(new_header_len, 24), 0xFF), bitwAnd(bitwShiftR(new_header_len, 16), 0xFF),
+                      bitwAnd(bitwShiftR(new_header_len, 8), 0xFF), bitwAnd(new_header_len, 0xFF)))
+  rest <- raw[(5 + header_len):length(raw)]
+  bad <- c(len_be, new_header, rest)
+  bad_path <- tempfile(fileext = ".pbf")
+  on.exit(unlink(bad_path), add = TRUE)
+  writeBin(as.raw(bad), bad_path)
+  expect_error(cppRouting:::cpp_osmpbf_counts(bad_path), "implausible blob size")
+})
