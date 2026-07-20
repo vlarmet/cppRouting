@@ -51,83 +51,60 @@ struct KeptWay {
   int clazz;
 };
 
+// Resolves highway/access/maxspeed/oneway tags against the profile. Returns
+// false if the way should be dropped entirely. Shared by both the .pbf path
+// (tags come from the string table) and the osmdata adapter (tags come from
+// sf attribute columns already as plain strings) -- same rules either way.
+bool resolve_way(const std::vector<OsmTag> &tags,
+                  const std::unordered_map<std::string, std::pair<int, double> > &profile,
+                  bool use_maxspeed, bool assume_oneway_motorway,
+                  double &out_speed, int &out_direction, int &out_clazz){
+  const std::string *highway = find_tag(tags, "highway");
+  if (!highway) return false;
+  auto it = profile.find(*highway);
+  if (it == profile.end()) return false;
+
+  out_clazz = it->second.first;
+  out_speed = it->second.second;
+
+  bool allowed = true;
+  const std::string *access = find_tag(tags, "access");
+  if (access && (*access == "no" || *access == "private")) allowed = false;
+  const std::string *motor_vehicle = find_tag(tags, "motor_vehicle");
+  const std::string *motorcar = find_tag(tags, "motorcar");
+  if (motor_vehicle && is_yesish(*motor_vehicle)) allowed = true;
+  if (motorcar && is_yesish(*motorcar)) allowed = true;
+  if (motor_vehicle && *motor_vehicle == "no") allowed = false;
+  if (motorcar && *motorcar == "no") allowed = false;
+  const std::string *vehicle = find_tag(tags, "vehicle");
+  if (vehicle && *vehicle == "no") allowed = false;
+  if (!allowed) return false;
+
+  if (use_maxspeed){
+    const std::string *maxspeed = find_tag(tags, "maxspeed");
+    double kmh;
+    if (maxspeed && parse_maxspeed_kmh(*maxspeed, kmh) && kmh > 0) out_speed = kmh;
+  }
+
+  out_direction = 0;
+  const std::string *oneway = find_tag(tags, "oneway");
+  if (oneway && (*oneway == "yes" || *oneway == "true" || *oneway == "1")) out_direction = 1;
+  else if (oneway && (*oneway == "-1" || *oneway == "reverse")) out_direction = 2;
+  else if (oneway && (*oneway == "no" || *oneway == "false" || *oneway == "0")) out_direction = 0;
+  else if (assume_oneway_motorway && (*highway == "motorway" || *highway == "motorway_link")) out_direction = 1;
+
+  return true;
 }
 
-Rcpp::List build_osm_graph(std::string path,
-                            std::vector<std::string> profile_highway,
-                            std::vector<int> profile_clazz,
-                            std::vector<double> profile_speed,
-                            bool use_maxspeed,
-                            bool assume_oneway_motorway,
-                            bool progress){
-
-  std::unordered_map<std::string, std::pair<int, double> > profile;
-  for (size_t i = 0; i < profile_highway.size(); i++)
-    profile[profile_highway[i]] = std::make_pair(profile_clazz[i], profile_speed[i]);
-
-  // ---- Pass 1: filter ways, resolve tags, count node references ----
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 1/3: reading ways..." << std::endl;
-
-  std::vector<KeptWay> kept_ways;
-  std::unordered_map<int64_t, uint32_t> ref_count;
-
-  stream_osmpbf(path, std::function<void(const OsmNode&)>(),
-    [&](const OsmWay &way){
-      if (way.refs.size() < 2) return;
-      const std::string *highway = find_tag(way.tags, "highway");
-      if (!highway) return;
-      auto it = profile.find(*highway);
-      if (it == profile.end()) return;
-
-      int clazz = it->second.first;
-      double speed = it->second.second;
-
-      bool allowed = true;
-      const std::string *access = find_tag(way.tags, "access");
-      if (access && (*access == "no" || *access == "private")) allowed = false;
-      const std::string *motor_vehicle = find_tag(way.tags, "motor_vehicle");
-      const std::string *motorcar = find_tag(way.tags, "motorcar");
-      if (motor_vehicle && is_yesish(*motor_vehicle)) allowed = true;
-      if (motorcar && is_yesish(*motorcar)) allowed = true;
-      if (motor_vehicle && *motor_vehicle == "no") allowed = false;
-      if (motorcar && *motorcar == "no") allowed = false;
-      const std::string *vehicle = find_tag(way.tags, "vehicle");
-      if (vehicle && *vehicle == "no") allowed = false;
-      if (!allowed) return;
-
-      if (use_maxspeed){
-        const std::string *maxspeed = find_tag(way.tags, "maxspeed");
-        double kmh;
-        if (maxspeed && parse_maxspeed_kmh(*maxspeed, kmh) && kmh > 0) speed = kmh;
-      }
-
-      int direction = 0;
-      const std::string *oneway = find_tag(way.tags, "oneway");
-      if (oneway && (*oneway == "yes" || *oneway == "true" || *oneway == "1")) direction = 1;
-      else if (oneway && (*oneway == "-1" || *oneway == "reverse")) direction = 2;
-      else if (oneway && (*oneway == "no" || *oneway == "false" || *oneway == "0")) direction = 0;
-      else if (assume_oneway_motorway && (*highway == "motorway" || *highway == "motorway_link")) direction = 1;
-
-      kept_ways.push_back(KeptWay{way.refs, speed, direction, clazz});
-      for (int64_t ref : way.refs) ref_count[ref]++;
-    });
-
-  // ---- Pass 2: collect coordinates for referenced nodes only ----
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 2/3: reading node coordinates (" << ref_count.size() << " referenced nodes)..." << std::endl;
-
-  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
-  node_coord.reserve(ref_count.size());
-
-  stream_osmpbf(path,
-    [&](const OsmNode &node){
-      if (ref_count.find(node.id) != ref_count.end())
-        node_coord[node.id] = std::make_pair(static_cast<float>(node.lat), static_cast<float>(node.lon));
-    },
-    std::function<void(const OsmWay&)>());
-
-  // ---- Pass 3 (in-memory): split ways at junctions, build edges ----
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and building edges..." << std::endl;
-
+// Shared pass 3: given already-filtered ways and a coordinate lookup for
+// every node they reference, split each way at its true junctions (a node
+// referenced by >= 2 kept ways, or the way's own endpoint) and emit
+// from/to/dist/clazz edges plus a compact node_id/lon/lat table. Used by
+// both the .pbf path and the osmdata adapter.
+Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
+                                  const std::unordered_map<int64_t, uint32_t> &ref_count,
+                                  const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                  bool progress){
   std::unordered_map<int64_t, int> node_id_map;
   std::vector<double> node_lat_out, node_lon_out;
   auto get_node_id = [&](int64_t osm_id) -> int {
@@ -202,6 +179,51 @@ Rcpp::List build_osm_graph(std::string path,
   );
 }
 
+}
+
+Rcpp::List build_osm_graph(std::string path,
+                            std::vector<std::string> profile_highway,
+                            std::vector<int> profile_clazz,
+                            std::vector<double> profile_speed,
+                            bool use_maxspeed,
+                            bool assume_oneway_motorway,
+                            bool progress){
+
+  std::unordered_map<std::string, std::pair<int, double> > profile;
+  for (size_t i = 0; i < profile_highway.size(); i++)
+    profile[profile_highway[i]] = std::make_pair(profile_clazz[i], profile_speed[i]);
+
+  if (progress) Rcpp::Rcout << "[cpp_extract] pass 1/3: reading ways..." << std::endl;
+
+  std::vector<KeptWay> kept_ways;
+  std::unordered_map<int64_t, uint32_t> ref_count;
+
+  stream_osmpbf(path, std::function<void(const OsmNode&)>(),
+    [&](const OsmWay &way){
+      if (way.refs.size() < 2) return;
+      double speed; int direction; int clazz;
+      if (!resolve_way(way.tags, profile, use_maxspeed, assume_oneway_motorway, speed, direction, clazz)) return;
+      kept_ways.push_back(KeptWay{way.refs, speed, direction, clazz});
+      for (int64_t ref : way.refs) ref_count[ref]++;
+    });
+
+  if (progress) Rcpp::Rcout << "[cpp_extract] pass 2/3: reading node coordinates (" << ref_count.size() << " referenced nodes)..." << std::endl;
+
+  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
+  node_coord.reserve(ref_count.size());
+
+  stream_osmpbf(path,
+    [&](const OsmNode &node){
+      if (ref_count.find(node.id) != ref_count.end())
+        node_coord[node.id] = std::make_pair(static_cast<float>(node.lat), static_cast<float>(node.lon));
+    },
+    std::function<void(const OsmWay&)>());
+
+  if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and building edges..." << std::endl;
+
+  return build_edges_from_ways(kept_ways, ref_count, node_coord, progress);
+}
+
 // [[Rcpp::export]]
 Rcpp::List cpp_build_osm_graph(std::string path,
                                  std::vector<std::string> profile_highway,
@@ -212,4 +234,59 @@ Rcpp::List cpp_build_osm_graph(std::string path,
                                  bool progress){
   return build_osm_graph(path, profile_highway, profile_clazz, profile_speed,
                           use_maxspeed, assume_oneway_motorway, progress);
+}
+
+// osmdata adapter entry point: way_refs/way_tag_keys/way_tag_vals are
+// parallel R lists (one element per way -- refs a numeric vector of OSM
+// node ids reconstructed by the R side via coordinate-matching against
+// osm_points, tag_keys/tag_vals character vectors of equal length). Node
+// coordinates are provided directly (from osm_points), not streamed from a
+// file, since osmdata results are already fully decoded in memory.
+// [[Rcpp::export]]
+Rcpp::List cpp_build_osm_graph_from_data(Rcpp::List way_refs,
+                                          Rcpp::List way_tag_keys,
+                                          Rcpp::List way_tag_vals,
+                                          std::vector<double> node_ids,
+                                          std::vector<double> node_lats,
+                                          std::vector<double> node_lons,
+                                          std::vector<std::string> profile_highway,
+                                          std::vector<int> profile_clazz,
+                                          std::vector<double> profile_speed,
+                                          bool use_maxspeed,
+                                          bool assume_oneway_motorway){
+
+  std::unordered_map<std::string, std::pair<int, double> > profile;
+  for (size_t i = 0; i < profile_highway.size(); i++)
+    profile[profile_highway[i]] = std::make_pair(profile_clazz[i], profile_speed[i]);
+
+  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
+  node_coord.reserve(node_ids.size());
+  for (size_t i = 0; i < node_ids.size(); i++)
+    node_coord[static_cast<int64_t>(node_ids[i])] = std::make_pair(static_cast<float>(node_lats[i]), static_cast<float>(node_lons[i]));
+
+  std::vector<KeptWay> kept_ways;
+  std::unordered_map<int64_t, uint32_t> ref_count;
+
+  int n_ways = way_refs.size();
+  for (int w = 0; w < n_ways; w++){
+    std::vector<double> refs_d = Rcpp::as<std::vector<double> >(way_refs[w]);
+    if (refs_d.size() < 2) continue;
+    std::vector<std::string> keys = Rcpp::as<std::vector<std::string> >(way_tag_keys[w]);
+    std::vector<std::string> vals = Rcpp::as<std::vector<std::string> >(way_tag_vals[w]);
+
+    std::vector<OsmTag> tags;
+    tags.reserve(keys.size());
+    for (size_t k = 0; k < keys.size() && k < vals.size(); k++) tags.push_back(OsmTag{keys[k], vals[k]});
+
+    double speed; int direction; int clazz;
+    if (!resolve_way(tags, profile, use_maxspeed, assume_oneway_motorway, speed, direction, clazz)) continue;
+
+    std::vector<int64_t> refs(refs_d.size());
+    for (size_t i = 0; i < refs_d.size(); i++) refs[i] = static_cast<int64_t>(refs_d[i]);
+
+    kept_ways.push_back(KeptWay{refs, speed, direction, clazz});
+    for (int64_t ref : refs) ref_count[ref]++;
+  }
+
+  return build_edges_from_ways(kept_ways, ref_count, node_coord, false);
 }

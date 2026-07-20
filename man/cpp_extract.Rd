@@ -24,7 +24,23 @@ cpp_extract(
 )
 }
 \arguments{
-\item{x}{A path to a source file (currently \code{.shp}), or an in-memory \code{sf} object.}
+\item{x}{One of:
+\itemize{
+  \item a path (character) to a \strong{\code{.shp}} shapefile -- the companion \code{.dbf}/\code{.prj}
+  must sit next to it, same base name;
+  \item an in-memory \strong{\code{sf}} object (\code{LINESTRING}/\code{MULTILINESTRING}), e.g. from
+  \code{sf::st_read()} on a GeoPackage or any other OGR-readable format;
+  \item a path (character) to an \strong{\code{.osm.pbf}} file;
+  \item the \strong{full result of \code{osmdata::osmdata_sf()}} (class \code{"osmdata"}) -- not just its
+  \code{$osm_lines} element. \code{$osm_points} must also be present: it holds the \code{osm_id} of every
+  node osmdata downloaded (including untagged vertices in the middle of a way), which is what lets
+  \code{cpp_extract} recover real OSM topology and detect junctions;
+  \item for \strong{\code{osmextract}}: not a distinct input type -- get the path to the \strong{raw
+  cached \code{.pbf}} (e.g. \code{osmextract::oe_get(..., download_only = TRUE)}) and pass that path like
+  any other \code{.pbf} file. Do not let osmextract convert it to \code{sf}/GeoPackage via GDAL first:
+  that conversion only keeps tagged nodes by default, which is not enough to reconstruct topology.
+}
+GeoPackage paths are not implemented yet (deferred).}
 
 \item{cost_field}{Optional. Name of a numeric attribute column to use directly as edge cost.}
 
@@ -46,8 +62,10 @@ Values of \code{direction_field} not listed anywhere default to \code{twoway}, w
 kept as digitized (first point to last point) ; if \code{FALSE} (the default here), every line is made
 bidirectional.}
 
-\item{snap_digits}{integer. Number of decimal places used to round coordinates before deduplicating line
-endpoints into nodes.}
+\item{snap_digits}{integer. Shapefile/sf sources: decimal places used to round coordinates before
+deduplicating line endpoints into nodes. \code{osmdata} sources: decimal places used to match line
+vertex coordinates against \code{$osm_points} coordinates. Unused for \code{.pbf} (topology comes from
+OSM node ids directly, no coordinate matching needed).}
 
 \item{keep_fields}{Optional character vector of extra attribute columns to keep as \code{aux} (see
 \link{makegraph}).}
@@ -57,39 +75,40 @@ endpoints into nodes.}
 
 \item{out_prefix}{Path prefix used when \code{output = "csv"}.}
 
-\item{profile}{OSM \code{.pbf} sources only. A data.frame with columns \code{highway}, \code{clazz},
-\code{speed} describing which \code{highway} tag values to keep and their class id / default speed
-(km/h). Defaults to \link{osm_car_profile}.}
+\item{profile}{OSM sources (\code{.pbf}/\code{osmdata}) only. A data.frame with columns \code{highway},
+\code{clazz}, \code{speed} describing which \code{highway} tag values to keep and their class id /
+default speed (km/h). Defaults to \link{osm_car_profile}.}
 
-\item{use_maxspeed}{OSM \code{.pbf} sources only. If \code{TRUE} (default), a way's \code{maxspeed} tag
-overrides the profile's default speed when present and parseable.}
+\item{use_maxspeed}{OSM sources only. If \code{TRUE} (default), a way's \code{maxspeed} tag overrides the
+profile's default speed when present and parseable.}
 
-\item{assume_oneway_motorway}{OSM \code{.pbf} sources only. If \code{TRUE} (default),
-\code{motorway}/\code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.}
+\item{assume_oneway_motorway}{OSM sources only. If \code{TRUE} (default), \code{motorway}/
+\code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.}
 
-\item{keep_clazz}{OSM \code{.pbf} sources only. If \code{TRUE}, keep each edge's resolved highway class
-id as \code{aux}.}
+\item{keep_clazz}{OSM sources only. If \code{TRUE}, keep each edge's resolved highway class id as
+\code{aux}.}
 
-\item{progress}{OSM \code{.pbf} sources only. Print progress messages for each of the 3 read passes.}
+\item{progress}{OSM sources only. Print progress messages while reading/matching.}
 }
 \value{
 Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 }
 \description{
-Single entry point to build a \link{makegraph}-ready graph from a geographic linestring source: a
-shapefile path, an in-memory \code{sf} object, or (as more source types are added) a GeoPackage path,
-an OSM PBF file, or an \code{osmdata}/\code{osmextract} result. The source is dispatched on automatically
-from \code{x}'s type (file extension, or object class).
+Single entry point to build a \link{makegraph}-ready graph from a geographic linestring source. The
+source is dispatched on automatically from \code{x}'s type (file extension, or object class). Exactly
+five forms of \code{x} are recognized -- see the \code{x} parameter below for the precise contract of
+each, since passing the wrong shape of object for a given source (e.g. only part of an \code{osmdata}
+result) fails loudly rather than silently producing a wrong graph.
 }
 \details{
-Sources of type shapefile/geopackage/sf are assumed to already be topologically clean, i.e.
-lines only meet at their endpoints (the convention of reference road networks such as ROUTE500/BD TOPO).
-OSM \code{.pbf} sources instead detect junctions in the middle of a way from OSM's own node ids (a node
-referenced by 2 or more kept ways, or a way's own endpoint), and a way referencing a node outside the
-file (a regional extract cut through it) is dropped entirely. \code{cpp_extract} refuses (rather than
-silently mishandling) an object it
-recognizes as OSM-derived but not a raw \code{.pbf} file -- either the full result of
-\code{osmdata::osmdata_sf()} (class \code{"osmdata"}), or a plain \code{sf} object with an \code{osm_id}
-column (as returned by \code{osmdata$osm_lines} or \code{osmextract}).
+Shapefile/sf sources are assumed to already be topologically clean, i.e. lines only meet at
+their endpoints (the convention of reference road networks such as ROUTE500/BD TOPO). OSM sources
+(\code{.pbf} or \code{osmdata}) instead detect junctions in the middle of a way from OSM's own node ids
+(a node referenced by 2 or more kept ways, or a way's own endpoint); for \code{.pbf}, a way referencing a
+node outside the file (a regional extract cut through it) is dropped entirely, and for \code{osmdata}, a
+way with a vertex that can't be matched against \code{$osm_points} is dropped, with a warning. A plain
+\code{sf} object that looks OSM-derived (it has an \code{osm_id} column) but isn't the full
+\code{osmdata} result is refused with an explanatory error, rather than silently treated as
+topologically clean like a plain \code{sf} source and producing a wrong graph.
 }

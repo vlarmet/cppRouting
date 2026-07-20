@@ -44,6 +44,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cpp_build_osm_graph_from_data
+Rcpp::List cpp_build_osm_graph_from_data(Rcpp::List way_refs, Rcpp::List way_tag_keys, Rcpp::List way_tag_vals, std::vector<double> node_ids, std::vector<double> node_lats, std::vector<double> node_lons, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway);
+RcppExport SEXP _cppRouting_cpp_build_osm_graph_from_data(SEXP way_refsSEXP, SEXP way_tag_keysSEXP, SEXP way_tag_valsSEXP, SEXP node_idsSEXP, SEXP node_latsSEXP, SEXP node_lonsSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type way_refs(way_refsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type way_tag_keys(way_tag_keysSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type way_tag_vals(way_tag_valsSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type node_ids(node_idsSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type node_lats(node_latsSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type node_lons(node_lonsSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type profile_highway(profile_highwaySEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type profile_clazz(profile_clazzSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type profile_speed(profile_speedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_maxspeed(use_maxspeedSEXP);
+    Rcpp::traits::input_parameter< bool >::type assume_oneway_motorway(assume_oneway_motorwaySEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_build_osm_graph_from_data(way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cpp_osmpbf_counts
 Rcpp::List cpp_osmpbf_counts(std::string path);
 RcppExport SEXP _cppRouting_cpp_osmpbf_counts(SEXP pathSEXP) {
@@ -796,6 +817,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpp_build_geom_graph", (DL_FUNC) &_cppRouting_cpp_build_geom_graph, 7},
     {"_cppRouting_cpp_build_osm_graph", (DL_FUNC) &_cppRouting_cpp_build_osm_graph, 7},
+    {"_cppRouting_cpp_build_osm_graph_from_data", (DL_FUNC) &_cppRouting_cpp_build_osm_graph_from_data, 11},
     {"_cppRouting_cpp_osmpbf_counts", (DL_FUNC) &_cppRouting_cpp_osmpbf_counts, 1},
     {"_cppRouting_cpp_read_shp_geometry", (DL_FUNC) &_cppRouting_cpp_read_shp_geometry, 1},
     {"_cppRouting_cpp_read_dbf", (DL_FUNC) &_cppRouting_cpp_read_dbf, 1},

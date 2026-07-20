@@ -31,12 +31,12 @@ test_that("cpp_extract rejects unsupported extensions/objects with a clear error
   expect_error(cpp_extract(list(a = 1)), "does not know how to handle")
 })
 
-test_that("cpp_extract refuses OSM-derived objects instead of silently mishandling them", {
+test_that("cpp_extract refuses OSM-derived objects it can't safely handle", {
   fake_osmdata <- structure(list(osm_lines = NULL), class = "osmdata")
-  expect_error(cpp_extract(fake_osmdata), "OSM-derived")
+  expect_error(cpp_extract(fake_osmdata), "osm_points")
 
   skip_if_not_installed("sf")
   x <- sf::st_sf(osm_id = "123", highway = "residential",
                  geometry = sf::st_sfc(sf::st_linestring(matrix(c(0,0,100,0), ncol = 2, byrow = TRUE)), crs = 2154))
-  expect_error(cpp_extract(x), "OSM-derived")
+  expect_error(cpp_extract(x), "osmdata")
 })

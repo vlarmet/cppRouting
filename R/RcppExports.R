@@ -9,6 +9,10 @@ cpp_build_osm_graph <- function(path, profile_highway, profile_clazz, profile_sp
     .Call(`_cppRouting_cpp_build_osm_graph`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress)
 }
 
+cpp_build_osm_graph_from_data <- function(way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway) {
+    .Call(`_cppRouting_cpp_build_osm_graph_from_data`, way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway)
+}
+
 cpp_osmpbf_counts <- function(path) {
     .Call(`_cppRouting_cpp_osmpbf_counts`, path)
 }
