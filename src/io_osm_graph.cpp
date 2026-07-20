@@ -1,8 +1,9 @@
 #include "io_osm_graph.h"
 #include "io_osmpbf.h"
 #include <cmath>
+#include <limits>
+#include <algorithm>
 #include <unordered_map>
-#include <unordered_set>
 #include <cstdlib>
 #include <cctype>
 #include <fstream>
@@ -98,6 +99,79 @@ bool resolve_way(const std::vector<OsmTag> &tags,
   return true;
 }
 
+// Sorted, deduplicated node table: id + coordinate + reference count, one
+// contiguous array with O(log n) binary-search lookup. Replaces what used
+// to be two separate unordered_maps (ref_count + node_coord). Those had
+// per-entry hash-map overhead (chaining pointers, bucket bookkeeping) on top
+// of the 16 bytes of actual payload -- for the tens of millions of nodes a
+// country/continent extract references, that overhead was the dominant cost.
+// A sorted vector needs exactly the payload, no more, and -- unlike a hash
+// map -- is a single contiguous block that could later be backed by an
+// mmap'd file for a true disk mode, if a file ever gets too big for RAM.
+class NodeTable {
+public:
+  // Consumes raw_refs (sorts it, then frees it): one entry per (way, node)
+  // occurrence, duplicates expected. Collapsed into one entry per unique id,
+  // with ref_count = number of occurrences. Coordinates start unset (NaN)
+  // until set_coord() is called for each one during pass 2.
+  void build_from_refs(std::vector<int64_t> &raw_refs){
+    std::sort(raw_refs.begin(), raw_refs.end());
+    nodes_.clear();
+    nodes_.reserve(raw_refs.size());
+    size_t i = 0;
+    while (i < raw_refs.size()){
+      size_t j = i;
+      while (j < raw_refs.size() && raw_refs[j] == raw_refs[i]) j++;
+      nodes_.push_back(Entry{raw_refs[i], kUnset, kUnset, static_cast<uint32_t>(j - i)});
+      i = j;
+    }
+    std::vector<int64_t>().swap(raw_refs);
+  }
+
+  void set_coord(int64_t id, float lat, float lon){
+    Entry *e = find_mut(id);
+    if (e) { e->lat = lat; e->lon = lon; }
+  }
+
+  bool has_coord(int64_t id) const {
+    const Entry *e = find(id);
+    return e != nullptr && e->lat != kUnset;
+  }
+
+  uint32_t ref_count(int64_t id) const {
+    const Entry *e = find(id);
+    return e ? e->ref_count : 0;
+  }
+
+  // Caller must have already checked has_coord(id).
+  std::pair<float, float> coord(int64_t id) const {
+    const Entry *e = find(id);
+    return std::make_pair(e->lat, e->lon);
+  }
+
+  size_t size() const { return nodes_.size(); }
+
+private:
+  static constexpr float kUnset = std::numeric_limits<float>::lowest();
+
+  struct Entry { int64_t id; float lat; float lon; uint32_t ref_count; };
+
+  const Entry* find(int64_t id) const {
+    auto it = std::lower_bound(nodes_.begin(), nodes_.end(), id,
+                                [](const Entry &e, int64_t v){ return e.id < v; });
+    if (it != nodes_.end() && it->id == id) return &(*it);
+    return nullptr;
+  }
+  Entry* find_mut(int64_t id){
+    auto it = std::lower_bound(nodes_.begin(), nodes_.end(), id,
+                                [](const Entry &e, int64_t v){ return e.id < v; });
+    if (it != nodes_.end() && it->id == id) return &(*it);
+    return nullptr;
+  }
+
+  std::vector<Entry> nodes_;
+};
+
 // Core junction-splitting algorithm, parameterized over how a node id is
 // obtained/recorded (get_node_id) and how a finished edge is recorded
 // (on_edge) -- shared by the in-memory List builder (nodes/edges pushed
@@ -108,8 +182,7 @@ bool resolve_way(const std::vector<OsmTag> &tags,
 // computation exist in exactly this one place either way.
 template <typename GetNodeId, typename OnEdge>
 std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept_ways,
-                                                 const std::unordered_map<int64_t, uint32_t> &ref_count,
-                                                 const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                                 const NodeTable &nodes,
                                                  GetNodeId get_node_id, OnEdge on_edge){
   long long n_edges = 0;
   int n_boundary_ways_skipped = 0;
@@ -121,22 +194,22 @@ std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept
     // coordinate, drop the whole way -- it's a small, well-understood loss
     // limited to the extract's edge.
     bool all_present = true;
-    for (int64_t ref : way.refs) if (node_coord.find(ref) == node_coord.end()) { all_present = false; break; }
+    for (int64_t ref : way.refs) if (!nodes.has_coord(ref)) { all_present = false; break; }
     if (!all_present){ n_boundary_ways_skipped++; continue; }
 
     size_t n = way.refs.size();
     size_t seg_start = 0;
     for (size_t i = 1; i < n; i++){
       bool is_last = (i == n - 1);
-      bool is_junction = ref_count.at(way.refs[i]) >= 2;
+      bool is_junction = nodes.ref_count(way.refs[i]) >= 2;
       if (!is_last && !is_junction) continue;
 
       int64_t from_osm = way.refs[seg_start];
       int64_t to_osm = way.refs[i];
       double length_m = 0;
       for (size_t j = seg_start; j < i; j++){
-        auto c1 = node_coord.at(way.refs[j]);
-        auto c2 = node_coord.at(way.refs[j + 1]);
+        auto c1 = nodes.coord(way.refs[j]);
+        auto c2 = nodes.coord(way.refs[j + 1]);
         length_m += haversine_m(c1.first, c1.second, c2.first, c2.second);
       }
 
@@ -159,8 +232,7 @@ std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept
 // compact node_id/lon/lat table as an Rcpp::List. Used by the .pbf path and
 // the osmdata adapter.
 Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
-                                  const std::unordered_map<int64_t, uint32_t> &ref_count,
-                                  const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                  const NodeTable &nodes,
                                   bool progress){
   std::unordered_map<int64_t, int> node_id_map;
   std::vector<double> node_lat_out, node_lon_out;
@@ -169,7 +241,7 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
     if (it != node_id_map.end()) return it->second;
     int id = static_cast<int>(node_lat_out.size());
     node_id_map.emplace(osm_id, id);
-    auto coord = node_coord.at(osm_id);
+    auto coord = nodes.coord(osm_id);
     node_lat_out.push_back(coord.first);
     node_lon_out.push_back(coord.second);
     return id;
@@ -182,7 +254,7 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
     from.push_back(id1); to.push_back(id2); dist.push_back(cost); clazz_out.push_back(clazz);
   };
 
-  auto counts = split_ways_into_edges(kept_ways, ref_count, node_coord, get_node_id, on_edge);
+  auto counts = split_ways_into_edges(kept_ways, nodes, get_node_id, on_edge);
 
   int nbnode = static_cast<int>(node_lat_out.size());
   Rcpp::IntegerVector node_id(nbnode);
@@ -208,8 +280,7 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
 // being to keep peak RAM bounded by pass 1/2's structures alone, for
 // continent-scale files processed with output="csv".
 Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
-                                      const std::unordered_map<int64_t, uint32_t> &ref_count,
-                                      const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                      const NodeTable &nodes,
                                       const std::string &edges_path,
                                       const std::string &coords_path,
                                       bool progress){
@@ -227,7 +298,7 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
     if (it != node_id_map.end()) return it->second;
     int id = static_cast<int>(node_id_map.size());
     node_id_map.emplace(osm_id, id);
-    auto coord = node_coord.at(osm_id);
+    auto coord = nodes.coord(osm_id);
     coords_f << id << "," << coord.second << "," << coord.first << "\n"; // X=lon, Y=lat
     return id;
   };
@@ -236,7 +307,7 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
     edges_f << id1 << "," << id2 << "," << cost << "\n";
   };
 
-  auto counts = split_ways_into_edges(kept_ways, ref_count, node_coord, get_node_id, on_edge);
+  auto counts = split_ways_into_edges(kept_ways, nodes, get_node_id, on_edge);
   int nbnode = static_cast<int>(node_id_map.size());
 
   if (progress) Rcpp::Rcout << "[cpp_extract] done: " << nbnode << " nodes, " << counts.first << " edges ("
@@ -248,38 +319,38 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
 // Passes 1 and 2 (filter+resolve ways, then collect coordinates for the
 // nodes they reference) are identical whether pass 3 builds an in-memory
 // List or streams straight to CSV -- shared here so the two only ever
-// diverge at pass 3.
+// diverge at pass 3. Pass 1 collects raw (duplicated) node references
+// instead of counting them incrementally into a map, so the NodeTable can
+// be built once as a sorted, deduplicated block (see build_from_refs).
 void run_passes_1_2(const std::string &path,
                      const std::vector<std::string> &profile_highway,
                      const std::vector<int> &profile_clazz,
                      const std::vector<double> &profile_speed,
                      bool use_maxspeed, bool assume_oneway_motorway, bool progress,
                      std::vector<KeptWay> &kept_ways,
-                     std::unordered_map<int64_t, uint32_t> &ref_count,
-                     std::unordered_map<int64_t, std::pair<float, float> > &node_coord){
+                     NodeTable &nodes){
   std::unordered_map<std::string, std::pair<int, double> > profile;
   for (size_t i = 0; i < profile_highway.size(); i++)
     profile[profile_highway[i]] = std::make_pair(profile_clazz[i], profile_speed[i]);
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 1/3: reading ways..." << std::endl;
 
+  std::vector<int64_t> raw_refs;
   stream_osmpbf(path, std::function<void(const OsmNode&)>(),
     [&](const OsmWay &way){
       if (way.refs.size() < 2) return;
       double speed; int direction; int clazz;
       if (!resolve_way(way.tags, profile, use_maxspeed, assume_oneway_motorway, speed, direction, clazz)) return;
       kept_ways.push_back(KeptWay{way.refs, speed, direction, clazz});
-      for (int64_t ref : way.refs) ref_count[ref]++;
+      raw_refs.insert(raw_refs.end(), way.refs.begin(), way.refs.end());
     });
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 2/3: reading node coordinates (" << ref_count.size() << " referenced nodes)..." << std::endl;
+  nodes.build_from_refs(raw_refs);
 
-  node_coord.reserve(ref_count.size());
+  if (progress) Rcpp::Rcout << "[cpp_extract] pass 2/3: reading node coordinates (" << nodes.size() << " referenced nodes)..." << std::endl;
+
   stream_osmpbf(path,
-    [&](const OsmNode &node){
-      if (ref_count.find(node.id) != ref_count.end())
-        node_coord[node.id] = std::make_pair(static_cast<float>(node.lat), static_cast<float>(node.lon));
-    },
+    [&](const OsmNode &node){ nodes.set_coord(node.id, static_cast<float>(node.lat), static_cast<float>(node.lon)); },
     std::function<void(const OsmWay&)>());
 }
 
@@ -293,13 +364,12 @@ Rcpp::List build_osm_graph(std::string path,
                             bool assume_oneway_motorway,
                             bool progress){
   std::vector<KeptWay> kept_ways;
-  std::unordered_map<int64_t, uint32_t> ref_count;
-  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
+  NodeTable nodes;
   run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
-                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, ref_count, node_coord);
+                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and building edges..." << std::endl;
-  return build_edges_from_ways(kept_ways, ref_count, node_coord, progress);
+  return build_edges_from_ways(kept_ways, nodes, progress);
 }
 
 // [[Rcpp::export]]
@@ -313,13 +383,12 @@ Rcpp::List cpp_write_osm_graph_csv(std::string path,
                                      std::string coords_path,
                                      bool progress){
   std::vector<KeptWay> kept_ways;
-  std::unordered_map<int64_t, uint32_t> ref_count;
-  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
+  NodeTable nodes;
   run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
-                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, ref_count, node_coord);
+                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and streaming edges to CSV..." << std::endl;
-  return write_edges_from_ways_csv(kept_ways, ref_count, node_coord, edges_path, coords_path, progress);
+  return write_edges_from_ways_csv(kept_ways, nodes, edges_path, coords_path, progress);
 }
 
 // [[Rcpp::export]]
@@ -357,13 +426,8 @@ Rcpp::List cpp_build_osm_graph_from_data(Rcpp::List way_refs,
   for (size_t i = 0; i < profile_highway.size(); i++)
     profile[profile_highway[i]] = std::make_pair(profile_clazz[i], profile_speed[i]);
 
-  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
-  node_coord.reserve(node_ids.size());
-  for (size_t i = 0; i < node_ids.size(); i++)
-    node_coord[static_cast<int64_t>(node_ids[i])] = std::make_pair(static_cast<float>(node_lats[i]), static_cast<float>(node_lons[i]));
-
   std::vector<KeptWay> kept_ways;
-  std::unordered_map<int64_t, uint32_t> ref_count;
+  std::vector<int64_t> raw_refs;
 
   int n_ways = way_refs.size();
   for (int w = 0; w < n_ways; w++){
@@ -383,8 +447,13 @@ Rcpp::List cpp_build_osm_graph_from_data(Rcpp::List way_refs,
     for (size_t i = 0; i < refs_d.size(); i++) refs[i] = static_cast<int64_t>(refs_d[i]);
 
     kept_ways.push_back(KeptWay{refs, speed, direction, clazz});
-    for (int64_t ref : refs) ref_count[ref]++;
+    raw_refs.insert(raw_refs.end(), refs.begin(), refs.end());
   }
 
-  return build_edges_from_ways(kept_ways, ref_count, node_coord, false);
+  NodeTable nodes;
+  nodes.build_from_refs(raw_refs);
+  for (size_t i = 0; i < node_ids.size(); i++)
+    nodes.set_coord(static_cast<int64_t>(node_ids[i]), static_cast<float>(node_lats[i]), static_cast<float>(node_lons[i]));
+
+  return build_edges_from_ways(kept_ways, nodes, false);
 }
