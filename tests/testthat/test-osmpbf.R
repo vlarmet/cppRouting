@@ -76,3 +76,22 @@ test_that("stream_osmpbf rejects an implausibly large blob datasize", {
   writeBin(as.raw(bad), bad_path)
   expect_error(cppRouting:::cpp_osmpbf_counts(bad_path), "implausible blob size")
 })
+
+test_that("cpp_extract on a .pbf with coords=FALSE drops coords from every output mode", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
+  expect_null(res$coords)
+  expect_equal(nrow(res$data), 5L)
+
+  g <- cpp_extract(path, coords = FALSE, progress = FALSE)
+  expect_null(g$coords)
+
+  out_prefix <- tempfile()
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  on.exit(unlink(paths), add = TRUE)
+  expect_length(paths, 1L)
+  expect_true(file.exists(paths))
+  expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
+})

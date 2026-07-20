@@ -20,7 +20,8 @@ graph_from_sf <- function(x,
                            snap_digits = 7,
                            keep_fields = NULL,
                            output = c("graph", "data.frame", "csv"),
-                           out_prefix = NULL){
+                           out_prefix = NULL,
+                           coords = TRUE){
 
   output <- match.arg(output)
   if (!requireNamespace("sf", quietly = TRUE)) stop("Package 'sf' is required for graph_from_sf()")
@@ -69,5 +70,5 @@ graph_from_sf <- function(x,
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, nrow(parts))
 
   finalize_geom_graph(parts$x1, parts$y1, parts$x2, parts$y2, cost, direction_code, snap_digits,
-                       attrs, keep_fields, output, out_prefix)
+                       attrs, keep_fields, output, out_prefix, want_coords = coords)
 }

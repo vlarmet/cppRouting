@@ -26,6 +26,11 @@
 #' \link{makegraph}), \code{"data.frame"} (returns the edges/coords tables without building the graph), or
 #' \code{"csv"} (writes \code{<out_prefix>_edges.csv} and \code{<out_prefix>_coords.csv}).
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
+#' @param coords logical. If \code{TRUE} (default), extract each node's coordinates: written to
+#' \code{<out_prefix>_coords.csv} (\code{output = "csv"}), returned as a \code{data.frame(node_id, X, Y)}
+#' (\code{output = "data.frame"}), or passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set
+#' to \code{FALSE} to skip this -- e.g. if you already have node coordinates elsewhere and only need the
+#' graph topology.
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details The shapefile is assumed to already be topologically clean, i.e. lines only meet at their
@@ -42,7 +47,8 @@ graph_from_shapefile <- function(path,
                                   snap_digits = 7,
                                   keep_fields = NULL,
                                   output = c("graph", "data.frame", "csv"),
-                                  out_prefix = NULL){
+                                  out_prefix = NULL,
+                                  coords = TRUE){
 
   output <- match.arg(output)
   if (output == "csv" && is.null(out_prefix)) stop("out_prefix must be provided when output = 'csv'")
@@ -74,5 +80,5 @@ graph_from_shapefile <- function(path,
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, length(geom$x1))
 
   finalize_geom_graph(geom$x1, geom$y1, geom$x2, geom$y2, cost, direction_code, snap_digits,
-                       attrs, keep_fields, output, out_prefix)
+                       attrs, keep_fields, output, out_prefix, want_coords = coords)
 }

@@ -16,6 +16,7 @@ cpp_extract(
   keep_fields = NULL,
   output = c("graph", "data.frame", "csv"),
   out_prefix = NULL,
+  coords = TRUE,
   profile = osm_car_profile(),
   use_maxspeed = TRUE,
   assume_oneway_motorway = TRUE,
@@ -79,6 +80,14 @@ OSM node ids directly, no coordinate matching needed).}
 \code{"data.frame"}, or \code{"csv"}.}
 
 \item{out_prefix}{Path prefix used when \code{output = "csv"}.}
+
+\item{coords}{logical. If \code{TRUE} (default), extract each node's coordinates: written to
+\code{<out_prefix>_coords.csv} (\code{output = "csv"}, including the \code{.pbf} \code{max_memory}
+disk-backed pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{output = "data.frame"}), or
+passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this --
+e.g. if you already have node coordinates elsewhere and only need the graph topology. For the
+\code{max_memory} pipeline this also skips an entire external sort/merge pass, a real saving in disk I/O
+and time at continent scale, not just a smaller output.}
 
 \item{profile}{OSM sources (\code{.pbf}/\code{osmdata}) only. A data.frame with columns \code{highway},
 \code{clazz}, \code{speed} describing which \code{highway} tag values to keep and their class id /

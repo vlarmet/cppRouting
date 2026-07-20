@@ -13,7 +13,7 @@ run_disk_pipeline <- function(path, max_memory_mb = 0.0001, ...){
   profile <- osm_car_profile()
   cppRouting:::cpp_build_osm_graph_disk_csv(
     path, as.character(profile$highway), as.integer(profile$clazz), as.numeric(profile$speed),
-    TRUE, TRUE, max_memory_mb, tempdir(), edges_path, coords_path, FALSE)
+    TRUE, TRUE, max_memory_mb, tempdir(), edges_path, coords_path, TRUE, FALSE)
   list(data = data.table::fread(edges_path), coords = data.table::fread(coords_path))
 }
 
@@ -54,6 +54,22 @@ test_that("cpp_extract(max_memory=...) reaches the disk pipeline and matches the
   in_ram <- cpp_extract(pbf, output = "data.frame", progress = FALSE)
   expect_equal(nrow(disk_res$coords), nrow(in_ram$coords))
   expect_equal(nrow(disk_res$data), nrow(in_ram$data))
+})
+
+test_that("cpp_extract(max_memory=..., coords=FALSE) skips coords.csv but edge distances stay correct", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  out_prefix <- tempfile()
+  paths <- cpp_extract(path, max_memory = 300, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  on.exit(unlink(paths), add = TRUE)
+  expect_length(paths, 1L)
+  expect_true(file.exists(paths))
+  expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
+
+  disk_edges <- data.table::fread(paths)
+  in_ram <- cpp_extract(path, output = "data.frame", progress = FALSE)
+  expect_equal(sort(disk_edges$dist), sort(in_ram$data$dist))
 })
 
 test_that("cpp_extract() requires output='csv' when max_memory is set", {

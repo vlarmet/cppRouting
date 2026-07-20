@@ -25,6 +25,7 @@ graph_from_osmdata <- function(x,
                                 snap_digits = 7,
                                 output = c("graph", "data.frame", "csv"),
                                 out_prefix = NULL,
+                                coords = TRUE,
                                 progress = TRUE){
 
   output <- match.arg(output)
@@ -115,8 +116,8 @@ graph_from_osmdata <- function(x,
                                            use_maxspeed, assume_oneway_motorway)
 
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
-  coords <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
+  coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
   aux <- if (keep_clazz) data.frame(clazz = result$clazz) else NULL
 
-  dispatch_graph_output(edges, coords, aux, output, out_prefix)
+  dispatch_graph_output(edges, coords_df, aux, output, out_prefix, want_coords = coords)
 }

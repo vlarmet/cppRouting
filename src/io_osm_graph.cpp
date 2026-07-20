@@ -205,22 +205,29 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
 }
 
 // Shared pass 3 (CSV streaming variant): writes "<edges_path>" (from,to,dist)
-// and "<coords_path>" (node_id,X,Y) directly as each edge/node is produced,
-// without ever holding the full edge/coordinate list in memory -- the point
-// being to keep peak RAM bounded by pass 1/2's structures alone, for
-// continent-scale files processed with output="csv".
+// and, if want_coords, "<coords_path>" (node_id,X,Y) directly as each
+// edge/node is produced, without ever holding the full edge/coordinate list
+// in memory -- the point being to keep peak RAM bounded by pass 1/2's
+// structures alone, for continent-scale files processed with output="csv".
+// When want_coords is false, coords_path is never created -- node_id_map is
+// still needed regardless (it's what assigns from/to ids), only the
+// coordinate write is skipped.
 Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
                                       const NodeTable &nodes,
                                       const std::string &edges_path,
                                       const std::string &coords_path,
+                                      bool want_coords,
                                       bool progress){
   std::ofstream edges_f(edges_path.c_str());
   if (!edges_f) Rcpp::stop("Cannot open for writing: " + edges_path);
   edges_f << "from,to,dist\n" << std::setprecision(10);
 
-  std::ofstream coords_f(coords_path.c_str());
-  if (!coords_f) Rcpp::stop("Cannot open for writing: " + coords_path);
-  coords_f << "node_id,X,Y\n" << std::setprecision(9);
+  std::ofstream coords_f;
+  if (want_coords) {
+    coords_f.open(coords_path.c_str());
+    if (!coords_f) Rcpp::stop("Cannot open for writing: " + coords_path);
+    coords_f << "node_id,X,Y\n" << std::setprecision(9);
+  }
 
   std::unordered_map<int64_t, int> node_id_map;
   auto get_node_id = [&](int64_t osm_id) -> int {
@@ -228,8 +235,10 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
     if (it != node_id_map.end()) return it->second;
     int id = static_cast<int>(node_id_map.size());
     node_id_map.emplace(osm_id, id);
-    auto coord = nodes.coord(osm_id);
-    coords_f << id << "," << coord.second << "," << coord.first << "\n"; // X=lon, Y=lat
+    if (want_coords) {
+      auto coord = nodes.coord(osm_id);
+      coords_f << id << "," << coord.second << "," << coord.first << "\n"; // X=lon, Y=lat
+    }
     return id;
   };
 
@@ -309,6 +318,7 @@ Rcpp::List cpp_write_osm_graph_csv(std::string path,
                                      bool assume_oneway_motorway,
                                      std::string edges_path,
                                      std::string coords_path,
+                                     bool want_coords,
                                      bool progress){
   std::vector<KeptWay> kept_ways;
   NodeTable nodes;
@@ -316,7 +326,7 @@ Rcpp::List cpp_write_osm_graph_csv(std::string path,
                  use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and streaming edges to CSV..." << std::endl;
-  return write_edges_from_ways_csv(kept_ways, nodes, edges_path, coords_path, progress);
+  return write_edges_from_ways_csv(kept_ways, nodes, edges_path, coords_path, want_coords, progress);
 }
 
 // [[Rcpp::export]]

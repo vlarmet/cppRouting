@@ -49,6 +49,13 @@
 #' @param output One of \code{"graph"} (default, returns a ready-to-use \code{cppRouting_graph}),
 #' \code{"data.frame"}, or \code{"csv"}.
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
+#' @param coords logical. If \code{TRUE} (default), extract each node's coordinates: written to
+#' \code{<out_prefix>_coords.csv} (\code{output = "csv"}, including the \code{.pbf} \code{max_memory}
+#' disk-backed pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{output = "data.frame"}), or
+#' passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this --
+#' e.g. if you already have node coordinates elsewhere and only need the graph topology. For the
+#' \code{max_memory} pipeline this also skips an entire external sort/merge pass, a real saving in disk I/O
+#' and time at continent scale, not just a smaller output.
 #' @param profile OSM sources (\code{.pbf}/\code{osmdata}) only. A data.frame with columns \code{highway},
 #' \code{clazz}, \code{speed} describing which \code{highway} tag values to keep and their class id /
 #' default speed (km/h). Defaults to \link{osm_car_profile}.
@@ -89,6 +96,7 @@ cpp_extract <- function(x,
                          keep_fields = NULL,
                          output = c("graph", "data.frame", "csv"),
                          out_prefix = NULL,
+                         coords = TRUE,
                          profile = osm_car_profile(),
                          use_maxspeed = TRUE,
                          assume_oneway_motorway = TRUE,
@@ -101,12 +109,12 @@ cpp_extract <- function(x,
   args <- list(cost_field = cost_field, speed_field = speed_field, length_field = length_field,
                direction_field = direction_field, direction_values = direction_values,
                directed = directed, snap_digits = snap_digits, keep_fields = keep_fields,
-               output = output, out_prefix = out_prefix)
+               output = output, out_prefix = out_prefix, coords = coords)
 
   osm_args <- list(profile = profile, use_maxspeed = use_maxspeed,
                     assume_oneway_motorway = assume_oneway_motorway,
                     keep_clazz = keep_clazz, output = output,
-                    out_prefix = out_prefix, progress = progress)
+                    out_prefix = out_prefix, coords = coords, progress = progress)
 
   # Class is the reliable signal for a full osmdata result (class "osmdata",
   # a list -- not itself an "sf" object): route it to the osmdata adapter,

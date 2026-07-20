@@ -20,6 +20,10 @@
 // to avoid, so unlike the in-RAM path there is no "graph"/"data.frame"
 // output mode here -- the caller re-reads the CSV afterward if they know it
 // will fit.
+// When want_coords is false, the whole final coordinate external sort/dedup
+// pass (pass 5's coord_sorter) is skipped entirely, not just the file write
+// -- a real saving in both disk I/O and time at continent scale, since that
+// pass otherwise re-sorts one CoordRecord per way-endpoint occurrence.
 Rcpp::List build_osm_graph_disk(std::string path,
                                  std::vector<std::string> profile_highway,
                                  std::vector<int> profile_clazz,
@@ -30,6 +34,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
                                  std::string temp_dir,
                                  std::string edges_path,
                                  std::string coords_path,
+                                 bool want_coords,
                                  bool progress);
 
 #endif

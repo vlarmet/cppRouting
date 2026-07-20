@@ -15,6 +15,12 @@
 #' (see \link{makegraph}). Has no effect when \code{output = "csv"} (that path never carries \code{aux}).
 #' @param output One of \code{"graph"} (default), \code{"data.frame"} or \code{"csv"}.
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
+#' @param coords logical. If \code{TRUE} (default), extract each node's coordinates: written to
+#' \code{<out_prefix>_coords.csv} (\code{output = "csv"}, including the \code{max_memory} disk-backed
+#' pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{output = "data.frame"}), or passed to
+#' \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this -- for the
+#' \code{max_memory} pipeline in particular, this also skips an entire external sort/merge pass over the
+#' node coordinates, a real saving in disk I/O and time at continent scale, not just a smaller output.
 #' @param max_memory Optional. A budget in megabytes for the disk-backed pipeline (see Details). When set,
 #' \code{output} must be \code{"csv"}: the whole point is to never materialize the result (or the
 #' intermediate node/way tables) beyond this budget, so returning a graph/data.frame to R would defeat it.
@@ -51,6 +57,7 @@ graph_from_osmpbf <- function(path,
                                keep_clazz = FALSE,
                                output = c("graph", "data.frame", "csv"),
                                out_prefix = NULL,
+                               coords = TRUE,
                                max_memory = NULL,
                                temp_dir = tempdir(),
                                progress = TRUE){
@@ -80,8 +87,9 @@ graph_from_osmpbf <- function(path,
                                   as.numeric(profile$speed),
                                   use_maxspeed, assume_oneway_motorway,
                                   as.numeric(max_memory), temp_dir,
-                                  edges_path, coords_path, progress)
-    return(invisible(c(edges_path, coords_path)))
+                                  edges_path, coords_path, coords, progress)
+    if (coords) return(invisible(c(edges_path, coords_path)))
+    return(invisible(edges_path))
   }
 
   if (output == "csv") {
@@ -96,8 +104,9 @@ graph_from_osmpbf <- function(path,
                              as.integer(profile$clazz),
                              as.numeric(profile$speed),
                              use_maxspeed, assume_oneway_motorway,
-                             edges_path, coords_path, progress)
-    return(invisible(c(edges_path, coords_path)))
+                             edges_path, coords_path, coords, progress)
+    if (coords) return(invisible(c(edges_path, coords_path)))
+    return(invisible(edges_path))
   }
 
   result <- cpp_build_osm_graph(path,
@@ -107,8 +116,8 @@ graph_from_osmpbf <- function(path,
                                  use_maxspeed, assume_oneway_motorway, progress)
 
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
-  coords <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
+  coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
   aux <- if (keep_clazz) data.frame(clazz = result$clazz) else NULL
 
-  dispatch_graph_output(edges, coords, aux, output, out_prefix)
+  dispatch_graph_output(edges, coords_df, aux, output, out_prefix, want_coords = coords)
 }

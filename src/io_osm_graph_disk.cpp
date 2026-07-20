@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <functional>
+#include <memory>
 
 namespace {
 
@@ -91,6 +92,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
                                  std::string temp_dir,
                                  std::string edges_path,
                                  std::string coords_path,
+                                 bool want_coords,
                                  bool progress){
 
   osm_tags::Profile profile = osm_tags::make_profile(profile_highway, profile_clazz, profile_speed);
@@ -239,7 +241,8 @@ Rcpp::List build_osm_graph_disk(std::string path,
   if (!edges_f) Rcpp::stop("Cannot open for writing: " + edges_path);
   edges_f << "from,to,dist\n" << std::setprecision(10);
 
-  ExternalSorter<CoordRecord, CompareCoordById> coord_sorter(coord_chunk, temp_dir, "cppRouting_osm_coordout");
+  std::unique_ptr<ExternalSorter<CoordRecord, CompareCoordById> > coord_sorter;
+  if (want_coords) coord_sorter.reset(new ExternalSorter<CoordRecord, CompareCoordById>(coord_chunk, temp_dir, "cppRouting_osm_coordout"));
 
   long long n_edges = 0;
   int n_boundary_ways_skipped = 0;
@@ -277,8 +280,10 @@ Rcpp::List build_osm_graph_disk(std::string path,
 
           if (from_osm != to_osm){
             double cost = 60.0 * (length_m / 1000.0) / speed;
-            coord_sorter.add(CoordRecord{from_osm, group[seg_start].lat, group[seg_start].lon});
-            coord_sorter.add(CoordRecord{to_osm, group[i].lat, group[i].lon});
+            if (want_coords) {
+              coord_sorter->add(CoordRecord{from_osm, group[seg_start].lat, group[seg_start].lon});
+              coord_sorter->add(CoordRecord{to_osm, group[i].lat, group[i].lon});
+            }
             if (direction != 2){ edges_f << from_osm << "," << to_osm << "," << cost << "\n"; n_edges++; }
             if (direction != 1){ edges_f << to_osm << "," << from_osm << "," << cost << "\n"; n_edges++; }
           }
@@ -293,18 +298,19 @@ Rcpp::List build_osm_graph_disk(std::string path,
     }
   }
   std::remove(ways_path.c_str());
-  coord_sorter.finish();
-
-  // Dedup the graph-node coordinates (each node was added once per way that
-  // uses it as a split-point endpoint, so duplicates across ways are
-  // expected) and write the final coords.csv.
-  std::ofstream coords_f(coords_path.c_str());
-  if (!coords_f) Rcpp::stop("Cannot open for writing: " + coords_path);
-  coords_f << "node_id,X,Y\n" << std::setprecision(9);
 
   long long n_nodes = 0;
-  {
-    auto cit = coord_sorter.iterator();
+  if (want_coords) {
+    coord_sorter->finish();
+
+    // Dedup the graph-node coordinates (each node was added once per way
+    // that uses it as a split-point endpoint, so duplicates across ways are
+    // expected) and write the final coords.csv.
+    std::ofstream coords_f(coords_path.c_str());
+    if (!coords_f) Rcpp::stop("Cannot open for writing: " + coords_path);
+    coords_f << "node_id,X,Y\n" << std::setprecision(9);
+
+    auto cit = coord_sorter->iterator();
     if (cit.has_next()){
       CoordRecord cur = cit.next();
       while (true){
@@ -320,11 +326,19 @@ Rcpp::List build_osm_graph_disk(std::string path,
     }
   }
 
-  if (progress) Rcpp::Rcout << "[cpp_extract disk] done: " << n_nodes << " nodes, " << n_edges << " edges ("
-                            << n_boundary_ways_skipped << " way(s) skipped, crossing the extract's boundary) from "
-                            << n_kept_ways << " kept ways" << std::endl;
+  if (progress) {
+    if (want_coords) {
+      Rcpp::Rcout << "[cpp_extract disk] done: " << n_nodes << " nodes, " << n_edges << " edges ("
+                  << n_boundary_ways_skipped << " way(s) skipped, crossing the extract's boundary) from "
+                  << n_kept_ways << " kept ways" << std::endl;
+    } else {
+      Rcpp::Rcout << "[cpp_extract disk] done: " << n_edges << " edges (coordinates not extracted) ("
+                  << n_boundary_ways_skipped << " way(s) skipped, crossing the extract's boundary) from "
+                  << n_kept_ways << " kept ways" << std::endl;
+    }
+  }
 
-  return Rcpp::List::create(Rcpp::Named("nbnode") = static_cast<double>(n_nodes),
+  return Rcpp::List::create(Rcpp::Named("nbnode") = want_coords ? static_cast<double>(n_nodes) : NA_REAL,
                              Rcpp::Named("nbedge") = static_cast<double>(n_edges));
 }
 
@@ -339,8 +353,9 @@ Rcpp::List cpp_build_osm_graph_disk_csv(std::string path,
                                           std::string temp_dir,
                                           std::string edges_path,
                                           std::string coords_path,
+                                          bool want_coords,
                                           bool progress){
   return build_osm_graph_disk(path, profile_highway, profile_clazz, profile_speed,
                                use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir,
-                               edges_path, coords_path, progress);
+                               edges_path, coords_path, want_coords, progress);
 }

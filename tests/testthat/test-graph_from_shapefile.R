@@ -125,3 +125,25 @@ test_that("cpp_read_dbf rejects a record_size too small to hold its own declared
   writeBin(bad, bad_path)
   expect_error(cppRouting:::cpp_read_dbf(bad_path), "does not fit within the declared record size")
 })
+
+common_shp_args <- list(cost_field = "LONGUEUR", direction_field = "SENS",
+                         direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
+                         snap_digits = 4)
+
+test_that("graph_from_shapefile coords=FALSE drops coords from every output mode", {
+  res <- do.call(graph_from_shapefile, c(list(test_shp), common_shp_args, list(output = "data.frame", coords = FALSE)))
+  expect_null(res$coords)
+  expect_equal(nrow(res$data), 10L)
+
+  g <- do.call(graph_from_shapefile, c(list(test_shp), common_shp_args, list(coords = FALSE)))
+  expect_null(g$coords)
+  expect_equal(g$nbnode, 7L)
+
+  out_prefix <- tempfile()
+  paths <- do.call(graph_from_shapefile, c(list(test_shp), common_shp_args,
+                                            list(output = "csv", out_prefix = out_prefix, coords = FALSE)))
+  on.exit(unlink(paths))
+  expect_length(paths, 1L)
+  expect_true(file.exists(paths))
+  expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
+})

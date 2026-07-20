@@ -57,14 +57,20 @@ warn_if_geographic_without_length <- function(is_geographic, length_field, cost_
 # restriction as the OSM CSV path) or the in-memory builder (which does
 # support keep_fields/aux, via the "origin" index cpp_build_geom_graph
 # returns mapping each output edge back to its input segment).
+# want_coords: if FALSE, node coordinates are neither written (csv) nor
+# attached to the returned graph/data.frame -- see cpp_extract's `coords`
+# argument. Named want_coords here (not coords) because this function's own
+# local variable holding the built coordinate table is already called
+# `coords`.
 finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
-                                 attrs, keep_fields, output, out_prefix){
+                                 attrs, keep_fields, output, out_prefix, want_coords = TRUE){
   if (output == "csv") {
     if (!is.null(keep_fields)) warning("keep_fields is ignored when output = 'csv' (that path never carries aux)")
     edges_path <- paste0(out_prefix, "_edges.csv")
     coords_path <- paste0(out_prefix, "_coords.csv")
-    cpp_write_geom_graph_csv(x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path)
-    return(invisible(c(edges_path, coords_path)))
+    cpp_write_geom_graph_csv(x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path, want_coords)
+    if (want_coords) return(invisible(c(edges_path, coords_path)))
+    return(invisible(edges_path))
   }
 
   result <- cpp_build_geom_graph(x1, y1, x2, y2, cost, direction, snap_digits)
@@ -79,16 +85,21 @@ finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
     rownames(aux) <- NULL
   }
 
-  dispatch_graph_output(edges, coords, aux, output, out_prefix)
+  dispatch_graph_output(edges, coords, aux, output, out_prefix, want_coords)
 }
 
 # Shared by every Module A/B reader: turn already-built edges/coords/aux
 # tables into whichever of graph/data.frame/csv the caller asked for.
-dispatch_graph_output <- function(edges, coords, aux, output, out_prefix){
+# want_coords: if FALSE, coords is dropped (NULL in data.frame mode, not
+# written in csv mode, not passed to makegraph() in graph mode).
+dispatch_graph_output <- function(edges, coords, aux, output, out_prefix, want_coords = TRUE){
+  if (!want_coords) coords <- NULL
+
   if (output == "data.frame") return(list(data = edges, coords = coords, aux = aux))
 
   if (output == "csv") {
     data.table::fwrite(edges, paste0(out_prefix, "_edges.csv"))
+    if (!want_coords) return(invisible(paste0(out_prefix, "_edges.csv")))
     data.table::fwrite(coords, paste0(out_prefix, "_coords.csv"))
     return(invisible(c(paste0(out_prefix, "_edges.csv"), paste0(out_prefix, "_coords.csv"))))
   }

@@ -68,3 +68,22 @@ test_that("graph_from_osmdata warns when snap_digits collapses two distinct osm_
     "shared by multiple distinct osm_id"
   )
 })
+
+test_that("graph_from_osmdata coords=FALSE drops coords from every output mode", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+
+  res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE)
+  expect_null(res$coords)
+  expect_equal(nrow(res$data), 5L)
+
+  g <- cppRouting:::graph_from_osmdata(x, coords = FALSE, progress = FALSE)
+  expect_null(g$coords)
+
+  out_prefix <- tempfile()
+  paths <- cppRouting:::graph_from_osmdata(x, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  on.exit(unlink(paths))
+  expect_length(paths, 1L)
+  expect_true(file.exists(paths))
+  expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
+})
