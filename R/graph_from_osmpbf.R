@@ -12,7 +12,7 @@
 #' ways are treated as one-way (forward, first node to last) unless an explicit \code{oneway=no} tag says
 #' otherwise. Standard OSM \code{oneway} tag values (\code{yes}/\code{-1}/\code{no}) always take precedence.
 #' @param keep_clazz logical. If \code{TRUE}, keep each edge's resolved highway class id as \code{aux}
-#' (see \link{makegraph}).
+#' (see \link{makegraph}). Has no effect when \code{output = "csv"} (that path never carries \code{aux}).
 #' @param output One of \code{"graph"} (default), \code{"data.frame"} or \code{"csv"}.
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
 #' @param progress logical. Print progress messages for each of the 3 read passes.
@@ -23,7 +23,10 @@
 #' (a node referenced by >= 2 kept ways, or a way's own endpoint) and split into separate edges accordingly.
 #' A way referencing a node outside the file (a regional extract cut through a way) is dropped entirely, a
 #' small, expected loss limited to the extract's edge. Turn restrictions, barriers and non-car profiles are
-#' not supported yet.
+#' not supported yet. \code{output = "csv"} streams edges/coordinates directly to disk as pass 3 produces
+#' them rather than building the full result in R memory first, keeping peak RAM bounded by passes 1/2's
+#' structures alone -- meant for files too large to comfortably materialize as an R object (e.g. a whole
+#' country/continent).
 #' @noRd
 graph_from_osmpbf <- function(path,
                                profile = osm_car_profile(),
@@ -39,6 +42,22 @@ graph_from_osmpbf <- function(path,
   if (!file.exists(path)) stop("File not found: ", path)
   if (!all(c("highway", "clazz", "speed") %in% names(profile))) {
     stop("profile must have columns 'highway', 'clazz', 'speed'")
+  }
+
+  if (output == "csv") {
+    # Streams edges/coords straight to disk during the same junction-splitting
+    # pass instead of building the full result in R memory first -- keeps
+    # peak RAM bounded by pass 1/2's structures alone, for continent-scale
+    # files. keep_clazz has no effect here: the CSV path never carries aux.
+    edges_path <- paste0(out_prefix, "_edges.csv")
+    coords_path <- paste0(out_prefix, "_coords.csv")
+    cpp_write_osm_graph_csv(path,
+                             as.character(profile$highway),
+                             as.integer(profile$clazz),
+                             as.numeric(profile$speed),
+                             use_maxspeed, assume_oneway_motorway,
+                             edges_path, coords_path, progress)
+    return(invisible(c(edges_path, coords_path)))
   }
 
   result <- cpp_build_osm_graph(path,

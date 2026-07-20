@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <cstdlib>
 #include <cctype>
+#include <fstream>
+#include <iomanip>
 
 namespace {
 
@@ -96,33 +98,22 @@ bool resolve_way(const std::vector<OsmTag> &tags,
   return true;
 }
 
-// Shared pass 3: given already-filtered ways and a coordinate lookup for
-// every node they reference, split each way at its true junctions (a node
-// referenced by >= 2 kept ways, or the way's own endpoint) and emit
-// from/to/dist/clazz edges plus a compact node_id/lon/lat table. Used by
-// both the .pbf path and the osmdata adapter.
-Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
-                                  const std::unordered_map<int64_t, uint32_t> &ref_count,
-                                  const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
-                                  bool progress){
-  std::unordered_map<int64_t, int> node_id_map;
-  std::vector<double> node_lat_out, node_lon_out;
-  auto get_node_id = [&](int64_t osm_id) -> int {
-    auto it = node_id_map.find(osm_id);
-    if (it != node_id_map.end()) return it->second;
-    int id = static_cast<int>(node_lat_out.size());
-    node_id_map.emplace(osm_id, id);
-    auto coord = node_coord.at(osm_id);
-    node_lat_out.push_back(coord.first);
-    node_lon_out.push_back(coord.second);
-    return id;
-  };
-
-  std::vector<int> from, to;
-  std::vector<double> dist;
-  std::vector<int> clazz_out;
-
+// Core junction-splitting algorithm, parameterized over how a node id is
+// obtained/recorded (get_node_id) and how a finished edge is recorded
+// (on_edge) -- shared by the in-memory List builder (nodes/edges pushed
+// into vectors) and the CSV streaming writer (nodes/edges written straight
+// to a file the moment they're produced, so neither ever needs to be held
+// as one big in-memory vector). The junction rule itself (a node referenced
+// by >= 2 kept ways, or a way's own endpoint) and the haversine length
+// computation exist in exactly this one place either way.
+template <typename GetNodeId, typename OnEdge>
+std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept_ways,
+                                                 const std::unordered_map<int64_t, uint32_t> &ref_count,
+                                                 const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                                 GetNodeId get_node_id, OnEdge on_edge){
+  long long n_edges = 0;
   int n_boundary_ways_skipped = 0;
+
   for (const auto &way : kept_ways){
     // A regional extract can contain a way that crosses the extract's
     // boundary, referencing a node that was never included in the file at
@@ -153,20 +144,52 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
       int id2 = get_node_id(to_osm);
       if (id1 != id2){
         double cost = 60.0 * (length_m / 1000.0) / way.speed;
-        if (way.direction != 2){ from.push_back(id1); to.push_back(id2); dist.push_back(cost); clazz_out.push_back(way.clazz); }
-        if (way.direction != 1){ from.push_back(id2); to.push_back(id1); dist.push_back(cost); clazz_out.push_back(way.clazz); }
+        if (way.direction != 2){ on_edge(id1, id2, cost, way.clazz); n_edges++; }
+        if (way.direction != 1){ on_edge(id2, id1, cost, way.clazz); n_edges++; }
       }
 
       seg_start = i;
     }
   }
 
+  return std::make_pair(n_edges, n_boundary_ways_skipped);
+}
+
+// Shared pass 3 (in-memory variant): returns from/to/dist/clazz plus a
+// compact node_id/lon/lat table as an Rcpp::List. Used by the .pbf path and
+// the osmdata adapter.
+Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
+                                  const std::unordered_map<int64_t, uint32_t> &ref_count,
+                                  const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                  bool progress){
+  std::unordered_map<int64_t, int> node_id_map;
+  std::vector<double> node_lat_out, node_lon_out;
+  auto get_node_id = [&](int64_t osm_id) -> int {
+    auto it = node_id_map.find(osm_id);
+    if (it != node_id_map.end()) return it->second;
+    int id = static_cast<int>(node_lat_out.size());
+    node_id_map.emplace(osm_id, id);
+    auto coord = node_coord.at(osm_id);
+    node_lat_out.push_back(coord.first);
+    node_lon_out.push_back(coord.second);
+    return id;
+  };
+
+  std::vector<int> from, to;
+  std::vector<double> dist;
+  std::vector<int> clazz_out;
+  auto on_edge = [&](int id1, int id2, double cost, int clazz){
+    from.push_back(id1); to.push_back(id2); dist.push_back(cost); clazz_out.push_back(clazz);
+  };
+
+  auto counts = split_ways_into_edges(kept_ways, ref_count, node_coord, get_node_id, on_edge);
+
   int nbnode = static_cast<int>(node_lat_out.size());
   Rcpp::IntegerVector node_id(nbnode);
   for (int i = 0; i < nbnode; i++) node_id[i] = i;
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] done: " << nbnode << " nodes, " << from.size() << " edges ("
-                            << n_boundary_ways_skipped << " way(s) skipped, crossing the extract's boundary)" << std::endl;
+  if (progress) Rcpp::Rcout << "[cpp_extract] done: " << nbnode << " nodes, " << counts.first << " edges ("
+                            << counts.second << " way(s) skipped, crossing the extract's boundary)" << std::endl;
 
   return Rcpp::List::create(
     Rcpp::Named("from") = Rcpp::wrap(from),
@@ -179,24 +202,66 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
   );
 }
 
+// Shared pass 3 (CSV streaming variant): writes "<edges_path>" (from,to,dist)
+// and "<coords_path>" (node_id,X,Y) directly as each edge/node is produced,
+// without ever holding the full edge/coordinate list in memory -- the point
+// being to keep peak RAM bounded by pass 1/2's structures alone, for
+// continent-scale files processed with output="csv".
+Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
+                                      const std::unordered_map<int64_t, uint32_t> &ref_count,
+                                      const std::unordered_map<int64_t, std::pair<float, float> > &node_coord,
+                                      const std::string &edges_path,
+                                      const std::string &coords_path,
+                                      bool progress){
+  std::ofstream edges_f(edges_path.c_str());
+  if (!edges_f) Rcpp::stop("Cannot open for writing: " + edges_path);
+  edges_f << "from,to,dist\n" << std::setprecision(10);
+
+  std::ofstream coords_f(coords_path.c_str());
+  if (!coords_f) Rcpp::stop("Cannot open for writing: " + coords_path);
+  coords_f << "node_id,X,Y\n" << std::setprecision(9);
+
+  std::unordered_map<int64_t, int> node_id_map;
+  auto get_node_id = [&](int64_t osm_id) -> int {
+    auto it = node_id_map.find(osm_id);
+    if (it != node_id_map.end()) return it->second;
+    int id = static_cast<int>(node_id_map.size());
+    node_id_map.emplace(osm_id, id);
+    auto coord = node_coord.at(osm_id);
+    coords_f << id << "," << coord.second << "," << coord.first << "\n"; // X=lon, Y=lat
+    return id;
+  };
+
+  auto on_edge = [&](int id1, int id2, double cost, int /*clazz*/){
+    edges_f << id1 << "," << id2 << "," << cost << "\n";
+  };
+
+  auto counts = split_ways_into_edges(kept_ways, ref_count, node_coord, get_node_id, on_edge);
+  int nbnode = static_cast<int>(node_id_map.size());
+
+  if (progress) Rcpp::Rcout << "[cpp_extract] done: " << nbnode << " nodes, " << counts.first << " edges ("
+                            << counts.second << " way(s) skipped, crossing the extract's boundary)" << std::endl;
+
+  return Rcpp::List::create(Rcpp::Named("nbnode") = nbnode, Rcpp::Named("nbedge") = static_cast<double>(counts.first));
 }
 
-Rcpp::List build_osm_graph(std::string path,
-                            std::vector<std::string> profile_highway,
-                            std::vector<int> profile_clazz,
-                            std::vector<double> profile_speed,
-                            bool use_maxspeed,
-                            bool assume_oneway_motorway,
-                            bool progress){
-
+// Passes 1 and 2 (filter+resolve ways, then collect coordinates for the
+// nodes they reference) are identical whether pass 3 builds an in-memory
+// List or streams straight to CSV -- shared here so the two only ever
+// diverge at pass 3.
+void run_passes_1_2(const std::string &path,
+                     const std::vector<std::string> &profile_highway,
+                     const std::vector<int> &profile_clazz,
+                     const std::vector<double> &profile_speed,
+                     bool use_maxspeed, bool assume_oneway_motorway, bool progress,
+                     std::vector<KeptWay> &kept_ways,
+                     std::unordered_map<int64_t, uint32_t> &ref_count,
+                     std::unordered_map<int64_t, std::pair<float, float> > &node_coord){
   std::unordered_map<std::string, std::pair<int, double> > profile;
   for (size_t i = 0; i < profile_highway.size(); i++)
     profile[profile_highway[i]] = std::make_pair(profile_clazz[i], profile_speed[i]);
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 1/3: reading ways..." << std::endl;
-
-  std::vector<KeptWay> kept_ways;
-  std::unordered_map<int64_t, uint32_t> ref_count;
 
   stream_osmpbf(path, std::function<void(const OsmNode&)>(),
     [&](const OsmWay &way){
@@ -209,19 +274,52 @@ Rcpp::List build_osm_graph(std::string path,
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 2/3: reading node coordinates (" << ref_count.size() << " referenced nodes)..." << std::endl;
 
-  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
   node_coord.reserve(ref_count.size());
-
   stream_osmpbf(path,
     [&](const OsmNode &node){
       if (ref_count.find(node.id) != ref_count.end())
         node_coord[node.id] = std::make_pair(static_cast<float>(node.lat), static_cast<float>(node.lon));
     },
     std::function<void(const OsmWay&)>());
+}
+
+}
+
+Rcpp::List build_osm_graph(std::string path,
+                            std::vector<std::string> profile_highway,
+                            std::vector<int> profile_clazz,
+                            std::vector<double> profile_speed,
+                            bool use_maxspeed,
+                            bool assume_oneway_motorway,
+                            bool progress){
+  std::vector<KeptWay> kept_ways;
+  std::unordered_map<int64_t, uint32_t> ref_count;
+  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
+  run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
+                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, ref_count, node_coord);
 
   if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and building edges..." << std::endl;
-
   return build_edges_from_ways(kept_ways, ref_count, node_coord, progress);
+}
+
+// [[Rcpp::export]]
+Rcpp::List cpp_write_osm_graph_csv(std::string path,
+                                     std::vector<std::string> profile_highway,
+                                     std::vector<int> profile_clazz,
+                                     std::vector<double> profile_speed,
+                                     bool use_maxspeed,
+                                     bool assume_oneway_motorway,
+                                     std::string edges_path,
+                                     std::string coords_path,
+                                     bool progress){
+  std::vector<KeptWay> kept_ways;
+  std::unordered_map<int64_t, uint32_t> ref_count;
+  std::unordered_map<int64_t, std::pair<float, float> > node_coord;
+  run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
+                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, ref_count, node_coord);
+
+  if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and streaming edges to CSV..." << std::endl;
+  return write_edges_from_ways_csv(kept_ways, ref_count, node_coord, edges_path, coords_path, progress);
 }
 
 // [[Rcpp::export]]

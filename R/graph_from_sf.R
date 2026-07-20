@@ -68,7 +68,6 @@ graph_from_sf <- function(x,
   cost <- resolve_geom_cost(attrs, parts$length, cost_field, speed_field, length_field)
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, nrow(parts))
 
-  result <- cpp_build_geom_graph(parts$x1, parts$y1, parts$x2, parts$y2, cost, direction_code, snap_digits)
-
-  finalize_geom_graph(result, attrs, keep_fields, output, out_prefix)
+  finalize_geom_graph(parts$x1, parts$y1, parts$x2, parts$y2, cost, direction_code, snap_digits,
+                       attrs, keep_fields, output, out_prefix)
 }

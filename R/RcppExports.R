@@ -5,6 +5,14 @@ cpp_build_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits) {
     .Call(`_cppRouting_cpp_build_geom_graph`, x1, y1, x2, y2, cost, direction, snap_digits)
 }
 
+cpp_write_geom_graph_csv <- function(x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path) {
+    .Call(`_cppRouting_cpp_write_geom_graph_csv`, x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path)
+}
+
+cpp_write_osm_graph_csv <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, progress) {
+    .Call(`_cppRouting_cpp_write_osm_graph_csv`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, progress)
+}
+
 cpp_build_osm_graph <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress) {
     .Call(`_cppRouting_cpp_build_osm_graph`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress)
 }

@@ -27,6 +27,44 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cpp_write_geom_graph_csv
+Rcpp::List cpp_write_geom_graph_csv(std::vector<double> x1, std::vector<double> y1, std::vector<double> x2, std::vector<double> y2, std::vector<double> cost, std::vector<int> direction, int snap_digits, std::string edges_path, std::string coords_path);
+RcppExport SEXP _cppRouting_cpp_write_geom_graph_csv(SEXP x1SEXP, SEXP y1SEXP, SEXP x2SEXP, SEXP y2SEXP, SEXP costSEXP, SEXP directionSEXP, SEXP snap_digitsSEXP, SEXP edges_pathSEXP, SEXP coords_pathSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<double> >::type x1(x1SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type y1(y1SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type x2(x2SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type y2(y2SEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type cost(costSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type direction(directionSEXP);
+    Rcpp::traits::input_parameter< int >::type snap_digits(snap_digitsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type edges_path(edges_pathSEXP);
+    Rcpp::traits::input_parameter< std::string >::type coords_path(coords_pathSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_write_geom_graph_csv(x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_write_osm_graph_csv
+Rcpp::List cpp_write_osm_graph_csv(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, std::string edges_path, std::string coords_path, bool progress);
+RcppExport SEXP _cppRouting_cpp_write_osm_graph_csv(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP edges_pathSEXP, SEXP coords_pathSEXP, SEXP progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type profile_highway(profile_highwaySEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type profile_clazz(profile_clazzSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type profile_speed(profile_speedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_maxspeed(use_maxspeedSEXP);
+    Rcpp::traits::input_parameter< bool >::type assume_oneway_motorway(assume_oneway_motorwaySEXP);
+    Rcpp::traits::input_parameter< std::string >::type edges_path(edges_pathSEXP);
+    Rcpp::traits::input_parameter< std::string >::type coords_path(coords_pathSEXP);
+    Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_write_osm_graph_csv(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, progress));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cpp_build_osm_graph
 Rcpp::List cpp_build_osm_graph(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, bool progress);
 RcppExport SEXP _cppRouting_cpp_build_osm_graph(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP progressSEXP) {
@@ -816,6 +854,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpp_build_geom_graph", (DL_FUNC) &_cppRouting_cpp_build_geom_graph, 7},
+    {"_cppRouting_cpp_write_geom_graph_csv", (DL_FUNC) &_cppRouting_cpp_write_geom_graph_csv, 9},
+    {"_cppRouting_cpp_write_osm_graph_csv", (DL_FUNC) &_cppRouting_cpp_write_osm_graph_csv, 9},
     {"_cppRouting_cpp_build_osm_graph", (DL_FUNC) &_cppRouting_cpp_build_osm_graph, 7},
     {"_cppRouting_cpp_build_osm_graph_from_data", (DL_FUNC) &_cppRouting_cpp_build_osm_graph_from_data, 11},
     {"_cppRouting_cpp_osmpbf_counts", (DL_FUNC) &_cppRouting_cpp_osmpbf_counts, 1},

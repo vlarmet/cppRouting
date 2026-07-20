@@ -73,7 +73,6 @@ graph_from_shapefile <- function(path,
   cost <- resolve_geom_cost(attrs, geom$length, cost_field, speed_field, length_field)
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, length(geom$x1))
 
-  result <- cpp_build_geom_graph(geom$x1, geom$y1, geom$x2, geom$y2, cost, direction_code, snap_digits)
-
-  finalize_geom_graph(result, attrs, keep_fields, output, out_prefix)
+  finalize_geom_graph(geom$x1, geom$y1, geom$x2, geom$y2, cost, direction_code, snap_digits,
+                       attrs, keep_fields, output, out_prefix)
 }
