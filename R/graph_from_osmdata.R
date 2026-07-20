@@ -26,6 +26,7 @@ graph_from_osmdata <- function(x,
                                 output = c("graph", "data.frame", "csv"),
                                 out_prefix = NULL,
                                 coords = TRUE,
+                                epsg = NULL,
                                 progress = TRUE){
 
   output <- match.arg(output)
@@ -40,6 +41,9 @@ graph_from_osmdata <- function(x,
 
   lines <- x$osm_lines
   points <- x$osm_points
+
+  is_geographic <- isTRUE(suppressMessages(suppressWarnings(sf::st_is_longlat(points))))
+  stop_if_geographic_coords_unhandled(is_geographic, coords, epsg)
 
   geom_type <- as.character(sf::st_geometry_type(lines, by_geometry = TRUE))
   if (!all(geom_type %in% c("LINESTRING", "MULTILINESTRING"))) {
@@ -117,6 +121,7 @@ graph_from_osmdata <- function(x,
 
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
+  if (coords) coords_df <- reproject_coords(coords_df, is_geographic, sf::st_crs(points), epsg)
   aux <- if (keep_clazz) data.frame(clazz = result$clazz) else NULL
 
   dispatch_graph_output(edges, coords_df, aux, output, out_prefix, want_coords = coords)

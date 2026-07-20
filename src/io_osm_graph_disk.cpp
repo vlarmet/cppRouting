@@ -108,7 +108,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
   std::string coords_bin_path = temp_dir + "/cppRouting_osm_coords.bin";
 
   // ---- Pass 1/5: filter ways, stream them to disk, collect raw node refs ----
-  if (progress) Rcpp::Rcout << "[cpp_extract disk] pass 1/5: reading ways..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 1/5: reading ways..." << std::endl;
 
   ExternalSorter<int64_t> ref_sorter(ref_chunk, temp_dir, "cppRouting_osm_refs");
   long long n_kept_ways = 0;
@@ -127,7 +127,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
   ref_sorter.finish();
 
   // ---- Pass 2/5: collapse the sorted (duplicated) ref stream into (id, ref_count), sorted by id ----
-  if (progress) Rcpp::Rcout << "[cpp_extract disk] pass 2/5: deduplicating referenced nodes..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 2/5: deduplicating referenced nodes..." << std::endl;
 
   long long n_distinct_refs = 0;
   {
@@ -152,7 +152,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
   }
 
   // ---- Pass 3/5: merge-join the (already ~sorted) pbf node stream against node_refcount, -> node_coords.bin (sorted by id) ----
-  if (progress) Rcpp::Rcout << "[cpp_extract disk] pass 3/5: reading node coordinates (" << n_distinct_refs << " referenced nodes)..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 3/5: reading node coordinates (" << n_distinct_refs << " referenced nodes)..." << std::endl;
 
   {
     std::ifstream rc_f(refcount_path.c_str(), std::ios::binary);
@@ -194,7 +194,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
   std::remove(refcount_path.c_str());
 
   // ---- Pass 4/5: (node_id, way_idx, position) sorted by node_id, merge-joined against node_coords -> (way_idx,position,coord,ref_count) sorted by (way_idx,position) ----
-  if (progress) Rcpp::Rcout << "[cpp_extract disk] pass 4/5: attaching coordinates to each way's node sequence..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 4/5: attaching coordinates to each way's node sequence..." << std::endl;
 
   ExternalSorter<IdPosRecord, CompareIdPosById> idpos_sorter(idpos_chunk, temp_dir, "cppRouting_osm_idpos");
   {
@@ -235,7 +235,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
   std::remove(coords_bin_path.c_str());
 
   // ---- Pass 5/5: group by way_idx (already contiguous, sorted by (way_idx,position)), split at junctions, write edges.csv; collect graph-node coords for dedup ----
-  if (progress) Rcpp::Rcout << "[cpp_extract disk] pass 5/5: splitting ways at junctions and writing edges..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 5/5: splitting ways at junctions and writing edges..." << std::endl;
 
   std::ofstream edges_f(edges_path.c_str());
   if (!edges_f) Rcpp::stop("Cannot open for writing: " + edges_path);
@@ -328,11 +328,11 @@ Rcpp::List build_osm_graph_disk(std::string path,
 
   if (progress) {
     if (want_coords) {
-      Rcpp::Rcout << "[cpp_extract disk] done: " << n_nodes << " nodes, " << n_edges << " edges ("
+      Rcpp::Rcout << "done: " << n_nodes << " nodes, " << n_edges << " edges ("
                   << n_boundary_ways_skipped << " way(s) skipped, crossing the extract's boundary) from "
                   << n_kept_ways << " kept ways" << std::endl;
     } else {
-      Rcpp::Rcout << "[cpp_extract disk] done: " << n_edges << " edges (coordinates not extracted) ("
+      Rcpp::Rcout << "done: " << n_edges << " edges (coordinates not extracted) ("
                   << n_boundary_ways_skipped << " way(s) skipped, crossing the extract's boundary) from "
                   << n_kept_ways << " kept ways" << std::endl;
     }

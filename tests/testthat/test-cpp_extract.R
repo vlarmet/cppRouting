@@ -25,7 +25,10 @@ test_that("cpp_extract dispatches sf objects to the sf reader", {
 
 test_that("cpp_extract rejects unsupported extensions/objects with a clear error", {
   expect_error(cpp_extract("network.gpkg"), "not supported")
-  expect_error(cpp_extract("network.pbf"), "File not found") # .pbf IS implemented, this one just doesn't exist
+  # coords = FALSE: the geographic-coordinates hard stop is checked before
+  # file existence, and would otherwise mask the "File not found" this test
+  # targets (.pbf IS implemented, this path just doesn't exist).
+  expect_error(cpp_extract("network.pbf", coords = FALSE), "File not found")
   expect_error(cpp_extract("network.osm"), "Plain OSM XML")
   expect_error(cpp_extract("network.txt"), "Unrecognized file extension")
   expect_error(cpp_extract(list(a = 1)), "does not know how to handle")

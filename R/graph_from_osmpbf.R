@@ -20,7 +20,16 @@
 #' pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{output = "data.frame"}), or passed to
 #' \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this -- for the
 #' \code{max_memory} pipeline in particular, this also skips an entire external sort/merge pass over the
-#' node coordinates, a real saving in disk I/O and time at continent scale, not just a smaller output.
+#' node coordinates, a real saving in disk I/O and time at continent scale, not just a smaller output. OSM
+#' coordinates are always geographic (lat/lon), so \code{coords = TRUE} requires \code{epsg} to be set (see
+#' below) -- otherwise this errors rather than silently returning coordinates that break the A*/NBA
+#' algorithms.
+#' @param epsg Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
+#' coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Required whenever
+#' \code{coords = TRUE} (OSM coordinates are always geographic). Not supported together with
+#' \code{max_memory}: reprojecting would require reading the whole coords table back into R, defeating the
+#' point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
+#' afterward instead (e.g. in chunks with \code{sf::st_transform()}).
 #' @param max_memory Optional. A budget in megabytes for the disk-backed pipeline (see Details). When set,
 #' \code{output} must be \code{"csv"}: the whole point is to never materialize the result (or the
 #' intermediate node/way tables) beyond this budget, so returning a graph/data.frame to R would defeat it.
@@ -58,6 +67,7 @@ graph_from_osmpbf <- function(path,
                                output = c("graph", "data.frame", "csv"),
                                out_prefix = NULL,
                                coords = TRUE,
+                               epsg = NULL,
                                max_memory = NULL,
                                temp_dir = tempdir(),
                                progress = TRUE){
@@ -72,7 +82,14 @@ graph_from_osmpbf <- function(path,
     if (!is.numeric(max_memory) || length(max_memory) != 1 || is.na(max_memory) || max_memory <= 0) {
       stop("max_memory must be a single positive number (megabytes), not: ", paste(deparse(max_memory), collapse = " "))
     }
+    if (!is.null(epsg) && coords) {
+      stop("epsg is not supported together with max_memory: reprojecting would require reading the full ",
+           "coords table back into R, defeating the whole point of the disk-backed pipeline's bounded RAM. ",
+           "Either drop max_memory, set coords = FALSE, or reproject <out_prefix>_coords.csv yourself ",
+           "afterward (e.g. in chunks with sf::st_transform()).")
+    }
   }
+  stop_if_geographic_coords_unhandled(TRUE, coords, epsg)
   if (!file.exists(path)) stop("File not found: ", path)
   if (!all(c("highway", "clazz", "speed") %in% names(profile))) {
     stop("profile must have columns 'highway', 'clazz', 'speed'")
@@ -105,7 +122,10 @@ graph_from_osmpbf <- function(path,
                              as.numeric(profile$speed),
                              use_maxspeed, assume_oneway_motorway,
                              edges_path, coords_path, coords, progress)
-    if (coords) return(invisible(c(edges_path, coords_path)))
+    if (coords) {
+      reproject_coords_csv(coords_path, TRUE, 4326L, epsg)
+      return(invisible(c(edges_path, coords_path)))
+    }
     return(invisible(edges_path))
   }
 
@@ -117,6 +137,7 @@ graph_from_osmpbf <- function(path,
 
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
+  if (coords) coords_df <- reproject_coords(coords_df, TRUE, 4326L, epsg)
   aux <- if (keep_clazz) data.frame(clazz = result$clazz) else NULL
 
   dispatch_graph_output(edges, coords_df, aux, output, out_prefix, want_coords = coords)

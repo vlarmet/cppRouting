@@ -190,7 +190,7 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
   Rcpp::IntegerVector node_id(nbnode);
   for (int i = 0; i < nbnode; i++) node_id[i] = i;
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] done: " << nbnode << " nodes, " << counts.first << " edges ("
+  if (progress) Rcpp::Rcout << "done: " << nbnode << " nodes, " << counts.first << " edges ("
                             << counts.second << " way(s) skipped, crossing the extract's boundary)" << std::endl;
 
   return Rcpp::List::create(
@@ -249,7 +249,7 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
   auto counts = split_ways_into_edges(kept_ways, nodes, get_node_id, on_edge);
   int nbnode = static_cast<int>(node_id_map.size());
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] done: " << nbnode << " nodes, " << counts.first << " edges ("
+  if (progress) Rcpp::Rcout << "done: " << nbnode << " nodes, " << counts.first << " edges ("
                             << counts.second << " way(s) skipped, crossing the extract's boundary)" << std::endl;
 
   return Rcpp::List::create(Rcpp::Named("nbnode") = nbnode, Rcpp::Named("nbedge") = static_cast<double>(counts.first));
@@ -270,7 +270,7 @@ void run_passes_1_2(const std::string &path,
                      NodeTable &nodes){
   osm_tags::Profile profile = make_profile(profile_highway, profile_clazz, profile_speed);
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 1/3: reading ways..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 1/3: reading ways..." << std::endl;
 
   std::vector<int64_t> raw_refs;
   stream_osmpbf(path, std::function<void(const OsmNode&)>(),
@@ -284,7 +284,7 @@ void run_passes_1_2(const std::string &path,
 
   nodes.build_from_refs(raw_refs);
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 2/3: reading node coordinates (" << nodes.size() << " referenced nodes)..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 2/3: reading node coordinates (" << nodes.size() << " referenced nodes)..." << std::endl;
 
   stream_osmpbf(path,
     [&](const OsmNode &node){ nodes.set_coord(node.id, static_cast<float>(node.lat), static_cast<float>(node.lon)); },
@@ -305,7 +305,7 @@ Rcpp::List build_osm_graph(std::string path,
   run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
                  use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and building edges..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 3/3: splitting ways at junctions and building edges..." << std::endl;
   return build_edges_from_ways(kept_ways, nodes, progress);
 }
 
@@ -325,7 +325,7 @@ Rcpp::List cpp_write_osm_graph_csv(std::string path,
   run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
                  use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
 
-  if (progress) Rcpp::Rcout << "[cpp_extract] pass 3/3: splitting ways at junctions and streaming edges to CSV..." << std::endl;
+  if (progress) Rcpp::Rcout << "pass 3/3: splitting ways at junctions and streaming edges to CSV..." << std::endl;
   return write_edges_from_ways_csv(kept_ways, nodes, edges_path, coords_path, want_coords, progress);
 }
 

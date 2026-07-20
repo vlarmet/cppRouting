@@ -82,10 +82,43 @@ test_that("graph_from_sf warns on geographic CRS without an explicit length/cost
   testthat::skip_if_not_installed("sf")
   x <- make_test_sf()
   x <- sf::st_transform(x, 4326)
+  # coords = FALSE isolates this warning (about geometric length reliability)
+  # from the separate geographic-coordinates hard stop tested below.
   expect_warning(
     graph_from_sf(x, direction_field = "SENS",
                   direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
-                  snap_digits = 4, output = "data.frame"),
+                  snap_digits = 4, output = "data.frame", coords = FALSE),
     "geographic"
   )
+})
+
+test_that("graph_from_sf stops on geographic coordinates unless coords=FALSE or epsg is set", {
+  testthat::skip_if_not_installed("sf")
+  x <- sf::st_transform(make_test_sf(), 4326)
+  common <- list(cost_field = "LONGUEUR", direction_field = "SENS",
+                  direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
+                  snap_digits = 4, output = "data.frame")
+
+  expect_error(do.call(graph_from_sf, c(list(x), common)), "geographic")
+
+  res <- do.call(graph_from_sf, c(list(x), common, list(coords = FALSE)))
+  expect_null(res$coords)
+
+  # Round-tripping through 4326 and back to the original projected CRS
+  # (2154) should approximately recover the original small-number Lambert-93
+  # coordinates (0..500) used to build the fixture -- not a coincidence with
+  # a large real-world easting, since this fixture isn't placed in France.
+  res2 <- do.call(graph_from_sf, c(list(x), common, list(epsg = 2154)))
+  expect_equal(nrow(res2$coords), 7L)
+  expect_true(all(res2$coords$X > -10 & res2$coords$X < 510))
+})
+
+test_that("graph_from_sf epsg is ignored when the source CRS is already projected", {
+  x <- make_test_sf() # crs = 2154, already projected
+  common <- list(cost_field = "LONGUEUR", direction_field = "SENS",
+                  direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
+                  snap_digits = 4, output = "data.frame")
+  res <- do.call(graph_from_sf, c(list(x), common, list(epsg = 3857)))
+  res_noepsg <- do.call(graph_from_sf, c(list(x), common))
+  expect_equal(res$coords, res_noepsg$coords)
 })

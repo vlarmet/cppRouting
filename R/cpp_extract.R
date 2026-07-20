@@ -55,7 +55,17 @@
 #' passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this --
 #' e.g. if you already have node coordinates elsewhere and only need the graph topology. For the
 #' \code{max_memory} pipeline this also skips an entire external sort/merge pass, a real saving in disk I/O
-#' and time at continent scale, not just a smaller output.
+#' and time at continent scale, not just a smaller output. If the source coordinates are geographic
+#' (lat/lon -- always true for \code{.pbf}/\code{osmdata}) and \code{coords = TRUE}, \code{epsg} must be
+#' supplied (see below), otherwise this errors rather than silently returning coordinates that break the
+#' A*/NBA algorithms (see \link{get_distance_pair}).
+#' @param epsg Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
+#' coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Only takes effect if
+#' \code{coords = TRUE} and the source CRS is geographic; already-projected coordinates (possible for
+#' shapefile/sf sources) are left as-is regardless. Not supported together with \code{max_memory} on a
+#' \code{.pbf} source: reprojecting would require reading the whole coords table back into R, defeating the
+#' point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
+#' afterward instead.
 #' @param profile OSM sources (\code{.pbf}/\code{osmdata}) only. A data.frame with columns \code{highway},
 #' \code{clazz}, \code{speed} describing which \code{highway} tag values to keep and their class id /
 #' default speed (km/h). Defaults to \link{osm_car_profile}.
@@ -97,6 +107,7 @@ cpp_extract <- function(x,
                          output = c("graph", "data.frame", "csv"),
                          out_prefix = NULL,
                          coords = TRUE,
+                         epsg = NULL,
                          profile = osm_car_profile(),
                          use_maxspeed = TRUE,
                          assume_oneway_motorway = TRUE,
@@ -109,12 +120,12 @@ cpp_extract <- function(x,
   args <- list(cost_field = cost_field, speed_field = speed_field, length_field = length_field,
                direction_field = direction_field, direction_values = direction_values,
                directed = directed, snap_digits = snap_digits, keep_fields = keep_fields,
-               output = output, out_prefix = out_prefix, coords = coords)
+               output = output, out_prefix = out_prefix, coords = coords, epsg = epsg)
 
   osm_args <- list(profile = profile, use_maxspeed = use_maxspeed,
                     assume_oneway_motorway = assume_oneway_motorway,
                     keep_clazz = keep_clazz, output = output,
-                    out_prefix = out_prefix, coords = coords, progress = progress)
+                    out_prefix = out_prefix, coords = coords, epsg = epsg, progress = progress)
 
   # Class is the reliable signal for a full osmdata result (class "osmdata",
   # a list -- not itself an "sf" object): route it to the osmdata adapter,

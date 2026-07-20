@@ -1,6 +1,21 @@
 test_shp <- test_path("testdata", "test_network.shp")
 graph_from_shapefile <- cppRouting:::graph_from_shapefile
 
+# test_network.prj declares a projected CRS (Lambert-93-like) so that most
+# tests below -- which use default coords = TRUE, epsg = NULL -- don't trip
+# the geographic-coordinates hard stop. The handful of tests that need a
+# genuinely geographic CRS build their own temp copy with this helper,
+# instead of mutating the shared fixture.
+make_geographic_shp_copy <- function(){
+  tmp_base <- tempfile()
+  file.copy(test_shp, paste0(tmp_base, ".shp"))
+  file.copy(test_path("testdata", "test_network.shx"), paste0(tmp_base, ".shx"))
+  file.copy(test_path("testdata", "test_network.dbf"), paste0(tmp_base, ".dbf"))
+  writeLines('GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]',
+             paste0(tmp_base, ".prj"))
+  paste0(tmp_base, ".shp")
+}
+
 # Fixture: 5 records (VOCATION/ACCES/SENS/LONGUEUR, mirroring ROUTE500's schema),
 # one of them a MULTILINESTRING (2 parts), with two endpoints deliberately
 # perturbed by 1e-8 to exercise snap_digits. Expected topology (7 nodes, 10
@@ -91,12 +106,48 @@ test_that("graph_from_shapefile output='csv' writes edges/coords files", {
 })
 
 test_that("graph_from_shapefile warns on geographic CRS without an explicit length/cost field", {
+  geo_shp <- make_geographic_shp_copy()
+  on.exit(unlink(paste0(sub("\\.shp$", "", geo_shp), c(".shp", ".shx", ".dbf", ".prj"))))
+  # coords = FALSE isolates this warning (about geometric length reliability)
+  # from the separate geographic-coordinates hard stop tested below.
   expect_warning(
-    graph_from_shapefile(test_shp, direction_field = "SENS",
+    graph_from_shapefile(geo_shp, direction_field = "SENS",
                           direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
-                          snap_digits = 4, output = "data.frame"),
+                          snap_digits = 4, output = "data.frame", coords = FALSE),
     "geographic"
   )
+})
+
+test_that("graph_from_shapefile stops on geographic coordinates unless coords=FALSE or epsg is set", {
+  geo_shp <- make_geographic_shp_copy()
+  on.exit(unlink(paste0(sub("\\.shp$", "", geo_shp), c(".shp", ".shx", ".dbf", ".prj"))))
+  common <- list(cost_field = "LONGUEUR", direction_field = "SENS",
+                  direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
+                  snap_digits = 4, output = "data.frame")
+
+  expect_error(do.call(graph_from_shapefile, c(list(geo_shp), common)), "geographic")
+
+  # coords = FALSE bypasses the issue entirely.
+  res <- do.call(graph_from_shapefile, c(list(geo_shp), common, list(coords = FALSE)))
+  expect_null(res$coords)
+
+  # epsg reprojects instead of erroring -- the fixture's raw values (0, 100,
+  # 200, ..., 500) aren't realistic lon/lat, so just check reprojection
+  # actually changed them rather than asserting a specific Lambert-93
+  # easting range.
+  skip_if_not_installed("sf")
+  res2 <- do.call(graph_from_shapefile, c(list(geo_shp), common, list(epsg = 2154)))
+  expect_equal(nrow(res2$coords), 7L)
+  expect_false(any(res2$coords$X %in% c(0, 100, 200, 300, 400, 500)))
+})
+
+test_that("graph_from_shapefile epsg is ignored when the source CRS is already projected", {
+  common <- list(cost_field = "LONGUEUR", direction_field = "SENS",
+                  direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
+                  snap_digits = 4, output = "data.frame")
+  res <- do.call(graph_from_shapefile, c(list(test_shp), common, list(epsg = 2154)))
+  res_noepsg <- do.call(graph_from_shapefile, c(list(test_shp), common))
+  expect_equal(res$coords, res_noepsg$coords)
 })
 
 test_that("cpp_read_shp_geometry rejects a record whose declared NumPoints exceeds its content length", {

@@ -17,6 +17,7 @@ cpp_extract(
   output = c("graph", "data.frame", "csv"),
   out_prefix = NULL,
   coords = TRUE,
+  epsg = NULL,
   profile = osm_car_profile(),
   use_maxspeed = TRUE,
   assume_oneway_motorway = TRUE,
@@ -87,7 +88,18 @@ disk-backed pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{out
 passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this --
 e.g. if you already have node coordinates elsewhere and only need the graph topology. For the
 \code{max_memory} pipeline this also skips an entire external sort/merge pass, a real saving in disk I/O
-and time at continent scale, not just a smaller output.}
+and time at continent scale, not just a smaller output. If the source coordinates are geographic
+(lat/lon -- always true for \code{.pbf}/\code{osmdata}) and \code{coords = TRUE}, \code{epsg} must be
+supplied (see below), otherwise this errors rather than silently returning coordinates that break the
+A*/NBA algorithms (see \link{get_distance_pair}).}
+
+\item{epsg}{Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
+coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Only takes effect if
+\code{coords = TRUE} and the source CRS is geographic; already-projected coordinates (possible for
+shapefile/sf sources) are left as-is regardless. Not supported together with \code{max_memory} on a
+\code{.pbf} source: reprojecting would require reading the whole coords table back into R, defeating the
+point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
+afterward instead.}
 
 \item{profile}{OSM sources (\code{.pbf}/\code{osmdata}) only. A data.frame with columns \code{highway},
 \code{clazz}, \code{speed} describing which \code{highway} tag values to keep and their class id /
@@ -126,7 +138,7 @@ result) fails loudly rather than silently producing a wrong graph.
 }
 \details{
 Shapefile/sf sources are assumed to already be topologically clean, i.e. lines only meet at
-their endpoints (the convention of reference road networks such as ROUTE500/BD TOPO). OSM sources
+their endpoints. OSM sources
 (\code{.pbf} or \code{osmdata}) instead detect junctions in the middle of a way from OSM's own node ids
 (a node referenced by 2 or more kept ways, or a way's own endpoint); for \code{.pbf}, a way referencing a
 node outside the file (a regional extract cut through it) is dropped entirely, and for \code{osmdata}, a

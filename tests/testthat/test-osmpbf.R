@@ -8,10 +8,12 @@ test_that("cpp_osmpbf_counts reads back the exact synthetic fixture", {
 })
 
 test_that("cpp_extract on a .pbf splits a way at a mid-way junction (node 2)", {
+  skip_if_not_installed("sf")
   path <- make_test_pbf()
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", progress = FALSE)
+  # epsg required: OSM coordinates are always geographic (WGS84).
+  res <- cpp_extract(path, output = "data.frame", epsg = 2154, progress = FALSE)
 
   # 4 osm nodes in, but only 3 become graph nodes: node 2 (the junction),
   # and the two other endpoints referenced only once each collapse per way
@@ -33,9 +35,9 @@ test_that("cpp_extract on a .pbf resolves oneway correctly and drops non-profile
   ways <- list(list(refs = c(1, 2), tags = list(highway = "footway"))) # not in the default car profile
   write_test_osmpbf(path, nodes, ways)
 
-  res <- cpp_extract(path, output = "data.frame", progress = FALSE)
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(nrow(res$data), 0L)
-  expect_equal(nrow(res$coords), 0L)
+  expect_null(res$coords)
 })
 
 test_that("stream_osmpbf rejects an implausibly large blob header length", {
@@ -94,4 +96,41 @@ test_that("cpp_extract on a .pbf with coords=FALSE drops coords from every outpu
   expect_length(paths, 1L)
   expect_true(file.exists(paths))
   expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
+})
+
+test_that("cpp_extract on a .pbf stops on geographic coordinates unless coords=FALSE or epsg is set", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  expect_error(cpp_extract(path, output = "data.frame", progress = FALSE), "geographic")
+
+  # coords = FALSE bypasses the issue entirely.
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
+  expect_null(res$coords)
+
+  # epsg reprojects instead of erroring.
+  skip_if_not_installed("sf")
+  res2 <- cpp_extract(path, output = "data.frame", epsg = 2154, progress = FALSE)
+  expect_equal(nrow(res2$coords), 4L)
+  expect_true(all(res2$coords$X > 1e5)) # Lambert-93 easting, not longitude degrees
+
+  # csv mode: reprojection happens via a read-back-rewrite of coords.csv.
+  out_prefix <- tempfile()
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154, progress = FALSE)
+  on.exit(unlink(paths), add = TRUE)
+  coords_csv <- data.table::fread(paths[2])
+  expect_true(all(coords_csv$X > 1e5))
+})
+
+test_that("cpp_extract on a .pbf rejects epsg together with max_memory", {
+  out_prefix <- tempfile()
+  expect_error(
+    cpp_extract("dummy.pbf", max_memory = 300, output = "csv", out_prefix = out_prefix, epsg = 2154),
+    "not supported together with max_memory"
+  )
+  # coords = FALSE sidesteps the conflict (nothing to reproject).
+  expect_error(
+    cpp_extract("dummy.pbf", max_memory = 300, output = "csv", out_prefix = out_prefix, epsg = 2154, coords = FALSE),
+    "File not found" # gets past the epsg/max_memory guard, fails on the (nonexistent) file instead
+  )
 })

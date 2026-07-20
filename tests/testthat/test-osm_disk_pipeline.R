@@ -25,17 +25,24 @@ test_that("disk pipeline splits a way at a mid-way junction, same as the in-RAM 
   expect_equal(nrow(res$coords), 4L)
   expect_equal(nrow(res$data), 5L)
 
-  in_ram <- cpp_extract(path, output = "data.frame", progress = FALSE)
+  # run_disk_pipeline() calls the C++ export directly, bypassing the R-level
+  # geographic-coordinates hard stop -- coords = FALSE here since this
+  # particular comparison only needs edges/dist parity, not coords.
+  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(nrow(res$data), nrow(in_ram$data))
   expect_equal(sort(res$data$dist), sort(in_ram$data$dist))
 })
 
 test_that("disk pipeline matches the in-RAM path on the real Bourgogne extract", {
+  skip_if_not_installed("sf")
   pbf <- "/home/vincent/cppRouting/pbf/bourgogne-260717.osm.pbf"
   skip_if_not(file.exists(pbf), "local test pbf not available")
 
   disk_res <- run_disk_pipeline(pbf, max_memory_mb = 5)
-  in_ram <- cpp_extract(pbf, output = "data.frame", progress = FALSE)
+  # epsg required for coords (OSM coordinates are always geographic); row
+  # count is unaffected by reprojection, so it's still a valid parity check
+  # against disk_res$coords (left in WGS84 by the raw C++ call above).
+  in_ram <- cpp_extract(pbf, output = "data.frame", epsg = 2154, progress = FALSE)
 
   expect_equal(nrow(disk_res$coords), nrow(in_ram$coords))
   expect_equal(nrow(disk_res$data), nrow(in_ram$data))
@@ -46,13 +53,16 @@ test_that("cpp_extract(max_memory=...) reaches the disk pipeline and matches the
   pbf <- "/home/vincent/cppRouting/pbf/bourgogne-260717.osm.pbf"
   skip_if_not(file.exists(pbf), "local test pbf not available")
 
+  # epsg isn't supported together with max_memory (see the dedicated test for
+  # that guard), and OSM coordinates are always geographic -- coords = FALSE
+  # here; coords parity for the disk pipeline itself is already covered by
+  # the raw C++-level test above.
   out_prefix <- tempfile()
-  paths <- cpp_extract(pbf, max_memory = 300, output = "csv", out_prefix = out_prefix, progress = FALSE)
-  expect_true(all(file.exists(paths)))
+  paths <- cpp_extract(pbf, max_memory = 300, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  expect_true(file.exists(paths))
 
-  disk_res <- list(data = data.table::fread(paths[1]), coords = data.table::fread(paths[2]))
-  in_ram <- cpp_extract(pbf, output = "data.frame", progress = FALSE)
-  expect_equal(nrow(disk_res$coords), nrow(in_ram$coords))
+  disk_res <- list(data = data.table::fread(paths))
+  in_ram <- cpp_extract(pbf, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(nrow(disk_res$data), nrow(in_ram$data))
 })
 
@@ -68,7 +78,7 @@ test_that("cpp_extract(max_memory=..., coords=FALSE) skips coords.csv but edge d
   expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
 
   disk_edges <- data.table::fread(paths)
-  in_ram <- cpp_extract(path, output = "data.frame", progress = FALSE)
+  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(sort(disk_edges$dist), sort(in_ram$data$dist))
 })
 

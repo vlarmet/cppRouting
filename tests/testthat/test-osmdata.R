@@ -37,7 +37,8 @@ test_that("graph_from_osmdata recovers the mid-way junction via $osm_points", {
   skip_if_not_installed("sf")
   x <- make_test_osmdata()
 
-  res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", progress = FALSE)
+  # epsg required: osmdata coordinates are always geographic (WGS84).
+  res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", epsg = 2154, progress = FALSE)
 
   expect_equal(nrow(res$coords), 4L)
   # way1 (twoway, split at junction node "2"): A-B + B-C, both directions = 4
@@ -48,8 +49,8 @@ test_that("graph_from_osmdata recovers the mid-way junction via $osm_points", {
 test_that("cpp_extract dispatches a full osmdata object the same way", {
   skip_if_not_installed("sf")
   x <- make_test_osmdata()
-  g1 <- cpp_extract(x, output = "data.frame", progress = FALSE)
-  g2 <- cppRouting:::graph_from_osmdata(x, output = "data.frame", progress = FALSE)
+  g1 <- cpp_extract(x, output = "data.frame", coords = FALSE, progress = FALSE)
+  g2 <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(g1, g2)
 })
 
@@ -63,10 +64,19 @@ test_that("graph_from_osmdata warns when snap_digits collapses two distinct osm_
                       geometry = sf::st_sfc(sf::st_point(c(5.00, 47.02)), crs = 4326))
   x$osm_points <- rbind(x$osm_points, extra)
 
+  # coords = FALSE bypasses the (unrelated) geographic-coordinates hard stop;
+  # the collision check itself runs regardless of coords, since it's about
+  # topology reconstruction, not the output coords table.
   expect_warning(
-    cppRouting:::graph_from_osmdata(x, output = "data.frame", progress = FALSE),
+    cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE),
     "shared by multiple distinct osm_id"
   )
+})
+
+test_that("graph_from_osmdata stops on geographic coordinates unless coords=FALSE or epsg is set", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+  expect_error(cppRouting:::graph_from_osmdata(x, output = "data.frame", progress = FALSE), "geographic")
 })
 
 test_that("graph_from_osmdata coords=FALSE drops coords from every output mode", {

@@ -21,7 +21,8 @@ graph_from_sf <- function(x,
                            keep_fields = NULL,
                            output = c("graph", "data.frame", "csv"),
                            out_prefix = NULL,
-                           coords = TRUE){
+                           coords = TRUE,
+                           epsg = NULL){
 
   output <- match.arg(output)
   if (!requireNamespace("sf", quietly = TRUE)) stop("Package 'sf' is required for graph_from_sf()")
@@ -65,10 +66,12 @@ graph_from_sf <- function(x,
 
   is_geographic <- isTRUE(suppressMessages(suppressWarnings(sf::st_is_longlat(x))))
   warn_if_geographic_without_length(is_geographic, length_field, cost_field)
+  stop_if_geographic_coords_unhandled(is_geographic, coords, epsg)
 
   cost <- resolve_geom_cost(attrs, parts$length, cost_field, speed_field, length_field)
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, nrow(parts))
 
   finalize_geom_graph(parts$x1, parts$y1, parts$x2, parts$y2, cost, direction_code, snap_digits,
-                       attrs, keep_fields, output, out_prefix, want_coords = coords)
+                       attrs, keep_fields, output, out_prefix, want_coords = coords,
+                       epsg = epsg, is_geographic = is_geographic, source_crs = sf::st_crs(x))
 }

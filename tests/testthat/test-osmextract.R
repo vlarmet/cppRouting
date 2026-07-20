@@ -6,13 +6,15 @@
 # conversion entirely.
 test_that("the recommended osmextract workflow (raw .pbf path) round-trips", {
   skip_if_not_installed("osmextract")
+  skip_if_not_installed("sf")
   test_pbf <- "/home/vincent/cppRouting/pbf/bourgogne-260717.osm.pbf"
   skip_if_not(file.exists(test_pbf), "local test pbf not available")
 
   path <- osmextract::oe_read(test_pbf, download_only = TRUE, skip_vectortranslate = TRUE, quiet = TRUE)
   expect_true(grepl("\\.osm\\.pbf$", path))
 
-  res <- cpp_extract(path, progress = FALSE, output = "data.frame")
+  # epsg required: OSM coordinates are always geographic (WGS84).
+  res <- cpp_extract(path, progress = FALSE, output = "data.frame", epsg = 2154)
   expect_true(nrow(res$data) > 0)
   expect_true(nrow(res$coords) > 0)
 })

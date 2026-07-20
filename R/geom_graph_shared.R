@@ -52,6 +52,58 @@ warn_if_geographic_without_length <- function(is_geographic, length_field, cost_
   }
 }
 
+# A geographic (lat/lon degrees) coords table silently breaks the euclidean-
+# distance heuristic the A*/NBA algorithms rely on (get_distance_pair()/
+# get_path_pair() already document that they "require projected
+# coordinates"): the heuristic ends up scaled in degrees while the edge cost
+# is in meters/minutes/whatever, so A*/NBA either lose all speed benefit or,
+# if a user tunes `constant` to compensate without truly reprojecting, can
+# become inadmissible and return silently wrong (suboptimal) paths. Rather
+# than let that trap ship silently, refuse outright unless the caller either
+# doesn't want coordinates at all (coords = FALSE) or supplies epsg to
+# reproject them into a projected CRS first.
+stop_if_geographic_coords_unhandled <- function(is_geographic, want_coords, epsg){
+  if (isTRUE(is_geographic) && want_coords && is.null(epsg)) {
+    stop("Coordinates are geographic (lat/lon degrees), not projected. Euclidean distance between them does ",
+         "not approximate the real edge cost, which silently breaks the A*/NBA algorithms' heuristic (see ",
+         "get_distance_pair()/get_path_pair(): they require projected coordinates). Either set coords = FALSE ",
+         "if you don't need node coordinates, or supply epsg = <a projected EPSG code> to reproject them ",
+         "(requires the 'sf' package).")
+  }
+}
+
+# Reprojects a node_id/X/Y coords data.frame from a geographic source CRS to
+# a projected epsg via sf::st_transform() -- a no-op unless epsg is supplied
+# AND the source coordinates are actually geographic (is_geographic), so sf
+# is only ever required when reprojection is actually requested and needed.
+# source_crs is anything sf::st_crs() accepts (an EPSG code, a WKT/PROJ4
+# string, an existing crs object): shapefiles pass their raw .prj text
+# (parsed directly by sf/PROJ, no EPSG lookup needed on our side), sf/osmdata
+# sources pass sf::st_crs(x), OSM PBF sources hardcode 4326 (WGS84).
+reproject_coords <- function(coords, is_geographic, source_crs, epsg){
+  if (is.null(coords) || is.null(epsg) || !isTRUE(is_geographic)) return(coords)
+  if (!requireNamespace("sf", quietly = TRUE)) {
+    stop("Package 'sf' is required to reproject coordinates (epsg argument). Install it, or leave epsg = NULL.")
+  }
+  pts <- sf::st_as_sf(coords, coords = c("X", "Y"), crs = source_crs)
+  pts <- sf::st_transform(pts, epsg)
+  xy <- sf::st_coordinates(pts)
+  coords$X <- xy[, 1]
+  coords$Y <- xy[, 2]
+  coords
+}
+
+# Same, but operating on an already-written coords.csv in place -- used by
+# the CSV-streaming writers (Module A/B), which write coordinates directly
+# from C++ and never hold the full coords table in R otherwise.
+reproject_coords_csv <- function(coords_path, is_geographic, source_crs, epsg){
+  if (is.null(epsg) || !isTRUE(is_geographic)) return(invisible(NULL))
+  coords <- data.table::fread(coords_path)
+  coords <- reproject_coords(coords, is_geographic, source_crs, epsg)
+  data.table::fwrite(coords, coords_path)
+  invisible(NULL)
+}
+
 # Dispatches to either the CSV streaming writer (edges/coords written
 # straight to disk as they're produced, aux never carried -- same
 # restriction as the OSM CSV path) or the in-memory builder (which does
@@ -63,19 +115,24 @@ warn_if_geographic_without_length <- function(is_geographic, length_field, cost_
 # local variable holding the built coordinate table is already called
 # `coords`.
 finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
-                                 attrs, keep_fields, output, out_prefix, want_coords = TRUE){
+                                 attrs, keep_fields, output, out_prefix, want_coords = TRUE,
+                                 epsg = NULL, is_geographic = FALSE, source_crs = NULL){
   if (output == "csv") {
     if (!is.null(keep_fields)) warning("keep_fields is ignored when output = 'csv' (that path never carries aux)")
     edges_path <- paste0(out_prefix, "_edges.csv")
     coords_path <- paste0(out_prefix, "_coords.csv")
     cpp_write_geom_graph_csv(x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path, want_coords)
-    if (want_coords) return(invisible(c(edges_path, coords_path)))
+    if (want_coords) {
+      reproject_coords_csv(coords_path, is_geographic, source_crs, epsg)
+      return(invisible(c(edges_path, coords_path)))
+    }
     return(invisible(edges_path))
   }
 
   result <- cpp_build_geom_graph(x1, y1, x2, y2, cost, direction, snap_digits)
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords <- data.frame(node_id = result$node_id, X = result$X, Y = result$Y)
+  if (want_coords) coords <- reproject_coords(coords, is_geographic, source_crs, epsg)
 
   aux <- NULL
   if (!is.null(keep_fields)) {

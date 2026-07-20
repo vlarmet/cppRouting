@@ -30,7 +30,14 @@
 #' \code{<out_prefix>_coords.csv} (\code{output = "csv"}), returned as a \code{data.frame(node_id, X, Y)}
 #' (\code{output = "data.frame"}), or passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set
 #' to \code{FALSE} to skip this -- e.g. if you already have node coordinates elsewhere and only need the
-#' graph topology.
+#' graph topology. If the shapefile's \code{.prj} declares a geographic (lat/lon) CRS and \code{coords} is
+#' \code{TRUE}, \code{epsg} must be supplied (see below) -- otherwise this errors rather than silently
+#' returning coordinates that break the A*/NBA algorithms.
+#' @param epsg Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
+#' coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Only takes effect if
+#' \code{coords = TRUE} and the source CRS is geographic; otherwise ignored (already-projected coordinates
+#' are left as-is). \code{A*}/\code{NBA} (see \link{get_distance_pair}) need coordinates in the same
+#' (projected) unit as the edge cost -- geographic (lat/lon) coordinates silently break their heuristic.
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details The shapefile is assumed to already be topologically clean, i.e. lines only meet at their
@@ -48,7 +55,8 @@ graph_from_shapefile <- function(path,
                                   keep_fields = NULL,
                                   output = c("graph", "data.frame", "csv"),
                                   out_prefix = NULL,
-                                  coords = TRUE){
+                                  coords = TRUE,
+                                  epsg = NULL){
 
   output <- match.arg(output)
   if (output == "csv" && is.null(out_prefix)) stop("out_prefix must be provided when output = 'csv'")
@@ -70,15 +78,19 @@ graph_from_shapefile <- function(path,
 
   prj_path <- paste0(base, ".prj")
   is_geographic <- FALSE
+  source_crs <- NULL
   if (file.exists(prj_path)) {
     prj_txt <- readLines(prj_path, warn = FALSE)
     is_geographic <- grepl("GEOGCS", prj_txt[1], fixed = TRUE) && !grepl("PROJCS", prj_txt[1], fixed = TRUE)
+    source_crs <- paste(prj_txt, collapse = " ")
   }
   warn_if_geographic_without_length(is_geographic, length_field, cost_field)
+  stop_if_geographic_coords_unhandled(is_geographic, coords, epsg)
 
   cost <- resolve_geom_cost(attrs, geom$length, cost_field, speed_field, length_field)
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, length(geom$x1))
 
   finalize_geom_graph(geom$x1, geom$y1, geom$x2, geom$y2, cost, direction_code, snap_digits,
-                       attrs, keep_fields, output, out_prefix, want_coords = coords)
+                       attrs, keep_fields, output, out_prefix, want_coords = coords,
+                       epsg = epsg, is_geographic = is_geographic, source_crs = source_crs)
 }
