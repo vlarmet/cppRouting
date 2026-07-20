@@ -15,7 +15,12 @@ cpp_extract(
   snap_digits = 7,
   keep_fields = NULL,
   output = c("graph", "data.frame", "csv"),
-  out_prefix = NULL
+  out_prefix = NULL,
+  profile = osm_car_profile(),
+  use_maxspeed = TRUE,
+  assume_oneway_motorway = TRUE,
+  keep_clazz = FALSE,
+  progress = TRUE
 )
 }
 \arguments{
@@ -51,6 +56,21 @@ endpoints into nodes.}
 \code{"data.frame"}, or \code{"csv"}.}
 
 \item{out_prefix}{Path prefix used when \code{output = "csv"}.}
+
+\item{profile}{OSM \code{.pbf} sources only. A data.frame with columns \code{highway}, \code{clazz},
+\code{speed} describing which \code{highway} tag values to keep and their class id / default speed
+(km/h). Defaults to \link{osm_car_profile}.}
+
+\item{use_maxspeed}{OSM \code{.pbf} sources only. If \code{TRUE} (default), a way's \code{maxspeed} tag
+overrides the profile's default speed when present and parseable.}
+
+\item{assume_oneway_motorway}{OSM \code{.pbf} sources only. If \code{TRUE} (default),
+\code{motorway}/\code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.}
+
+\item{keep_clazz}{OSM \code{.pbf} sources only. If \code{TRUE}, keep each edge's resolved highway class
+id as \code{aux}.}
+
+\item{progress}{OSM \code{.pbf} sources only. Print progress messages for each of the 3 read passes.}
 }
 \value{
 Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
@@ -65,8 +85,11 @@ from \code{x}'s type (file extension, or object class).
 \details{
 Sources of type shapefile/geopackage/sf are assumed to already be topologically clean, i.e.
 lines only meet at their endpoints (the convention of reference road networks such as ROUTE500/BD TOPO).
-Junctions in the middle of a line are only relevant for OSM sources, not yet implemented here.
-\code{cpp_extract} refuses (rather than silently mishandling) an object it recognizes as OSM-derived --
-either the full result of \code{osmdata::osmdata_sf()} (class \code{"osmdata"}), or a plain \code{sf}
-object with an \code{osm_id} column (as returned by \code{osmdata$osm_lines} or \code{osmextract}).
+OSM \code{.pbf} sources instead detect junctions in the middle of a way from OSM's own node ids (a node
+referenced by 2 or more kept ways, or a way's own endpoint), and a way referencing a node outside the
+file (a regional extract cut through it) is dropped entirely. \code{cpp_extract} refuses (rather than
+silently mishandling) an object it
+recognizes as OSM-derived but not a raw \code{.pbf} file -- either the full result of
+\code{osmdata::osmdata_sf()} (class \code{"osmdata"}), or a plain \code{sf} object with an \code{osm_id}
+column (as returned by \code{osmdata$osm_lines} or \code{osmextract}).
 }

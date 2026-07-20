@@ -5,6 +5,14 @@ cpp_build_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits) {
     .Call(`_cppRouting_cpp_build_geom_graph`, x1, y1, x2, y2, cost, direction, snap_digits)
 }
 
+cpp_build_osm_graph <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress) {
+    .Call(`_cppRouting_cpp_build_osm_graph`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress)
+}
+
+cpp_osmpbf_counts <- function(path) {
+    .Call(`_cppRouting_cpp_osmpbf_counts`, path)
+}
+
 cpp_read_shp_geometry <- function(path) {
     .Call(`_cppRouting_cpp_read_shp_geometry`, path)
 }

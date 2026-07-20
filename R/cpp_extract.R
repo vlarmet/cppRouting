@@ -27,14 +27,27 @@
 #' @param output One of \code{"graph"} (default, returns a ready-to-use \code{cppRouting_graph}),
 #' \code{"data.frame"}, or \code{"csv"}.
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
+#' @param profile OSM \code{.pbf} sources only. A data.frame with columns \code{highway}, \code{clazz},
+#' \code{speed} describing which \code{highway} tag values to keep and their class id / default speed
+#' (km/h). Defaults to \link{osm_car_profile}.
+#' @param use_maxspeed OSM \code{.pbf} sources only. If \code{TRUE} (default), a way's \code{maxspeed} tag
+#' overrides the profile's default speed when present and parseable.
+#' @param assume_oneway_motorway OSM \code{.pbf} sources only. If \code{TRUE} (default),
+#' \code{motorway}/\code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.
+#' @param keep_clazz OSM \code{.pbf} sources only. If \code{TRUE}, keep each edge's resolved highway class
+#' id as \code{aux}.
+#' @param progress OSM \code{.pbf} sources only. Print progress messages for each of the 3 read passes.
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details Sources of type shapefile/geopackage/sf are assumed to already be topologically clean, i.e.
 #' lines only meet at their endpoints (the convention of reference road networks such as ROUTE500/BD TOPO).
-#' Junctions in the middle of a line are only relevant for OSM sources, not yet implemented here.
-#' \code{cpp_extract} refuses (rather than silently mishandling) an object it recognizes as OSM-derived --
-#' either the full result of \code{osmdata::osmdata_sf()} (class \code{"osmdata"}), or a plain \code{sf}
-#' object with an \code{osm_id} column (as returned by \code{osmdata$osm_lines} or \code{osmextract}).
+#' OSM \code{.pbf} sources instead detect junctions in the middle of a way from OSM's own node ids (a node
+#' referenced by 2 or more kept ways, or a way's own endpoint), and a way referencing a node outside the
+#' file (a regional extract cut through it) is dropped entirely. \code{cpp_extract} refuses (rather than
+#' silently mishandling) an object it
+#' recognizes as OSM-derived but not a raw \code{.pbf} file -- either the full result of
+#' \code{osmdata::osmdata_sf()} (class \code{"osmdata"}), or a plain \code{sf} object with an \code{osm_id}
+#' column (as returned by \code{osmdata$osm_lines} or \code{osmextract}).
 #' @export
 cpp_extract <- function(x,
                          cost_field = NULL,
@@ -46,7 +59,12 @@ cpp_extract <- function(x,
                          snap_digits = 7,
                          keep_fields = NULL,
                          output = c("graph", "data.frame", "csv"),
-                         out_prefix = NULL){
+                         out_prefix = NULL,
+                         profile = osm_car_profile(),
+                         use_maxspeed = TRUE,
+                         assume_oneway_motorway = TRUE,
+                         keep_clazz = FALSE,
+                         progress = TRUE){
 
   output <- match.arg(output)
   args <- list(cost_field = cost_field, speed_field = speed_field, length_field = length_field,
@@ -78,8 +96,14 @@ cpp_extract <- function(x,
     ext <- tolower(tools::file_ext(x))
     if (ext == "shp") return(do.call(graph_from_shapefile, c(list(path = x), args)))
     if (ext == "gpkg") stop("GeoPackage sources are not implemented yet")
-    if (ext %in% c("pbf", "osm")) stop("OSM sources are not implemented yet")
-    stop("Unrecognized file extension '.", ext, "'. Supported: .shp")
+    if (ext == "pbf") {
+      return(graph_from_osmpbf(x, profile = profile, use_maxspeed = use_maxspeed,
+                                assume_oneway_motorway = assume_oneway_motorway,
+                                keep_clazz = keep_clazz, output = output,
+                                out_prefix = out_prefix, progress = progress))
+    }
+    if (ext == "osm") stop("Plain OSM XML (.osm) is not supported, only the binary .osm.pbf format")
+    stop("Unrecognized file extension '.", ext, "'. Supported: .shp, .pbf")
   }
 
   stop("cpp_extract() does not know how to handle an object of class: ", paste(class(x), collapse = "/"))

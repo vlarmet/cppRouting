@@ -27,6 +27,34 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cpp_build_osm_graph
+Rcpp::List cpp_build_osm_graph(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, bool progress);
+RcppExport SEXP _cppRouting_cpp_build_osm_graph(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type profile_highway(profile_highwaySEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type profile_clazz(profile_clazzSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type profile_speed(profile_speedSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_maxspeed(use_maxspeedSEXP);
+    Rcpp::traits::input_parameter< bool >::type assume_oneway_motorway(assume_oneway_motorwaySEXP);
+    Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_build_osm_graph(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpp_osmpbf_counts
+Rcpp::List cpp_osmpbf_counts(std::string path);
+RcppExport SEXP _cppRouting_cpp_osmpbf_counts(SEXP pathSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpp_osmpbf_counts(path));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cpp_read_shp_geometry
 Rcpp::List cpp_read_shp_geometry(std::string path);
 RcppExport SEXP _cppRouting_cpp_read_shp_geometry(SEXP pathSEXP) {
@@ -767,6 +795,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpp_build_geom_graph", (DL_FUNC) &_cppRouting_cpp_build_geom_graph, 7},
+    {"_cppRouting_cpp_build_osm_graph", (DL_FUNC) &_cppRouting_cpp_build_osm_graph, 7},
+    {"_cppRouting_cpp_osmpbf_counts", (DL_FUNC) &_cppRouting_cpp_osmpbf_counts, 1},
     {"_cppRouting_cpp_read_shp_geometry", (DL_FUNC) &_cppRouting_cpp_read_shp_geometry, 1},
     {"_cppRouting_cpp_read_dbf", (DL_FUNC) &_cppRouting_cpp_read_dbf, 1},
     {"_cppRouting_cppdist", (DL_FUNC) &_cppRouting_cppdist, 10},

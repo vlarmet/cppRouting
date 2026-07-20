@@ -67,6 +67,12 @@ finalize_geom_graph <- function(result, attrs, keep_fields, output, out_prefix){
     rownames(aux) <- NULL
   }
 
+  dispatch_graph_output(edges, coords, aux, output, out_prefix)
+}
+
+# Shared by every Module A/B reader: turn already-built edges/coords/aux
+# tables into whichever of graph/data.frame/csv the caller asked for.
+dispatch_graph_output <- function(edges, coords, aux, output, out_prefix){
   if (output == "data.frame") return(list(data = edges, coords = coords, aux = aux))
 
   if (output == "csv") {
