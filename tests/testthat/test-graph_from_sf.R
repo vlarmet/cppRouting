@@ -94,6 +94,42 @@ test_that("graph_from_sf speed_field without length_field does NOT convert for g
   expect_true(all(res$data$dist > 0))
 })
 
+test_that("graph_from_sf speed_field + explicit length_field uses length_field verbatim (no unit conversion)", {
+  testthat::skip_if_not_installed("sf")
+  x <- sf::st_sf(
+    vitesse = c(60, 60),
+    longueur_km = c(2, 5), # deliberately NOT matching the real geometry (100m, 300m)
+    geometry = sf::st_sfc(
+      sf::st_linestring(matrix(c(0,0, 100,0), ncol = 2, byrow = TRUE)),
+      sf::st_linestring(matrix(c(100,0, 100,300), ncol = 2, byrow = TRUE)),
+      crs = 2154
+    )
+  )
+  res <- graph_from_sf(x, speed_field = "vitesse", length_field = "longueur_km",
+                        directed = TRUE, output = "data.frame")
+  # cost = 60*length_field/speed = 60*2/60=2 and 60*5/60=5 -- NOT the geometric 0.1/0.3km
+  expect_equal(sort(res$data$dist), c(2, 5))
+})
+
+test_that("graph_from_sf keep_fields keeps multiple columns", {
+  testthat::skip_if_not_installed("sf")
+  x <- sf::st_sf(
+    id = 1:2,
+    cat = c("A", "B"),
+    cost = c(1, 2),
+    geometry = sf::st_sfc(
+      sf::st_linestring(matrix(c(0,0, 100,0), ncol = 2, byrow = TRUE)),
+      sf::st_linestring(matrix(c(100,0, 100,300), ncol = 2, byrow = TRUE)),
+      crs = 2154
+    )
+  )
+  res <- graph_from_sf(x, cost_field = "cost", keep_fields = c("id", "cat"),
+                        directed = TRUE, output = "data.frame")
+  expect_setequal(names(res$aux), c("id", "cat"))
+  expect_equal(res$aux$id, 1:2)
+  expect_equal(res$aux$cat, c("A", "B"))
+})
+
 test_that("graph_from_sf keep_length keeps geometric length (km) as aux, independent of cost_field", {
   testthat::skip_if_not_installed("sf")
   x <- sf::st_sf(
