@@ -70,6 +70,66 @@ test_that("graph_from_sf output='graph' returns a usable graph", {
   expect_equal(d, 200)
 })
 
+test_that("graph_from_sf speed_field without length_field converts geometric length (meters) to km", {
+  # Regression test: geom_length is computed directly from the (projected,
+  # meter-scale) coordinates -- without converting to km first, 60*length/speed
+  # silently produced a cost 1000x too large (e.g. a 100m segment at 60km/h
+  # should cost 0.1 minutes, not 100).
+  x <- make_test_sf()
+  x$VITESSE <- 60
+  res <- graph_from_sf(x, speed_field = "VITESSE", directed = TRUE, snap_digits = 4, output = "data.frame")
+  # First segment: (0,0) -> (100,0), 100m = 0.1km, at 60km/h -> 60*0.1/60 = 0.1 min
+  expect_equal(min(res$data$dist), 0.1, tolerance = 1e-6)
+})
+
+test_that("graph_from_sf speed_field without length_field does NOT convert for geographic coordinates", {
+  testthat::skip_if_not_installed("sf")
+  x <- sf::st_transform(make_test_sf(), 4326)
+  x$VITESSE <- 60
+  res <- graph_from_sf(x, speed_field = "VITESSE", directed = TRUE, snap_digits = 4,
+                        output = "data.frame", coords = FALSE)
+  # Geometric length here is in degrees (unreliable regardless, already
+  # warned about by warn_if_geographic_without_length) -- just confirm no
+  # /1000 conversion silently applies to a non-meter unit.
+  expect_true(all(res$data$dist > 0))
+})
+
+test_that("graph_from_sf keep_length keeps geometric length (km) as aux, independent of cost_field", {
+  testthat::skip_if_not_installed("sf")
+  x <- sf::st_sf(
+    id = 1:2,
+    cost = c(999, 999), # arbitrary, unrelated to geometry -- proves keep_length doesn't depend on it
+    geometry = sf::st_sfc(
+      sf::st_linestring(matrix(c(0,0, 100,0), ncol = 2, byrow = TRUE)),     # 100m = 0.1km
+      sf::st_linestring(matrix(c(100,0, 100,300), ncol = 2, byrow = TRUE)), # 300m = 0.3km
+      crs = 2154
+    )
+  )
+  res <- graph_from_sf(x, cost_field = "cost", keep_length = TRUE, directed = TRUE, output = "data.frame")
+  expect_equal(sort(res$aux$length), c(0.1, 0.3))
+  expect_true(all(res$data$dist == 999)) # cost_field unaffected by keep_length
+
+  # combined with keep_fields: both aux columns present
+  res2 <- graph_from_sf(x, cost_field = "cost", keep_fields = "id", keep_length = TRUE,
+                         directed = TRUE, output = "data.frame")
+  expect_setequal(names(res2$aux), c("id", "length"))
+})
+
+test_that("graph_from_sf output='csv' writes the same aux as output='data.frame' to a separate file", {
+  testthat::skip_if_not_installed("sf")
+  x <- make_test_sf()
+  common <- list(cost_field = "LONGUEUR", keep_length = TRUE, snap_digits = 4)
+
+  out_prefix <- tempfile()
+  paths <- do.call(graph_from_sf, c(list(x), common, list(output = "csv", out_prefix = out_prefix)))
+  on.exit(unlink(paths))
+  expect_length(paths, 3L) # edges, coords, aux
+  aux_csv <- data.table::fread(paths[3])
+
+  res <- do.call(graph_from_sf, c(list(x), common, list(output = "data.frame")))
+  expect_equal(aux_csv$length, res$aux$length)
+})
+
 test_that("graph_from_sf rejects non-sf input and non-linestring geometries", {
   testthat::skip_if_not_installed("sf")
   expect_error(graph_from_sf(data.frame(x = 1)), "sf object")

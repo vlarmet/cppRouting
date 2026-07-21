@@ -92,7 +92,10 @@ Rcpp::List build_osm_graph_disk(std::string path,
                                  std::string temp_dir,
                                  std::string edges_path,
                                  std::string coords_path,
+                                 std::string aux_path,
                                  bool want_coords,
+                                 bool keep_clazz,
+                                 bool keep_length,
                                  bool progress){
 
   osm_tags::Profile profile = osm_tags::make_profile(profile_highway, profile_clazz, profile_speed);
@@ -241,6 +244,17 @@ Rcpp::List build_osm_graph_disk(std::string path,
   if (!edges_f) Rcpp::stop("Cannot open for writing: " + edges_path);
   edges_f << "from,to,dist\n" << std::setprecision(10);
 
+  bool want_aux = keep_clazz || keep_length;
+  std::ofstream aux_f;
+  if (want_aux) {
+    aux_f.open(aux_path.c_str());
+    if (!aux_f) Rcpp::stop("Cannot open for writing: " + aux_path);
+    aux_f << std::setprecision(10);
+    if (keep_clazz && keep_length) aux_f << "clazz,length\n";
+    else if (keep_clazz) aux_f << "clazz\n";
+    else aux_f << "length\n";
+  }
+
   std::unique_ptr<ExternalSorter<CoordRecord, CompareCoordById> > coord_sorter;
   if (want_coords) coord_sorter.reset(new ExternalSorter<CoordRecord, CompareCoordById>(coord_chunk, temp_dir, "cppRouting_osm_coordout"));
 
@@ -279,13 +293,20 @@ Rcpp::List build_osm_graph_disk(std::string path,
             length_m += osm_tags::haversine_m(group[j].lat, group[j].lon, group[j + 1].lat, group[j + 1].lon);
 
           if (from_osm != to_osm){
-            double cost = 60.0 * (length_m / 1000.0) / speed;
+            double length_km = length_m / 1000.0;
+            double cost = 60.0 * length_km / speed;
             if (want_coords) {
               coord_sorter->add(CoordRecord{from_osm, group[seg_start].lat, group[seg_start].lon});
               coord_sorter->add(CoordRecord{to_osm, group[i].lat, group[i].lon});
             }
-            if (direction != 2){ edges_f << from_osm << "," << to_osm << "," << cost << "\n"; n_edges++; }
-            if (direction != 1){ edges_f << to_osm << "," << from_osm << "," << cost << "\n"; n_edges++; }
+            auto write_aux_row = [&](){
+              if (!want_aux) return;
+              if (keep_clazz && keep_length) aux_f << clazz << "," << length_km << "\n";
+              else if (keep_clazz) aux_f << clazz << "\n";
+              else aux_f << length_km << "\n";
+            };
+            if (direction != 2){ edges_f << from_osm << "," << to_osm << "," << cost << "\n"; write_aux_row(); n_edges++; }
+            if (direction != 1){ edges_f << to_osm << "," << from_osm << "," << cost << "\n"; write_aux_row(); n_edges++; }
           }
 
           seg_start = i;
@@ -353,9 +374,12 @@ Rcpp::List cpp_build_osm_graph_disk_csv(std::string path,
                                           std::string temp_dir,
                                           std::string edges_path,
                                           std::string coords_path,
+                                          std::string aux_path,
                                           bool want_coords,
+                                          bool keep_clazz,
+                                          bool keep_length,
                                           bool progress){
   return build_osm_graph_disk(path, profile_highway, profile_clazz, profile_speed,
                                use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir,
-                               edges_path, coords_path, want_coords, progress);
+                               edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress);
 }

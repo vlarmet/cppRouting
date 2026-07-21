@@ -8,7 +8,10 @@
 #' untagged vertices in the middle of a way. \code{$osm_lines} alone has no such per-vertex id.
 #' @inheritParams graph_from_osmpbf
 #' @param snap_digits integer. Decimal places used when matching line vertex coordinates against
-#' \code{$osm_points} coordinates.
+#' \code{$osm_points} coordinates. Defaults (\code{NULL}) to \code{7} for geographic (lat/lon) coordinates --
+#' the normal case, since \code{osmdata} results are essentially always WGS84 -- or \code{4} for the rare
+#' case of an already-projected \code{osmdata} object; see \link{graph_from_shapefile}'s \code{snap_digits}
+#' for why the two need different precision.
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details Every non-\code{osm_id} column of \code{x$osm_lines} is treated as an OSM tag (its column name
@@ -22,7 +25,8 @@ graph_from_osmdata <- function(x,
                                 use_maxspeed = TRUE,
                                 assume_oneway_motorway = TRUE,
                                 keep_clazz = FALSE,
-                                snap_digits = 7,
+                                keep_length = FALSE,
+                                snap_digits = NULL,
                                 output = c("graph", "data.frame", "csv"),
                                 out_prefix = NULL,
                                 coords = TRUE,
@@ -44,6 +48,7 @@ graph_from_osmdata <- function(x,
 
   is_geographic <- isTRUE(suppressMessages(suppressWarnings(sf::st_is_longlat(points))))
   stop_if_geographic_coords_unhandled(is_geographic, coords, epsg)
+  snap_digits <- resolve_snap_digits(snap_digits, is_geographic)
 
   geom_type <- as.character(sf::st_geometry_type(lines, by_geometry = TRUE))
   if (!all(geom_type %in% c("LINESTRING", "MULTILINESTRING"))) {
@@ -122,7 +127,11 @@ graph_from_osmdata <- function(x,
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
   if (coords) coords_df <- reproject_coords(coords_df, is_geographic, sf::st_crs(points), epsg)
-  aux <- if (keep_clazz) data.frame(clazz = result$clazz) else NULL
+  aux <- NULL
+  if (keep_clazz) aux <- data.frame(clazz = result$clazz)
+  if (keep_length) {
+    if (is.null(aux)) aux <- data.frame(length = result$length) else aux$length <- result$length
+  }
 
   dispatch_graph_output(edges, coords_df, aux, output, out_prefix, want_coords = coords)
 }

@@ -12,7 +12,14 @@
 #' ways are treated as one-way (forward, first node to last) unless an explicit \code{oneway=no} tag says
 #' otherwise. Standard OSM \code{oneway} tag values (\code{yes}/\code{-1}/\code{no}) always take precedence.
 #' @param keep_clazz logical. If \code{TRUE}, keep each edge's resolved highway class id as \code{aux}
-#' (see \link{makegraph}). Has no effect when \code{output = "csv"} (that path never carries \code{aux}).
+#' (see \link{makegraph}). For \code{output = "csv"} (including the \code{max_memory} disk-backed
+#' pipeline), this is written as an extra \code{<out_prefix>_aux.csv} instead, one row per edge in
+#' \code{<out_prefix>_edges.csv} -- csv output always carries the same information as \code{data.frame}
+#' output.
+#' @param keep_length logical. If \code{TRUE}, keep each edge's haversine length (in km) as \code{aux},
+#' regardless of the resolved time-based cost -- e.g. to get a time-based graph while still reporting
+#' physical distance. Same \code{<out_prefix>_aux.csv} handling as \code{keep_clazz} for
+#' \code{output = "csv"}.
 #' @param output One of \code{"graph"} (default), \code{"data.frame"} or \code{"csv"}.
 #' @param out_prefix Path prefix used when \code{output = "csv"}.
 #' @param coords logical. If \code{TRUE} (default), extract each node's coordinates: written to
@@ -64,6 +71,7 @@ graph_from_osmpbf <- function(path,
                                use_maxspeed = TRUE,
                                assume_oneway_motorway = TRUE,
                                keep_clazz = FALSE,
+                               keep_length = FALSE,
                                output = c("graph", "data.frame", "csv"),
                                out_prefix = NULL,
                                coords = TRUE,
@@ -98,35 +106,41 @@ graph_from_osmpbf <- function(path,
   if (!is.null(max_memory)) {
     edges_path <- paste0(out_prefix, "_edges.csv")
     coords_path <- paste0(out_prefix, "_coords.csv")
+    aux_path <- paste0(out_prefix, "_aux.csv")
     cpp_build_osm_graph_disk_csv(path,
                                   as.character(profile$highway),
                                   as.integer(profile$clazz),
                                   as.numeric(profile$speed),
                                   use_maxspeed, assume_oneway_motorway,
                                   as.numeric(max_memory), temp_dir,
-                                  edges_path, coords_path, coords, progress)
-    if (coords) return(invisible(c(edges_path, coords_path)))
-    return(invisible(edges_path))
+                                  edges_path, coords_path, aux_path,
+                                  coords, keep_clazz, keep_length, progress)
+    paths <- edges_path
+    if (coords) paths <- c(paths, coords_path)
+    if (keep_clazz || keep_length) paths <- c(paths, aux_path)
+    return(invisible(paths))
   }
 
   if (output == "csv") {
-    # Streams edges/coords straight to disk during the same junction-splitting
-    # pass instead of building the full result in R memory first -- keeps
-    # peak RAM bounded by pass 1/2's structures alone, for continent-scale
-    # files. keep_clazz has no effect here: the CSV path never carries aux.
+    # Streams edges/coords/aux straight to disk during the same junction-
+    # splitting pass instead of building the full result in R memory first --
+    # keeps peak RAM bounded by pass 1/2's structures alone, for
+    # continent-scale files.
     edges_path <- paste0(out_prefix, "_edges.csv")
     coords_path <- paste0(out_prefix, "_coords.csv")
+    aux_path <- paste0(out_prefix, "_aux.csv")
     cpp_write_osm_graph_csv(path,
                              as.character(profile$highway),
                              as.integer(profile$clazz),
                              as.numeric(profile$speed),
                              use_maxspeed, assume_oneway_motorway,
-                             edges_path, coords_path, coords, progress)
-    if (coords) {
-      reproject_coords_csv(coords_path, TRUE, 4326L, epsg)
-      return(invisible(c(edges_path, coords_path)))
-    }
-    return(invisible(edges_path))
+                             edges_path, coords_path, aux_path,
+                             coords, keep_clazz, keep_length, progress)
+    if (coords) reproject_coords_csv(coords_path, TRUE, 4326L, epsg)
+    paths <- edges_path
+    if (coords) paths <- c(paths, coords_path)
+    if (keep_clazz || keep_length) paths <- c(paths, aux_path)
+    return(invisible(paths))
   }
 
   result <- cpp_build_osm_graph(path,
@@ -138,7 +152,11 @@ graph_from_osmpbf <- function(path,
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)
   if (coords) coords_df <- reproject_coords(coords_df, TRUE, 4326L, epsg)
-  aux <- if (keep_clazz) data.frame(clazz = result$clazz) else NULL
+  aux <- NULL
+  if (keep_clazz) aux <- data.frame(clazz = result$clazz)
+  if (keep_length) {
+    if (is.null(aux)) aux <- data.frame(length = result$length) else aux$length <- result$length
+  }
 
   dispatch_graph_output(edges, coords_df, aux, output, out_prefix, want_coords = coords)
 }

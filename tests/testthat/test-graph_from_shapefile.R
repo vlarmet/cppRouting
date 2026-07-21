@@ -150,6 +150,47 @@ test_that("graph_from_shapefile epsg is ignored when the source CRS is already p
   expect_equal(res$coords, res_noepsg$coords)
 })
 
+test_that("graph_from_shapefile output='csv' writes the same aux as output='data.frame' to a separate file", {
+  common <- list(cost_field = "LONGUEUR", keep_length = TRUE, keep_fields = "VOCATION", snap_digits = 4)
+
+  out_prefix <- tempfile()
+  paths <- do.call(graph_from_shapefile, c(list(test_shp), common, list(output = "csv", out_prefix = out_prefix)))
+  on.exit(unlink(paths))
+  expect_length(paths, 3L) # edges, coords, aux
+  aux_csv <- data.table::fread(paths[3])
+
+  res <- do.call(graph_from_shapefile, c(list(test_shp), common, list(output = "data.frame")))
+  expect_equal(as.data.frame(aux_csv), res$aux, ignore_attr = TRUE)
+})
+
+test_that("resolve_snap_digits resolves NULL to a CRS-appropriate default, and respects an explicit value", {
+  resolve_snap_digits <- cppRouting:::resolve_snap_digits
+  expect_equal(resolve_snap_digits(NULL, TRUE), 7L)
+  expect_equal(resolve_snap_digits(NULL, FALSE), 4L)
+  expect_equal(resolve_snap_digits(3, TRUE), 3)
+  expect_equal(resolve_snap_digits(3, FALSE), 3)
+})
+
+test_that("graph_from_shapefile's default snap_digits (NULL) picks 7 or 4 depending on the CRS", {
+  common <- list(cost_field = "LONGUEUR", direction_field = "SENS",
+                  direction_values = list(twoway = "Double sens", forward = "Sens unique", backward = "Sens inverse"),
+                  output = "data.frame")
+
+  # Projected fixture: default resolves to 4, same topology as passing it explicitly.
+  res_default <- do.call(graph_from_shapefile, c(list(test_shp), common))
+  res_explicit4 <- do.call(graph_from_shapefile, c(list(test_shp), common, list(snap_digits = 4)))
+  expect_equal(res_default, res_explicit4)
+
+  # Geographic fixture: default resolves to 7, same as passing it explicitly
+  # (coords = FALSE dodges the unrelated geographic-coordinates hard stop).
+  geo_shp <- make_geographic_shp_copy()
+  on.exit(unlink(paste0(sub("\\.shp$", "", geo_shp), c(".shp", ".shx", ".dbf", ".prj"))))
+  geo_common <- c(common, list(coords = FALSE))
+  res_geo_default <- do.call(graph_from_shapefile, c(list(geo_shp), geo_common))
+  res_geo_explicit7 <- do.call(graph_from_shapefile, c(list(geo_shp), geo_common, list(snap_digits = 7)))
+  expect_equal(res_geo_default, res_geo_explicit7)
+})
+
 test_that("cpp_read_shp_geometry rejects a record whose declared NumPoints exceeds its content length", {
   raw <- readBin(test_shp, "raw", file.info(test_shp)$size)
   # First record starts right after the 100-byte file header; its content

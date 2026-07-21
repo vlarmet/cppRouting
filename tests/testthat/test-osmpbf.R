@@ -134,3 +134,36 @@ test_that("cpp_extract on a .pbf rejects epsg together with max_memory", {
     "File not found" # gets past the epsg/max_memory guard, fails on the (nonexistent) file instead
   )
 })
+
+test_that("cpp_extract on a .pbf keep_length keeps haversine length (km) as aux, consistent with dist", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, progress = FALSE)
+  expect_false(is.null(res$aux$length))
+  # way A-B-C and way B-D are both "residential" (40 km/h, the default profile speed):
+  # dist = 60*length/speed = 1.5*length
+  expect_equal(res$data$dist, 1.5 * res$aux$length, tolerance = 1e-6)
+
+  # combined with keep_clazz: both aux columns present
+  res2 <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE,
+                       keep_clazz = TRUE, progress = FALSE)
+  expect_setequal(names(res2$aux), c("clazz", "length"))
+})
+
+test_that("cpp_extract on a .pbf output='csv' writes the same aux as output='data.frame' to a separate file", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  out_prefix <- tempfile()
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE,
+                        keep_clazz = TRUE, keep_length = TRUE, progress = FALSE)
+  on.exit(unlink(paths), add = TRUE)
+  expect_length(paths, 2L) # edges, aux (no coords)
+  aux_csv <- data.table::fread(paths[2])
+
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE,
+                      keep_clazz = TRUE, keep_length = TRUE, progress = FALSE)
+  expect_equal(aux_csv$clazz, res$aux$clazz)
+  expect_equal(aux_csv$length, res$aux$length, tolerance = 1e-6)
+})

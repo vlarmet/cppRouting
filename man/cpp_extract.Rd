@@ -12,8 +12,9 @@ cpp_extract(
   direction_field = NULL,
   direction_values = NULL,
   directed = FALSE,
-  snap_digits = 7,
+  snap_digits = NULL,
   keep_fields = NULL,
+  keep_length = FALSE,
   output = c("graph", "data.frame", "csv"),
   out_prefix = NULL,
   coords = TRUE,
@@ -51,12 +52,15 @@ GeoPackage is not supported and has no plans to be: convert it to a shapefile fi
 
 \item{cost_field}{Optional. Name of a numeric attribute column to use directly as edge cost.}
 
-\item{speed_field}{Optional. Name of a numeric attribute column holding a speed. Used with \code{length_field}
-(or the geometric length of each line, if \code{length_field} is \code{NULL}) to derive a cost as
-\code{60 * length / speed}. Ignored if \code{cost_field} is provided.}
+\item{speed_field}{Optional. Name of a numeric attribute column holding a speed in km/h. Used with
+\code{length_field} (in km) to derive a cost in minutes as \code{60 * length / speed}. Ignored if
+\code{cost_field} is provided.}
 
-\item{length_field}{Optional. Name of a numeric attribute column holding each line's length. If \code{NULL}
-and \code{speed_field} is used, length is computed from the line geometry itself.}
+\item{length_field}{Optional. Name of a numeric attribute column holding each line's length, in km (to
+match the \code{60 * length / speed} formula above). If \code{NULL} and \code{speed_field} is used,
+length is instead computed from the line geometry itself and converted from the CRS's native unit
+(assumed to be meters, true for any typical projected CRS) to km. Unused for OSM sources (\code{.pbf}/
+\code{osmdata}), which always derive cost from \code{profile}/\code{maxspeed} and haversine length.}
 
 \item{direction_field}{Optional. Name of an attribute column describing the direction of travel allowed on
 each line (e.g. a "sens" column). Combined with \code{direction_values}.}
@@ -72,10 +76,21 @@ bidirectional.}
 \item{snap_digits}{integer. Shapefile/sf sources: decimal places used to round coordinates before
 deduplicating line endpoints into nodes. \code{osmdata} sources: decimal places used to match line
 vertex coordinates against \code{$osm_points} coordinates. Unused for \code{.pbf} (topology comes from
-OSM node ids directly, no coordinate matching needed).}
+OSM node ids directly, no coordinate matching needed). Defaults (\code{NULL}) to \code{7} for geographic
+(lat/lon) coordinates or \code{4} for projected (meter-scale) ones -- geographic coordinates need many
+decimal places to distinguish nearby points, but that precision is far too tight for projected
+coordinates, where it starts picking up floating-point noise between independently-digitized but
+logically-identical points rather than real geometric differences.}
 
-\item{keep_fields}{Optional character vector of extra attribute columns to keep as \code{aux} (see
-\link{makegraph}).}
+\item{keep_fields}{Shapefile/sf sources only. Optional character vector of extra attribute columns to
+keep as \code{aux} (see \link{makegraph}).}
+
+\item{keep_length}{logical. If \code{TRUE}, keep each edge's length (in km) as \code{aux}, regardless of
+how the main \code{cost} was actually resolved -- e.g. to get a time-based graph while still reporting
+physical distance. Shapefile/sf sources: the geometric length (unreliable for a geographic CRS, same
+caveat as \code{length_field} above -- reproject or use \code{keep_fields} with your own length column
+instead in that case). OSM sources: the haversine length. \code{output = "csv"} carries the same
+information as \code{output = "data.frame"}: \code{aux} is written to \verb{<out_prefix>_aux.csv}.}
 
 \item{output}{One of \code{"graph"} (default, returns a ready-to-use \code{cppRouting_graph}),
 \code{"data.frame"}, or \code{"csv"}.}

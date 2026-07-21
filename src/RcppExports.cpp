@@ -48,8 +48,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cpp_write_osm_graph_csv
-Rcpp::List cpp_write_osm_graph_csv(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, std::string edges_path, std::string coords_path, bool want_coords, bool progress);
-RcppExport SEXP _cppRouting_cpp_write_osm_graph_csv(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP edges_pathSEXP, SEXP coords_pathSEXP, SEXP want_coordsSEXP, SEXP progressSEXP) {
+Rcpp::List cpp_write_osm_graph_csv(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, std::string edges_path, std::string coords_path, std::string aux_path, bool want_coords, bool keep_clazz, bool keep_length, bool progress);
+RcppExport SEXP _cppRouting_cpp_write_osm_graph_csv(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP edges_pathSEXP, SEXP coords_pathSEXP, SEXP aux_pathSEXP, SEXP want_coordsSEXP, SEXP keep_clazzSEXP, SEXP keep_lengthSEXP, SEXP progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -61,9 +61,12 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type assume_oneway_motorway(assume_oneway_motorwaySEXP);
     Rcpp::traits::input_parameter< std::string >::type edges_path(edges_pathSEXP);
     Rcpp::traits::input_parameter< std::string >::type coords_path(coords_pathSEXP);
+    Rcpp::traits::input_parameter< std::string >::type aux_path(aux_pathSEXP);
     Rcpp::traits::input_parameter< bool >::type want_coords(want_coordsSEXP);
+    Rcpp::traits::input_parameter< bool >::type keep_clazz(keep_clazzSEXP);
+    Rcpp::traits::input_parameter< bool >::type keep_length(keep_lengthSEXP);
     Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
-    rcpp_result_gen = Rcpp::wrap(cpp_write_osm_graph_csv(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, want_coords, progress));
+    rcpp_result_gen = Rcpp::wrap(cpp_write_osm_graph_csv(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -106,8 +109,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cpp_build_osm_graph_disk_csv
-Rcpp::List cpp_build_osm_graph_disk_csv(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, double max_memory_mb, std::string temp_dir, std::string edges_path, std::string coords_path, bool want_coords, bool progress);
-RcppExport SEXP _cppRouting_cpp_build_osm_graph_disk_csv(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP max_memory_mbSEXP, SEXP temp_dirSEXP, SEXP edges_pathSEXP, SEXP coords_pathSEXP, SEXP want_coordsSEXP, SEXP progressSEXP) {
+Rcpp::List cpp_build_osm_graph_disk_csv(std::string path, std::vector<std::string> profile_highway, std::vector<int> profile_clazz, std::vector<double> profile_speed, bool use_maxspeed, bool assume_oneway_motorway, double max_memory_mb, std::string temp_dir, std::string edges_path, std::string coords_path, std::string aux_path, bool want_coords, bool keep_clazz, bool keep_length, bool progress);
+RcppExport SEXP _cppRouting_cpp_build_osm_graph_disk_csv(SEXP pathSEXP, SEXP profile_highwaySEXP, SEXP profile_clazzSEXP, SEXP profile_speedSEXP, SEXP use_maxspeedSEXP, SEXP assume_oneway_motorwaySEXP, SEXP max_memory_mbSEXP, SEXP temp_dirSEXP, SEXP edges_pathSEXP, SEXP coords_pathSEXP, SEXP aux_pathSEXP, SEXP want_coordsSEXP, SEXP keep_clazzSEXP, SEXP keep_lengthSEXP, SEXP progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -121,9 +124,12 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type temp_dir(temp_dirSEXP);
     Rcpp::traits::input_parameter< std::string >::type edges_path(edges_pathSEXP);
     Rcpp::traits::input_parameter< std::string >::type coords_path(coords_pathSEXP);
+    Rcpp::traits::input_parameter< std::string >::type aux_path(aux_pathSEXP);
     Rcpp::traits::input_parameter< bool >::type want_coords(want_coordsSEXP);
+    Rcpp::traits::input_parameter< bool >::type keep_clazz(keep_clazzSEXP);
+    Rcpp::traits::input_parameter< bool >::type keep_length(keep_lengthSEXP);
     Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
-    rcpp_result_gen = Rcpp::wrap(cpp_build_osm_graph_disk_csv(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir, edges_path, coords_path, want_coords, progress));
+    rcpp_result_gen = Rcpp::wrap(cpp_build_osm_graph_disk_csv(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -892,10 +898,10 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpp_build_geom_graph", (DL_FUNC) &_cppRouting_cpp_build_geom_graph, 7},
     {"_cppRouting_cpp_write_geom_graph_csv", (DL_FUNC) &_cppRouting_cpp_write_geom_graph_csv, 10},
-    {"_cppRouting_cpp_write_osm_graph_csv", (DL_FUNC) &_cppRouting_cpp_write_osm_graph_csv, 10},
+    {"_cppRouting_cpp_write_osm_graph_csv", (DL_FUNC) &_cppRouting_cpp_write_osm_graph_csv, 13},
     {"_cppRouting_cpp_build_osm_graph", (DL_FUNC) &_cppRouting_cpp_build_osm_graph, 7},
     {"_cppRouting_cpp_build_osm_graph_from_data", (DL_FUNC) &_cppRouting_cpp_build_osm_graph_from_data, 11},
-    {"_cppRouting_cpp_build_osm_graph_disk_csv", (DL_FUNC) &_cppRouting_cpp_build_osm_graph_disk_csv, 12},
+    {"_cppRouting_cpp_build_osm_graph_disk_csv", (DL_FUNC) &_cppRouting_cpp_build_osm_graph_disk_csv, 15},
     {"_cppRouting_cpp_osmpbf_counts", (DL_FUNC) &_cppRouting_cpp_osmpbf_counts, 1},
     {"_cppRouting_cpp_read_shp_geometry", (DL_FUNC) &_cppRouting_cpp_read_shp_geometry, 1},
     {"_cppRouting_cpp_read_dbf", (DL_FUNC) &_cppRouting_cpp_read_dbf, 1},

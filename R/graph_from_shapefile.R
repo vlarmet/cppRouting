@@ -3,11 +3,13 @@
 #' Internal implementation for the \code{.shp} source of \link{cpp_extract}; not exported directly.
 #' @param path Path to the \code{.shp} file (the companion \code{.dbf} must sit next to it, same base name).
 #' @param cost_field Optional. Name of a numeric attribute column to use directly as edge cost.
-#' @param speed_field Optional. Name of a numeric attribute column holding a speed. Used with \code{length_field}
-#' (or the geometric length of each line, if \code{length_field} is \code{NULL}) to derive a cost as
-#' \code{60 * length / speed}. Ignored if \code{cost_field} is provided.
-#' @param length_field Optional. Name of a numeric attribute column holding each line's length. If \code{NULL}
-#' and \code{speed_field} is used, length is computed from the line geometry itself.
+#' @param speed_field Optional. Name of a numeric attribute column holding a speed in km/h. Used with
+#' \code{length_field} (in km) to derive a cost in minutes as \code{60 * length / speed}. Ignored if
+#' \code{cost_field} is provided.
+#' @param length_field Optional. Name of a numeric attribute column holding each line's length, in km (to
+#' match the \code{60 * length / speed} formula above). If \code{NULL} and \code{speed_field} is used,
+#' length is instead computed from the line geometry itself and converted from the CRS's native unit
+#' (assumed to be meters, true for any typical projected CRS) to km.
 #' @param direction_field Optional. Name of an attribute column describing the direction of travel allowed on
 #' each line (e.g. a "sens" column). Combined with \code{direction_values}.
 #' @param direction_values Optional. A list with up to three character vectors: \code{forward} (only from the
@@ -18,10 +20,21 @@
 #' bidirectional. Note this default intentionally differs from \link{makegraph}: without any direction
 #' information, assuming every edge is traversable both ways is the safer default.
 #' @param snap_digits integer. Number of decimal places used to round coordinates before deduplicating line
-#' endpoints into nodes. Increase for very precise/projected coordinates, decrease if nearby endpoints coming
-#' from slightly different digitizing are not being merged into the same node.
+#' endpoints into nodes. Defaults (\code{NULL}) to \code{7} for a geographic (lat/lon) CRS or \code{4} for a
+#' projected one, based on the \code{.prj} file -- geographic coordinates need many decimal places to
+#' distinguish nearby points, but that same precision is far too tight for projected (meter-scale)
+#' coordinates, where it starts picking up floating-point noise between independently-digitized but
+#' logically-identical points rather than real geometric differences. Decrease further if nearby endpoints
+#' coming from slightly different digitizing are still not being merged into the same node.
 #' @param keep_fields Optional character vector of extra attribute columns to keep as \code{aux} (see
 #' \link{makegraph}), e.g. an extra distance column alongside a time-based \code{cost_field}.
+#' @param keep_length logical. If \code{TRUE}, keep each edge's geometric length (in km) as \code{aux},
+#' regardless of how \code{cost} was actually resolved (\code{cost_field}/\code{speed_field}/fallback) --
+#' e.g. to get a time-based graph while still reporting physical distance. For a geographic CRS, this is
+#' the raw degree-based length (as unreliable as a physical distance as the geometric-length cost fallback
+#' -- see \code{length_field} above); reproject (\code{epsg}) or use \code{keep_fields} with your own length
+#' column instead in that case. \code{output = "csv"} carries the same information as
+#' \code{output = "data.frame"}: \code{aux} is written to \verb{<out_prefix>_aux.csv}.
 #' @param output One of \code{"graph"} (default, returns a ready-to-use \code{cppRouting_graph} via
 #' \link{makegraph}), \code{"data.frame"} (returns the edges/coords tables without building the graph), or
 #' \code{"csv"} (writes \code{<out_prefix>_edges.csv} and \code{<out_prefix>_coords.csv}).
@@ -51,8 +64,9 @@ graph_from_shapefile <- function(path,
                                   direction_field = NULL,
                                   direction_values = NULL,
                                   directed = FALSE,
-                                  snap_digits = 7,
+                                  snap_digits = NULL,
                                   keep_fields = NULL,
+                                  keep_length = FALSE,
                                   output = c("graph", "data.frame", "csv"),
                                   out_prefix = NULL,
                                   coords = TRUE,
@@ -86,11 +100,13 @@ graph_from_shapefile <- function(path,
   }
   warn_if_geographic_without_length(is_geographic, length_field, cost_field)
   stop_if_geographic_coords_unhandled(is_geographic, coords, epsg)
+  snap_digits <- resolve_snap_digits(snap_digits, is_geographic)
 
-  cost <- resolve_geom_cost(attrs, geom$length, cost_field, speed_field, length_field)
+  cost <- resolve_geom_cost(attrs, geom$length, cost_field, speed_field, length_field, is_geographic)
   direction_code <- resolve_geom_direction(attrs, direction_field, direction_values, directed, length(geom$x1))
 
   finalize_geom_graph(geom$x1, geom$y1, geom$x2, geom$y2, cost, direction_code, snap_digits,
                        attrs, keep_fields, output, out_prefix, want_coords = coords,
-                       epsg = epsg, is_geographic = is_geographic, source_crs = source_crs)
+                       epsg = epsg, is_geographic = is_geographic, source_crs = source_crs,
+                       geom_length = geom$length, keep_length = keep_length)
 }

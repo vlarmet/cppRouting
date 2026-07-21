@@ -5,7 +5,21 @@
 # direction resolution down to the final graph/data.frame/csv output is
 # common and lives here.
 
-resolve_geom_cost <- function(attrs, geom_length, cost_field, speed_field, length_field){
+# snap_digits = NULL resolves to a CRS-appropriate default rather than one
+# flat number: geographic (lat/lon degree) coordinates need many decimal
+# places to distinguish nearby points (7 decimals ~= 1cm), but that same
+# precision is far too tight for projected (meter-scale) coordinates like
+# Lambert-93 -- real-world validation against IGN's ROUTE500 NOEUD_ROUTIER
+# layer showed exact-match rates collapsing from 99.9% at snap_digits = 4 to
+# 0% at snap_digits = 6, purely from floating-point/production noise between
+# independently-stored coordinates of the "same" point (observed mismatches
+# were ~5 micrometers apart -- nowhere near a real geometric difference).
+resolve_snap_digits <- function(snap_digits, is_geographic){
+  if (!is.null(snap_digits)) return(snap_digits)
+  if (isTRUE(is_geographic)) 7L else 4L
+}
+
+resolve_geom_cost <- function(attrs, geom_length, cost_field, speed_field, length_field, is_geographic){
   if (!is.null(cost_field)) {
     if (!cost_field %in% names(attrs)) stop("cost_field '", cost_field, "' not found in attributes")
     cost <- as.numeric(attrs[[cost_field]])
@@ -14,6 +28,16 @@ resolve_geom_cost <- function(attrs, geom_length, cost_field, speed_field, lengt
     length_val <- if (!is.null(length_field)) {
       if (!length_field %in% names(attrs)) stop("length_field '", length_field, "' not found in attributes")
       as.numeric(attrs[[length_field]])
+    } else if (!isTRUE(is_geographic)) {
+      # geom_length is computed directly from the (projected, meter-scale)
+      # coordinates -- convert to km so that 60*length/speed gives minutes
+      # for a speed in km/h, same convention as an explicit length_field
+      # (e.g. ROUTE500's LONGUEUR, itself in km). Without this, relying on
+      # speed_field without an explicit length_field silently produced a
+      # cost 1000x too large. Not applied for geographic coordinates
+      # (degrees): warn_if_geographic_without_length() already flags that
+      # combination as unreliable regardless.
+      geom_length / 1000
     } else geom_length
     cost <- 60 * length_val / as.numeric(attrs[[speed_field]])
   } else {
@@ -105,10 +129,13 @@ reproject_coords_csv <- function(coords_path, is_geographic, source_crs, epsg){
 }
 
 # Dispatches to either the CSV streaming writer (edges/coords written
-# straight to disk as they're produced, aux never carried -- same
-# restriction as the OSM CSV path) or the in-memory builder (which does
-# support keep_fields/aux, via the "origin" index cpp_build_geom_graph
-# returns mapping each output edge back to its input segment).
+# straight to disk as they're produced -- the fast path, used whenever no
+# aux is requested) or the in-memory builder (needed to get the "origin"
+# index cpp_build_geom_graph returns, mapping each output edge back to its
+# input segment, for keep_fields/keep_length). CSV output always carries the
+# same information as data.frame output -- an extra "<out_prefix>_aux.csv"
+# is written whenever keep_fields/keep_length produced one, exactly mirroring
+# data.frame mode's separate `aux` element (see dispatch_graph_output).
 # want_coords: if FALSE, node coordinates are neither written (csv) nor
 # attached to the returned graph/data.frame -- see cpp_extract's `coords`
 # argument. Named want_coords here (not coords) because this function's own
@@ -116,9 +143,10 @@ reproject_coords_csv <- function(coords_path, is_geographic, source_crs, epsg){
 # `coords`.
 finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
                                  attrs, keep_fields, output, out_prefix, want_coords = TRUE,
-                                 epsg = NULL, is_geographic = FALSE, source_crs = NULL){
-  if (output == "csv") {
-    if (!is.null(keep_fields)) warning("keep_fields is ignored when output = 'csv' (that path never carries aux)")
+                                 epsg = NULL, is_geographic = FALSE, source_crs = NULL,
+                                 geom_length = NULL, keep_length = FALSE){
+  needs_origin <- !is.null(keep_fields) || keep_length
+  if (output == "csv" && !needs_origin) {
     edges_path <- paste0(out_prefix, "_edges.csv")
     coords_path <- paste0(out_prefix, "_coords.csv")
     cpp_write_geom_graph_csv(x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path, want_coords)
@@ -141,6 +169,16 @@ finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
     aux <- attrs[result$origin + 1L, keep_fields, drop = FALSE]
     rownames(aux) <- NULL
   }
+  if (keep_length) {
+    # Independent of how cost itself was resolved (cost_field/speed_field/
+    # fallback): always the geometric length, converted from the CRS's
+    # native unit (assumed meters) to km -- except for geographic sources,
+    # where it's left in degrees (unreliable as a physical distance either
+    # way; see warn_if_geographic_without_length()).
+    length_km <- geom_length[result$origin + 1L]
+    if (!isTRUE(is_geographic)) length_km <- length_km / 1000
+    if (is.null(aux)) aux <- data.frame(length = length_km) else aux$length <- length_km
+  }
 
   dispatch_graph_output(edges, coords, aux, output, out_prefix, want_coords)
 }
@@ -148,7 +186,10 @@ finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
 # Shared by every Module A/B reader: turn already-built edges/coords/aux
 # tables into whichever of graph/data.frame/csv the caller asked for.
 # want_coords: if FALSE, coords is dropped (NULL in data.frame mode, not
-# written in csv mode, not passed to makegraph() in graph mode).
+# written in csv mode, not passed to makegraph() in graph mode). csv mode
+# writes the exact same tables data.frame mode would return, one file per
+# table (aux only when non-NULL) -- there is no reason for csv and
+# data.frame to disagree on what the result is, only on how it's returned.
 dispatch_graph_output <- function(edges, coords, aux, output, out_prefix, want_coords = TRUE){
   if (!want_coords) coords <- NULL
 
@@ -156,9 +197,16 @@ dispatch_graph_output <- function(edges, coords, aux, output, out_prefix, want_c
 
   if (output == "csv") {
     data.table::fwrite(edges, paste0(out_prefix, "_edges.csv"))
-    if (!want_coords) return(invisible(paste0(out_prefix, "_edges.csv")))
-    data.table::fwrite(coords, paste0(out_prefix, "_coords.csv"))
-    return(invisible(c(paste0(out_prefix, "_edges.csv"), paste0(out_prefix, "_coords.csv"))))
+    paths <- paste0(out_prefix, "_edges.csv")
+    if (want_coords) {
+      data.table::fwrite(coords, paste0(out_prefix, "_coords.csv"))
+      paths <- c(paths, paste0(out_prefix, "_coords.csv"))
+    }
+    if (!is.null(aux)) {
+      data.table::fwrite(aux, paste0(out_prefix, "_aux.csv"))
+      paths <- c(paths, paste0(out_prefix, "_aux.csv"))
+    }
+    return(invisible(paths))
   }
 
   makegraph(edges, directed = TRUE, coords = coords, aux = aux)

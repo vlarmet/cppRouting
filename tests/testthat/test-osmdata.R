@@ -97,3 +97,30 @@ test_that("graph_from_osmdata coords=FALSE drops coords from every output mode",
   expect_true(file.exists(paths))
   expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
 })
+
+test_that("graph_from_osmdata keep_length keeps haversine length (km) as aux, consistent with dist", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+
+  res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE,
+                                          keep_length = TRUE, progress = FALSE)
+  expect_false(is.null(res$aux$length))
+  # both ways are "residential" (40 km/h, the default profile speed): dist = 1.5*length
+  expect_equal(res$data$dist, 1.5 * res$aux$length, tolerance = 1e-6)
+})
+
+test_that("graph_from_osmdata output='csv' writes the same aux as output='data.frame' to a separate file", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+
+  out_prefix <- tempfile()
+  paths <- cppRouting:::graph_from_osmdata(x, output = "csv", out_prefix = out_prefix, coords = FALSE,
+                                            keep_length = TRUE, progress = FALSE)
+  on.exit(unlink(paths))
+  expect_length(paths, 2L) # edges, aux (no coords)
+  aux_csv <- data.table::fread(paths[2])
+
+  res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE,
+                                          keep_length = TRUE, progress = FALSE)
+  expect_equal(aux_csv$length, res$aux$length, tolerance = 1e-6)
+})
