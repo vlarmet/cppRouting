@@ -5,6 +5,7 @@
 #include <limits>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <cstdlib>
 #include <cctype>
 #include <fstream>
@@ -144,8 +145,8 @@ std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept
           length_m += haversine_m(c1.first, c1.second, c2.first, c2.second);
         }
 
-        int id1 = get_node_id(from_osm);
-        int id2 = get_node_id(to_osm);
+        auto id1 = get_node_id(from_osm);
+        auto id2 = get_node_id(to_osm);
         double cost = 60.0 * (length_m / 1000.0) / way.speed;
         double length_km = length_m / 1000.0;
         if (way.direction != 2){ on_edge(id1, id2, cost, way.clazz, length_km); n_edges++; }
@@ -160,38 +161,41 @@ std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept
 }
 
 // Shared pass 3 (in-memory variant): returns from/to/dist/clazz plus a
-// compact node_id/lon/lat table as an Rcpp::List. Used by the .pbf path and
-// the osmdata adapter.
+// node_id/lon/lat table as an Rcpp::List. Used by the .pbf path and the
+// osmdata adapter. from/to/node_id carry the real OSM node id (as double --
+// current OSM ids already exceed 2^31, so plain `int`/IntegerVector would
+// silently overflow; double is exact up to 2^53, comfortably enough
+// headroom) rather than a synthetic dense index: OSM ids are already stable,
+// unique identifiers, so there's no reason to discard them the way Module A
+// (shapefile/sf, which has no such native id) has to.
 Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
                                   const NodeTable &nodes,
                                   bool progress){
-  std::unordered_map<int64_t, int> node_id_map;
-  std::vector<double> node_lat_out, node_lon_out;
-  auto get_node_id = [&](int64_t osm_id) -> int {
-    auto it = node_id_map.find(osm_id);
-    if (it != node_id_map.end()) return it->second;
-    int id = static_cast<int>(node_lat_out.size());
-    node_id_map.emplace(osm_id, id);
-    auto coord = nodes.coord(osm_id);
-    node_lat_out.push_back(coord.first);
-    node_lon_out.push_back(coord.second);
-    return id;
+  std::unordered_set<int64_t> seen;
+  std::vector<double> node_id_out, node_lat_out, node_lon_out;
+  auto get_node_id = [&](int64_t osm_id) -> int64_t {
+    if (seen.insert(osm_id).second) {
+      auto coord = nodes.coord(osm_id);
+      node_id_out.push_back(static_cast<double>(osm_id));
+      node_lat_out.push_back(coord.first);
+      node_lon_out.push_back(coord.second);
+    }
+    return osm_id;
   };
 
-  std::vector<int> from, to;
+  std::vector<double> from, to;
   std::vector<double> dist;
   std::vector<int> clazz_out;
   std::vector<double> length_out;
-  auto on_edge = [&](int id1, int id2, double cost, int clazz, double length_km){
-    from.push_back(id1); to.push_back(id2); dist.push_back(cost); clazz_out.push_back(clazz);
+  auto on_edge = [&](int64_t id1, int64_t id2, double cost, int clazz, double length_km){
+    from.push_back(static_cast<double>(id1)); to.push_back(static_cast<double>(id2));
+    dist.push_back(cost); clazz_out.push_back(clazz);
     length_out.push_back(length_km);
   };
 
   auto counts = split_ways_into_edges(kept_ways, nodes, get_node_id, on_edge);
 
-  int nbnode = static_cast<int>(node_lat_out.size());
-  Rcpp::IntegerVector node_id(nbnode);
-  for (int i = 0; i < nbnode; i++) node_id[i] = i;
+  int nbnode = static_cast<int>(node_id_out.size());
 
   if (progress) Rcpp::Rcout << "done: " << nbnode << " nodes, " << counts.first << " edges ("
                             << counts.second << " way(s) skipped, crossing the extract's boundary)" << std::endl;
@@ -202,7 +206,7 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
     Rcpp::Named("length") = Rcpp::wrap(length_out),
     Rcpp::Named("dist") = Rcpp::wrap(dist),
     Rcpp::Named("clazz") = Rcpp::wrap(clazz_out),
-    Rcpp::Named("node_id") = node_id,
+    Rcpp::Named("node_id") = Rcpp::wrap(node_id_out),
     Rcpp::Named("lon") = Rcpp::wrap(node_lon_out),
     Rcpp::Named("lat") = Rcpp::wrap(node_lat_out)
   );
@@ -215,11 +219,14 @@ Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
 // point being to keep peak RAM bounded by pass 1/2's structures alone, for
 // continent-scale files processed with output="csv". aux_path mirrors
 // data.frame mode's separate `aux` table exactly: same columns, same values,
-// just written straight to disk instead of returned as an R object. When
-// want_coords is false, coords_path is never created -- node_id_map is
-// still needed regardless (it's what assigns from/to ids), only the
-// coordinate write is skipped. Likewise aux_path is never created unless at
-// least one of keep_clazz/keep_length is requested.
+// just written straight to disk instead of returned as an R object. from/to/
+// node_id carry the real OSM node id (matching the max_memory disk pipeline
+// in io_osm_graph_disk.cpp, and build_edges_from_ways() above) rather than a
+// synthetic dense index. When want_coords is false, coords_path is never
+// created -- the `seen` set is still needed regardless (it's what dedups a
+// node written once per way that uses it as a split-point endpoint), only
+// the coordinate write itself is skipped. Likewise aux_path is never created
+// unless at least one of keep_clazz/keep_length is requested.
 Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
                                       const NodeTable &nodes,
                                       const std::string &edges_path,
@@ -251,21 +258,25 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
     else aux_f << "length\n";
   }
 
-  std::unordered_map<int64_t, int> node_id_map;
-  auto get_node_id = [&](int64_t osm_id) -> int {
-    auto it = node_id_map.find(osm_id);
-    if (it != node_id_map.end()) return it->second;
-    int id = static_cast<int>(node_id_map.size());
-    node_id_map.emplace(osm_id, id);
-    if (want_coords) {
+  // Real OSM node ids already exceed 2^31: written as plain digits, they'd
+  // look like a valid (if large) integer to data.table::fread(), which then
+  // silently promotes the column to bit64::integer64 -- and without the
+  // (Suggests-only, not required by this package) bit64 package installed,
+  // that class holds outright garbage (an int64 bit pattern reinterpreted as
+  // a plain double), not merely a display quirk. A trailing ".0" makes the
+  // column unambiguously a double on read, which is exact for any id up to
+  // 2^53 -- comfortably past any real OSM id.
+  std::unordered_set<int64_t> seen;
+  auto get_node_id = [&](int64_t osm_id) -> int64_t {
+    if (seen.insert(osm_id).second && want_coords) {
       auto coord = nodes.coord(osm_id);
-      coords_f << id << "," << coord.second << "," << coord.first << "\n"; // X=lon, Y=lat
+      coords_f << osm_id << ".0," << coord.second << "," << coord.first << "\n"; // X=lon, Y=lat
     }
-    return id;
+    return osm_id;
   };
 
-  auto on_edge = [&](int id1, int id2, double cost, int clazz, double length_km){
-    edges_f << id1 << "," << id2 << "," << cost << "\n";
+  auto on_edge = [&](int64_t id1, int64_t id2, double cost, int clazz, double length_km){
+    edges_f << id1 << ".0," << id2 << ".0," << cost << "\n";
     if (want_aux) {
       if (keep_clazz && keep_length) aux_f << clazz << "," << length_km << "\n";
       else if (keep_clazz) aux_f << clazz << "\n";
@@ -274,7 +285,7 @@ Rcpp::List write_edges_from_ways_csv(const std::vector<KeptWay> &kept_ways,
   };
 
   auto counts = split_ways_into_edges(kept_ways, nodes, get_node_id, on_edge);
-  int nbnode = static_cast<int>(node_id_map.size());
+  int nbnode = static_cast<int>(seen.size());
 
   if (progress) Rcpp::Rcout << "done: " << nbnode << " nodes, " << counts.first << " edges ("
                             << counts.second << " way(s) skipped, crossing the extract's boundary)" << std::endl;

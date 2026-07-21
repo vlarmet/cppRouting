@@ -74,10 +74,10 @@ test_that("oneway=-1 and oneway=reverse both produce a single backward-only edge
   res2 <- cpp_extract(path2, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
   expect_equal(nrow(res1$data), 1L)
   expect_equal(res1$data[, c("from", "to")], res2$data[, c("from", "to")])
-  # backward: from the way's last node (encountered 2nd -> node id 1) to its
-  # first node (encountered 1st -> node id 0).
-  expect_equal(res1$data$from, 1L)
-  expect_equal(res1$data$to, 0L)
+  # backward: from the way's last node (osm id 2) to its first node (osm id
+  # 1) -- from/to carry the real OSM node id, not a remapped dense index.
+  expect_equal(res1$data$from, 2)
+  expect_equal(res1$data$to, 1)
 })
 
 test_that("access=no or access=private drops a way", {

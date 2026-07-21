@@ -19,6 +19,11 @@
 #' rules -- exactly matching how \code{osmdata_sf()} flattens tags into columns. A line whose vertex cannot
 #' be matched to any \code{$osm_points} coordinate (beyond \code{snap_digits} tolerance) is dropped, with a
 #' warning.
+#'
+#' \code{from}/\code{to}/\code{node_id} are the real (numeric) \code{osm_id} from \code{$osm_points}, not a
+#' synthetic 0-based index -- see \link{graph_from_osmpbf}'s \code{@details} for why, and for the
+#' \code{output = "csv"} \code{.0}-suffix caveat (real OSM ids exceed 2^31, so a plain integer-looking column
+#' would otherwise risk \code{bit64::integer64} corruption on read without the \code{bit64} package).
 #' @noRd
 graph_from_osmdata <- function(x,
                                 profile = osm_car_profile(),

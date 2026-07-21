@@ -46,6 +46,19 @@ test_that("graph_from_osmdata recovers the mid-way junction via $osm_points", {
   expect_equal(nrow(res$data), 5L)
 })
 
+test_that("graph_from_osmdata keeps the real osm_id, not a remapped dense index", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+
+  res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE)
+  # osm_id values in make_test_osmdata() are "1".."4" -- from/to must be a
+  # subset of the real ids, not a synthetic 0-based renumbering.
+  expect_setequal(c(res$data$from, res$data$to), 1:4)
+
+  full <- cppRouting:::graph_from_osmdata(x, output = "data.frame", epsg = 2154, progress = FALSE)
+  expect_setequal(full$coords$node_id, 1:4)
+})
+
 test_that("cpp_extract dispatches a full osmdata object the same way", {
   skip_if_not_installed("sf")
   x <- make_test_osmdata()

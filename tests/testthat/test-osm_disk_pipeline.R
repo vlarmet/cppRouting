@@ -37,6 +37,21 @@ test_that("disk pipeline splits a way at a mid-way junction, same as the in-RAM 
   expect_equal(sort(res$data$dist), sort(in_ram$data$dist))
 })
 
+test_that("disk pipeline and in-RAM path agree on the exact real OSM node ids, not just row counts", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  res <- run_disk_pipeline(path)
+  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+
+  # Both must expose the fixture's real ids (1:4, see helper-osmpbf.R) --
+  # previously the disk pipeline kept the real OSM id while the in-RAM path
+  # remapped to a synthetic 0-based index, so the same file produced two
+  # different id spaces depending on max_memory. Fixed so both paths agree.
+  expect_setequal(c(res$data$from, res$data$to), 1:4)
+  expect_setequal(c(res$data$from, res$data$to), c(in_ram$data$from, in_ram$data$to))
+})
+
 test_that("disk pipeline matches the in-RAM path on the real Bourgogne extract", {
   skip_if_not_installed("sf")
   pbf <- "/home/vincent/cppRouting/pbf/bourgogne-260717.osm.pbf"

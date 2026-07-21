@@ -305,8 +305,13 @@ Rcpp::List build_osm_graph_disk(std::string path,
               else if (keep_clazz) aux_f << clazz << "\n";
               else aux_f << length_km << "\n";
             };
-            if (direction != 2){ edges_f << from_osm << "," << to_osm << "," << cost << "\n"; write_aux_row(); n_edges++; }
-            if (direction != 1){ edges_f << to_osm << "," << from_osm << "," << cost << "\n"; write_aux_row(); n_edges++; }
+            // ".0" forces from/to to read back as plain double, not
+            // bit64::integer64 (see write_edges_from_ways_csv() in
+            // io_osm_graph.cpp for why: real OSM ids exceed 2^31, and
+            // integer64 without the bit64 package holds outright garbage,
+            // not just a display quirk).
+            if (direction != 2){ edges_f << from_osm << ".0," << to_osm << ".0," << cost << "\n"; write_aux_row(); n_edges++; }
+            if (direction != 1){ edges_f << to_osm << ".0," << from_osm << ".0," << cost << "\n"; write_aux_row(); n_edges++; }
           }
 
           seg_start = i;
@@ -338,7 +343,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
         bool has_next = cit.has_next();
         CoordRecord nxt = has_next ? cit.next() : CoordRecord{};
         if (!has_next || nxt.node_id != cur.node_id){
-          coords_f << cur.node_id << "," << cur.lon << "," << cur.lat << "\n";
+          coords_f << cur.node_id << ".0," << cur.lon << "," << cur.lat << "\n"; // see the ".0" comment in the edges_f writer above
           n_nodes++;
           if (!has_next) break;
         }

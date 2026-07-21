@@ -52,6 +52,15 @@
 #' small, expected loss limited to the extract's edge. Turn restrictions, barriers and non-car profiles are
 #' not supported yet.
 #'
+#' \code{from}/\code{to}/\code{node_id} are the real OSM node id, not a synthetic 0-based index (unlike
+#' \link{graph_from_shapefile}/\link{graph_from_sf}, which have no native node identity to preserve) -- so a
+#' node can be cross-referenced directly against \code{openstreetmap.org/node/<id>} or joined against other
+#' OSM-derived data. \code{output = "graph"} carries this through \code{makegraph()}'s own \code{dict} as
+#' usual. For \code{output = "csv"}, real OSM ids already exceed 2^31, so \code{from}/\code{to}/\code{node_id}
+#' are written with a forced \code{.0} decimal: without it, \code{data.table::fread()} silently promotes the
+#' column to \code{bit64::integer64} once values cross that threshold, which without the (optional)
+#' \code{bit64} package installed holds outright garbage, not just an odd-looking print.
+#'
 #' \code{output = "csv"} (without \code{max_memory}) streams edges/coordinates directly to disk as pass 3
 #' produces them rather than building the full result in R memory first, keeping peak RAM bounded by passes
 #' 1/2's in-RAM structures alone -- suitable for country-scale extracts (a few GB peak RAM even for all of

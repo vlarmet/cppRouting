@@ -200,6 +200,22 @@ finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
   dispatch_graph_output(edges, coords, aux, output, out_prefix, want_coords)
 }
 
+# data.table::fwrite() prints a whole-number double column (e.g. a large
+# real OSM node id -- see graph_from_osmdata(), the one Module B path whose
+# ids reach dispatch_graph_output() rather than a dedicated C++ CSV writer)
+# as plain digits, no decimal point. fread() then auto-promotes it to
+# bit64::integer64 once values exceed 2^31 -- and without the bit64 package
+# installed (a Suggests-only dependency of neither package), that class
+# holds outright garbage (an int64 bit pattern reinterpreted as a plain
+# double), not merely a display quirk. Forcing one decimal place makes the
+# column unambiguously a double on read, exact for any id up to 2^53 --
+# comfortably past any real OSM id. Only applied when actually needed
+# (values beyond int32 range), so Module A's small dense ids -- never at
+# risk -- keep their existing, unaffected plain-integer CSV formatting.
+avoid_integer64_ambiguity <- function(x){
+  if (is.numeric(x) && any(abs(x) > .Machine$integer.max, na.rm = TRUE)) sprintf("%.1f", x) else x
+}
+
 # Shared by every Module A/B reader: turn already-built edges/coords/aux
 # tables into whichever of graph/data.frame/csv the caller asked for.
 # want_coords: if FALSE, coords is dropped (NULL in data.frame mode, not
@@ -213,10 +229,15 @@ dispatch_graph_output <- function(edges, coords, aux, output, out_prefix, want_c
   if (output == "data.frame") return(list(data = edges, coords = coords, aux = aux))
 
   if (output == "csv") {
-    data.table::fwrite(edges, paste0(out_prefix, "_edges.csv"))
+    edges_out <- edges
+    edges_out$from <- avoid_integer64_ambiguity(edges_out$from)
+    edges_out$to <- avoid_integer64_ambiguity(edges_out$to)
+    data.table::fwrite(edges_out, paste0(out_prefix, "_edges.csv"))
     paths <- paste0(out_prefix, "_edges.csv")
     if (want_coords) {
-      data.table::fwrite(coords, paste0(out_prefix, "_coords.csv"))
+      coords_out <- coords
+      coords_out$node_id <- avoid_integer64_ambiguity(coords_out$node_id)
+      data.table::fwrite(coords_out, paste0(out_prefix, "_coords.csv"))
       paths <- c(paths, paste0(out_prefix, "_coords.csv"))
     }
     if (!is.null(aux)) {

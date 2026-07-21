@@ -28,6 +28,35 @@ test_that("cpp_extract on a .pbf splits a way at a mid-way junction (node 2)", {
   expect_equal(nrow(res$data), 5L)
 })
 
+test_that("cpp_extract on a .pbf keeps the real OSM node id, not a remapped dense index", {
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+  # nodes 1-4 in the fixture (see helper-osmpbf.R); from/to must be a subset
+  # of the real ids, not a synthetic 0-based renumbering.
+  expect_setequal(c(res$data$from, res$data$to), 1:4)
+
+  full <- cpp_extract(path, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
+  expect_setequal(full$coords$node_id, 1:4)
+})
+
+test_that("a real OSM id past the 32-bit integer range round-trips through csv without integer64 corruption", {
+  path <- tempfile(fileext = ".pbf")
+  on.exit(unlink(path))
+  big_id <- 6564874389 # a real-looking OSM node id, well past 2^31 (~2.147e9)
+  nodes <- data.frame(id = c(1, big_id), lat = c(47.00, 47.01), lon = c(5.00, 5.00))
+  ways <- list(list(refs = c(1, big_id), tags = list(highway = "residential")))
+  write_test_osmpbf(path, nodes, ways)
+
+  out_prefix <- tempfile()
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, osm = list(progress = FALSE))
+  on.exit(unlink(paths), add = TRUE)
+  edges_csv <- data.table::fread(paths)
+  expect_type(edges_csv$from, "double") # not bit64::integer64
+  expect_setequal(c(edges_csv$from, edges_csv$to), c(1, big_id))
+})
+
 test_that("cpp_extract on a .pbf resolves oneway correctly and drops non-profile highways", {
   path <- tempfile(fileext = ".pbf")
   on.exit(unlink(path))
