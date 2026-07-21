@@ -5,6 +5,23 @@
 # direction resolution down to the final graph/data.frame/csv output is
 # common and lives here.
 
+# Merges a user-supplied list of overrides against a named list of defaults,
+# used by cpp_extract()'s `osm`/`non_osm` grouped-argument lists. A flat
+# function argument gets typo protection for free from R's own "unused
+# argument" error; a list element does not (out$us_maxspeed <- FALSE would
+# just silently add an ignored element, leaving use_maxspeed at its default)
+# -- so unrecognized names are rejected explicitly here instead.
+merge_arg_list <- function(user_list, defaults, arg_name){
+  if (is.null(user_list)) return(defaults)
+  if (!is.list(user_list)) stop("'", arg_name, "' must be a list")
+  unknown <- setdiff(names(user_list), names(defaults))
+  if (length(unknown) > 0) {
+    stop("'", arg_name, "' has unrecognized element(s): ", paste(unknown, collapse = ", "),
+         ". Valid elements are: ", paste(names(defaults), collapse = ", "))
+  }
+  utils::modifyList(defaults, user_list)
+}
+
 # snap_digits = NULL resolves to a CRS-appropriate default rather than one
 # flat number: geographic (lat/lon degree) coordinates need many decimal
 # places to distinguish nearby points (7 decimals ~= 1cm), but that same

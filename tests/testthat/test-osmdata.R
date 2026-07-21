@@ -49,7 +49,7 @@ test_that("graph_from_osmdata recovers the mid-way junction via $osm_points", {
 test_that("cpp_extract dispatches a full osmdata object the same way", {
   skip_if_not_installed("sf")
   x <- make_test_osmdata()
-  g1 <- cpp_extract(x, output = "data.frame", coords = FALSE, progress = FALSE)
+  g1 <- cpp_extract(x, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
   g2 <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(g1, g2)
 })

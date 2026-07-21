@@ -32,7 +32,7 @@ test_that("disk pipeline splits a way at a mid-way junction, same as the in-RAM 
   # run_disk_pipeline() calls the C++ export directly, bypassing the R-level
   # geographic-coordinates hard stop -- coords = FALSE here since this
   # particular comparison only needs edges/dist parity, not coords.
-  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
+  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
   expect_equal(nrow(res$data), nrow(in_ram$data))
   expect_equal(sort(res$data$dist), sort(in_ram$data$dist))
 })
@@ -46,7 +46,7 @@ test_that("disk pipeline matches the in-RAM path on the real Bourgogne extract",
   # epsg required for coords (OSM coordinates are always geographic); row
   # count is unaffected by reprojection, so it's still a valid parity check
   # against disk_res$coords (left in WGS84 by the raw C++ call above).
-  in_ram <- cpp_extract(pbf, output = "data.frame", epsg = 2154, progress = FALSE)
+  in_ram <- cpp_extract(pbf, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
 
   expect_equal(nrow(disk_res$coords), nrow(in_ram$coords))
   expect_equal(nrow(disk_res$data), nrow(in_ram$data))
@@ -62,11 +62,12 @@ test_that("cpp_extract(max_memory=...) reaches the disk pipeline and matches the
   # here; coords parity for the disk pipeline itself is already covered by
   # the raw C++-level test above.
   out_prefix <- tempfile()
-  paths <- cpp_extract(pbf, max_memory = 300, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  paths <- cpp_extract(pbf, output = "csv", out_prefix = out_prefix, coords = FALSE,
+                        osm = list(max_memory = 300, progress = FALSE))
   expect_true(file.exists(paths))
 
   disk_res <- list(data = data.table::fread(paths))
-  in_ram <- cpp_extract(pbf, output = "data.frame", coords = FALSE, progress = FALSE)
+  in_ram <- cpp_extract(pbf, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
   expect_equal(nrow(disk_res$data), nrow(in_ram$data))
 })
 
@@ -75,14 +76,15 @@ test_that("cpp_extract(max_memory=..., coords=FALSE) skips coords.csv but edge d
   on.exit(unlink(path))
 
   out_prefix <- tempfile()
-  paths <- cpp_extract(path, max_memory = 300, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE,
+                        osm = list(max_memory = 300, progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   expect_length(paths, 1L)
   expect_true(file.exists(paths))
   expect_false(file.exists(paste0(out_prefix, "_coords.csv")))
 
   disk_edges <- data.table::fread(paths)
-  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, progress = FALSE)
+  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
   expect_equal(sort(disk_edges$dist), sort(in_ram$data$dist))
 })
 
@@ -91,28 +93,28 @@ test_that("cpp_extract(max_memory=...) output='csv' writes the same aux as the i
   on.exit(unlink(path))
 
   out_prefix <- tempfile()
-  paths <- cpp_extract(path, max_memory = 300, output = "csv", out_prefix = out_prefix, coords = FALSE,
-                        keep_clazz = TRUE, keep_length = TRUE, progress = FALSE)
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, keep_length = TRUE,
+                        osm = list(max_memory = 300, keep_clazz = TRUE, progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   expect_length(paths, 2L) # edges, aux (no coords)
   aux_csv <- data.table::fread(paths[2])
 
-  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE,
-                         keep_clazz = TRUE, keep_length = TRUE, progress = FALSE)
+  in_ram <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE,
+                         osm = list(keep_clazz = TRUE, progress = FALSE))
   expect_equal(sort(aux_csv$clazz), sort(in_ram$aux$clazz))
   expect_equal(sort(aux_csv$length), sort(in_ram$aux$length), tolerance = 1e-6)
 })
 
 test_that("cpp_extract() requires output='csv' when max_memory is set", {
-  expect_error(cpp_extract("dummy.pbf", max_memory = 300), "requires output")
-  expect_error(cpp_extract("dummy.pbf", max_memory = 300, output = "graph"), "requires output")
+  expect_error(cpp_extract("dummy.pbf", osm = list(max_memory = 300)), "requires output")
+  expect_error(cpp_extract("dummy.pbf", output = "graph", osm = list(max_memory = 300)), "requires output")
 })
 
 test_that("cpp_extract() rejects an invalid max_memory", {
   out_prefix <- tempfile()
-  expect_error(cpp_extract("dummy.pbf", max_memory = -1, output = "csv", out_prefix = out_prefix), "positive number")
-  expect_error(cpp_extract("dummy.pbf", max_memory = 0, output = "csv", out_prefix = out_prefix), "positive number")
-  expect_error(cpp_extract("dummy.pbf", max_memory = NA_real_, output = "csv", out_prefix = out_prefix), "positive number")
-  expect_error(cpp_extract("dummy.pbf", max_memory = "300", output = "csv", out_prefix = out_prefix), "positive number")
-  expect_error(cpp_extract("dummy.pbf", max_memory = c(100, 200), output = "csv", out_prefix = out_prefix), "positive number")
+  expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm = list(max_memory = -1)), "positive number")
+  expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm = list(max_memory = 0)), "positive number")
+  expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm = list(max_memory = NA_real_)), "positive number")
+  expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm = list(max_memory = "300")), "positive number")
+  expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm = list(max_memory = c(100, 200))), "positive number")
 })

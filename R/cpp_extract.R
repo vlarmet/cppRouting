@@ -6,6 +6,13 @@
 #' each, since passing the wrong shape of object for a given source (e.g. only part of an \code{osmdata}
 #' result) fails loudly rather than silently producing a wrong graph.
 #'
+#' Arguments are grouped by which family of source they apply to: arguments that work the same way
+#' regardless of source stay as their own top-level parameter; source-specific ones are grouped into the
+#' \code{osm} or \code{non_osm} list (see those two parameters below for the full list of what each one
+#' accepts) -- so a shapefile/\code{sf} call never needs to mention \code{profile}/\code{use_maxspeed}, and
+#' a \code{.pbf}/\code{osmdata}/\code{osmextract} call never needs to mention \code{cost_field}/
+#' \code{direction_field}.
+#'
 #' @param x One of:
 #' \itemize{
 #'   \item a path (character) to a \strong{\code{.shp}} shapefile -- the companion \code{.dbf}/\code{.prj}
@@ -26,42 +33,10 @@
 #' }
 #' GeoPackage is not supported and has no plans to be: convert it to a shapefile first (e.g. via
 #' \code{sf::st_write(sf::st_read("file.gpkg"), "file.shp")}, or with any GIS tool) and use that instead.
-#' @param cost_field Optional. Name of a numeric attribute column to use directly as edge cost.
-#' @param speed_field Optional. Name of a numeric attribute column holding a speed in km/h. Used with
-#' \code{length_field} (in km) to derive a cost in minutes as \code{60 * length / speed}. Ignored if
-#' \code{cost_field} is provided.
-#' @param length_field Optional. Name of a numeric attribute column holding each line's length, in km (to
-#' match the \code{60 * length / speed} formula above). If \code{NULL} and \code{speed_field} is used,
-#' length is instead computed from the line geometry itself and converted from the CRS's native unit
-#' (assumed to be meters, true for any typical projected CRS) to km. Unused for OSM sources (\code{.pbf}/
-#' \code{osmdata}), which always derive cost from \code{profile}/\code{maxspeed} and haversine length.
-#' @param direction_field Optional. Name of an attribute column describing the direction of travel allowed on
-#' each line (e.g. a "sens" column). Combined with \code{direction_values}.
-#' @param direction_values Optional. A list with up to three character vectors: \code{forward} (only from the
-#' line's first point to its last), \code{backward} (only from last to first) and \code{twoway} (both directions).
-#' Values of \code{direction_field} not listed anywhere default to \code{twoway}, with a warning.
-#' @param directed logical. Used only when \code{direction_field} is \code{NULL}. If \code{TRUE}, every line is
-#' kept as digitized (first point to last point) ; if \code{FALSE} (the default here), every line is made
-#' bidirectional.
-#' @param snap_digits integer. Shapefile/sf sources: decimal places used to round coordinates before
-#' deduplicating line endpoints into nodes. \code{osmdata} sources: decimal places used to match line
-#' vertex coordinates against \code{$osm_points} coordinates. Unused for \code{.pbf} (topology comes from
-#' OSM node ids directly, no coordinate matching needed). Defaults (\code{NULL}) to \code{7} for geographic
-#' (lat/lon) coordinates or \code{4} for projected (meter-scale) ones -- geographic coordinates need many
-#' decimal places to distinguish nearby points, but that precision is far too tight for projected
-#' coordinates, where it starts picking up floating-point noise between independently-digitized but
-#' logically-identical points rather than real geometric differences.
-#' @param keep_fields Shapefile/sf sources only. Optional character vector of extra attribute columns to
-#' keep as \code{aux} (see \link{makegraph}).
-#' @param keep_length logical. If \code{TRUE}, keep each edge's length (in km) as \code{aux}, regardless of
-#' how the main \code{cost} was actually resolved -- e.g. to get a time-based graph while still reporting
-#' physical distance. Shapefile/sf sources: the geometric length (unreliable for a geographic CRS, same
-#' caveat as \code{length_field} above -- reproject or use \code{keep_fields} with your own length column
-#' instead in that case). OSM sources: the haversine length. \code{output = "csv"} carries the same
-#' information as \code{output = "data.frame"}: \code{aux} is written to \verb{<out_prefix>_aux.csv}.
+#'
 #' @param output One of \code{"graph"} (default, returns a ready-to-use \code{cppRouting_graph}),
-#' \code{"data.frame"}, or \code{"csv"}.
-#' @param out_prefix Path prefix used when \code{output = "csv"}.
+#' \code{"data.frame"}, or \code{"csv"}. Common to every source.
+#' @param out_prefix Path prefix used when \code{output = "csv"}. Common to every source.
 #' @param coords logical. If \code{TRUE} (default), extract each node's coordinates: written to
 #' \code{<out_prefix>_coords.csv} (\code{output = "csv"}, including the \code{.pbf} \code{max_memory}
 #' disk-backed pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{output = "data.frame"}), or
@@ -71,31 +46,81 @@
 #' and time at continent scale, not just a smaller output. If the source coordinates are geographic
 #' (lat/lon -- always true for \code{.pbf}/\code{osmdata}) and \code{coords = TRUE}, \code{epsg} must be
 #' supplied (see below), otherwise this errors rather than silently returning coordinates that break the
-#' A*/NBA algorithms (see \link{get_distance_pair}).
+#' A*/NBA algorithms (see \link{get_distance_pair}). Common to every source.
 #' @param epsg Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
 #' coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Only takes effect if
 #' \code{coords = TRUE} and the source CRS is geographic; already-projected coordinates (possible for
-#' shapefile/sf sources) are left as-is regardless. Not supported together with \code{max_memory} on a
+#' shapefile/sf sources) are left as-is regardless. Not supported together with \code{osm$max_memory} on a
 #' \code{.pbf} source: reprojecting would require reading the whole coords table back into R, defeating the
 #' point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
-#' afterward instead.
-#' @param profile OSM sources (\code{.pbf}/\code{osmdata}) only. A data.frame with columns \code{highway},
-#' \code{clazz}, \code{speed} describing which \code{highway} tag values to keep and their class id /
-#' default speed (km/h). Defaults to \link{osm_car_profile}.
-#' @param use_maxspeed OSM sources only. If \code{TRUE} (default), a way's \code{maxspeed} tag overrides the
-#' profile's default speed when present and parseable.
-#' @param assume_oneway_motorway OSM sources only. If \code{TRUE} (default), \code{motorway}/
-#' \code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.
-#' @param keep_clazz OSM sources only. If \code{TRUE}, keep each edge's resolved highway class id as
-#' \code{aux}.
-#' @param max_memory \code{.pbf} sources only. A budget in megabytes for a disk-backed pipeline that spills
-#' every intermediate table (not just the final result) to disk, keeping peak RAM close to this budget
-#' regardless of the input file's size -- for files too large to fit in RAM even with the default pipeline
-#' (e.g. a full-planet extract). Requires \code{output = "csv"}. See \code{graph_from_osmpbf} for details
-#' and the (rare but possible) requirement that nodes appear in increasing id order in the file.
-#' @param temp_dir \code{.pbf} sources only. Directory for temporary files when \code{max_memory} is set.
-#' Defaults to \code{tempdir()}.
-#' @param progress OSM sources only. Print progress messages while reading/matching.
+#' afterward instead. Common to every source.
+#' @param keep_length logical. If \code{TRUE}, keep each edge's length (in km) as \code{aux}, regardless of
+#' how the main \code{cost} was actually resolved -- e.g. to get a time-based graph while still reporting
+#' physical distance. Shapefile/sf sources: the geometric length (unreliable for a geographic CRS, same
+#' caveat as \code{non_osm$length_field} below -- reproject or use \code{non_osm$keep_fields} with your own
+#' length column instead in that case). OSM sources: the haversine length. \code{output = "csv"} carries
+#' the same information as \code{output = "data.frame"}: \code{aux} is written to \verb{<out_prefix>_aux.csv}.
+#' Common to every source.
+#' @param snap_digits integer. Shapefile/sf sources: decimal places used to round coordinates before
+#' deduplicating line endpoints into nodes. \code{osmdata} sources: decimal places used to match line
+#' vertex coordinates against \code{$osm_points} coordinates. Unused for \code{.pbf} (topology comes from
+#' OSM node ids directly, no coordinate matching needed). Defaults (\code{NULL}) to \code{7} for geographic
+#' (lat/lon) coordinates or \code{4} for projected (meter-scale) ones -- geographic coordinates need many
+#' decimal places to distinguish nearby points, but that precision is far too tight for projected
+#' coordinates, where it starts picking up floating-point noise between independently-digitized but
+#' logically-identical points rather than real geometric differences. The one argument that doesn't sort
+#' cleanly into \code{osm}/\code{non_osm}: it applies to shapefile/sf sources and to \code{osmdata}, but not
+#' to \code{.pbf}.
+#'
+#' @param osm A list of options for OSM sources (\code{.pbf}/\code{osmdata}/\code{osmextract}) only, ignored
+#' for shapefile/\code{sf}. Any subset may be supplied -- omitted elements keep their default below; an
+#' unrecognized element name raises an error immediately (rather than silently keeping its default, which is
+#' what a typo'd list element would otherwise do). Recognized elements:
+#' \itemize{
+#'   \item \code{profile}: a data.frame with columns \code{highway}, \code{clazz}, \code{speed} (see
+#'   \link{osm_car_profile} for the default): which \code{highway} tag values to keep, and their class id /
+#'   default speed (km/h) when not overridden by \code{maxspeed}.
+#'   \item \code{use_maxspeed}: logical, default \code{TRUE}. If \code{TRUE}, a way's \code{maxspeed} tag
+#'   overrides the profile's default speed when present and parseable (plain km/h, or \code{"<n> mph"}).
+#'   \item \code{assume_oneway_motorway}: logical, default \code{TRUE}. If \code{TRUE}, \code{motorway}/
+#'   \code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.
+#'   \item \code{keep_clazz}: logical, default \code{FALSE}. If \code{TRUE}, keep each edge's resolved
+#'   highway class id as \code{aux}.
+#'   \item \code{max_memory}: \code{.pbf} only (ignored for \code{osmdata}). A budget in megabytes for a
+#'   disk-backed pipeline that spills every intermediate table (not just the final result) to disk, keeping
+#'   peak RAM close to this budget regardless of the input file's size -- for files too large to fit in RAM
+#'   even with the default pipeline (e.g. a full-planet extract). Requires \code{output = "csv"}. See
+#'   \code{graph_from_osmpbf} for details and the (rare but possible) requirement that nodes appear in
+#'   increasing id order in the file.
+#'   \item \code{temp_dir}: \code{.pbf} only. Directory for temporary files when \code{max_memory} is set.
+#'   Defaults to \code{tempdir()}.
+#'   \item \code{progress}: logical, default \code{TRUE}. Print progress messages while reading/matching.
+#' }
+#' @param non_osm A list of options for shapefile/\code{sf} sources only, ignored for OSM sources. Any
+#' subset may be supplied -- omitted elements keep their default below; an unrecognized element name raises
+#' an error immediately (same reasoning as \code{osm} above). Recognized elements:
+#' \itemize{
+#'   \item \code{cost_field}: optional, name of a numeric attribute column to use directly as edge cost.
+#'   \item \code{speed_field}: optional, name of a numeric attribute column holding a speed in km/h. Used
+#'   with \code{length_field} (in km) to derive a cost in minutes as \code{60 * length / speed}. Ignored if
+#'   \code{cost_field} is provided.
+#'   \item \code{length_field}: optional, name of a numeric attribute column holding each line's length, in
+#'   km (to match the \code{60 * length / speed} formula above). If \code{NULL} and \code{speed_field} is
+#'   used, length is instead computed from the line geometry itself and converted from the CRS's native unit
+#'   (assumed to be meters, true for any typical projected CRS) to km.
+#'   \item \code{direction_field}: optional, name of an attribute column describing the direction of travel
+#'   allowed on each line (e.g. a "sens" column). Combined with \code{direction_values}.
+#'   \item \code{direction_values}: optional, a list with up to three character vectors: \code{forward}
+#'   (only from the line's first point to its last), \code{backward} (only from last to first) and
+#'   \code{twoway} (both directions). Values of \code{direction_field} not listed anywhere default to
+#'   \code{twoway}, with a warning.
+#'   \item \code{directed}: logical, default \code{FALSE}. Used only when \code{direction_field} is
+#'   \code{NULL}. If \code{TRUE}, every line is kept as digitized (first point to last point); if
+#'   \code{FALSE}, every line is made bidirectional.
+#'   \item \code{keep_fields}: optional character vector of extra attribute columns to keep as \code{aux}
+#'   (see \link{makegraph}).
+#' }
+#'
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details Shapefile/sf sources are assumed to already be topologically clean, i.e. lines only meet at
@@ -109,38 +134,34 @@
 #' topologically clean like a plain \code{sf} source and producing a wrong graph.
 #' @export
 cpp_extract <- function(x,
-                         cost_field = NULL,
-                         speed_field = NULL,
-                         length_field = NULL,
-                         direction_field = NULL,
-                         direction_values = NULL,
-                         directed = FALSE,
-                         snap_digits = NULL,
-                         keep_fields = NULL,
-                         keep_length = FALSE,
                          output = c("graph", "data.frame", "csv"),
                          out_prefix = NULL,
                          coords = TRUE,
                          epsg = NULL,
-                         profile = osm_car_profile(),
-                         use_maxspeed = TRUE,
-                         assume_oneway_motorway = TRUE,
-                         keep_clazz = FALSE,
-                         max_memory = NULL,
-                         temp_dir = tempdir(),
-                         progress = TRUE){
+                         keep_length = FALSE,
+                         snap_digits = NULL,
+                         osm = list(),
+                         non_osm = list()){
 
   output <- match.arg(output)
-  args <- list(cost_field = cost_field, speed_field = speed_field, length_field = length_field,
-               direction_field = direction_field, direction_values = direction_values,
-               directed = directed, snap_digits = snap_digits, keep_fields = keep_fields,
-               keep_length = keep_length, output = output, out_prefix = out_prefix,
-               coords = coords, epsg = epsg)
 
-  osm_args <- list(profile = profile, use_maxspeed = use_maxspeed,
-                    assume_oneway_motorway = assume_oneway_motorway,
-                    keep_clazz = keep_clazz, keep_length = keep_length, output = output,
-                    out_prefix = out_prefix, coords = coords, epsg = epsg, progress = progress)
+  osm_defaults <- list(profile = osm_car_profile(), use_maxspeed = TRUE,
+                        assume_oneway_motorway = TRUE, keep_clazz = FALSE,
+                        max_memory = NULL, temp_dir = tempdir(), progress = TRUE)
+  non_osm_defaults <- list(cost_field = NULL, speed_field = NULL, length_field = NULL,
+                            direction_field = NULL, direction_values = NULL,
+                            directed = FALSE, keep_fields = NULL)
+
+  osm <- merge_arg_list(osm, osm_defaults, "osm")
+  non_osm <- merge_arg_list(non_osm, non_osm_defaults, "non_osm")
+
+  args <- c(non_osm, list(snap_digits = snap_digits, keep_length = keep_length,
+                           output = output, out_prefix = out_prefix, coords = coords, epsg = epsg))
+
+  osm_args <- list(profile = osm$profile, use_maxspeed = osm$use_maxspeed,
+                    assume_oneway_motorway = osm$assume_oneway_motorway,
+                    keep_clazz = osm$keep_clazz, keep_length = keep_length, output = output,
+                    out_prefix = out_prefix, coords = coords, epsg = epsg, progress = osm$progress)
 
   # Class is the reliable signal for a full osmdata result (class "osmdata",
   # a list -- not itself an "sf" object): route it to the osmdata adapter,
@@ -173,7 +194,7 @@ cpp_extract <- function(x,
            "sf::st_write(sf::st_read('file.gpkg'), 'file.shp'), and pass that .shp path instead.")
     }
     if (ext == "pbf") {
-      return(do.call(graph_from_osmpbf, c(list(path = x, max_memory = max_memory, temp_dir = temp_dir), osm_args)))
+      return(do.call(graph_from_osmpbf, c(list(path = x, max_memory = osm$max_memory, temp_dir = osm$temp_dir), osm_args)))
     }
     if (ext == "osm") stop("Plain OSM XML (.osm) is not supported, only the binary .osm.pbf format")
     stop("Unrecognized file extension '.", ext, "'. Supported: .shp, .pbf")
