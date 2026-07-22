@@ -52,11 +52,33 @@ test_that("graph_from_osmdata keeps the real osm_id, not a remapped dense index"
 
   res <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE)
   # osm_id values in make_test_osmdata() are "1".."4" -- from/to must be a
-  # subset of the real ids, not a synthetic 0-based renumbering.
+  # subset of the real ids, not a synthetic 0-based renumbering. Character,
+  # not numeric: a node id is a label, not a quantity (see cpp_extract()'s
+  # docs) -- matches makegraph()'s own dict$ref contract.
+  expect_type(res$data$from, "character")
   expect_setequal(c(res$data$from, res$data$to), 1:4)
 
   full <- cppRouting:::graph_from_osmdata(x, output = "data.frame", epsg = 2154, progress = FALSE)
+  expect_type(full$coords$node_id, "character")
   expect_setequal(full$coords$node_id, 1:4)
+})
+
+test_that("graph_from_osmdata's csv output round-trips a large osm_id without integer64 corruption", {
+  skip_if_not_installed("sf")
+  x <- make_test_osmdata()
+  # Push one osm_id past the 32-bit integer range (a real-looking OSM node
+  # id) -- graph_from_osmdata() goes through dispatch_graph_output()'s
+  # data.table::fwrite(), unlike the .pbf path's dedicated C++ streaming
+  # writer, so this exercises avoid_integer64_ambiguity() specifically.
+  big_id <- "6564874389"
+  x$osm_points$osm_id[x$osm_points$osm_id == "2"] <- big_id # vertex matching is by coordinate, so the geometry is unaffected
+
+  out_prefix <- tempfile()
+  paths <- cppRouting:::graph_from_osmdata(x, output = "csv", out_prefix = out_prefix, coords = FALSE, progress = FALSE)
+  on.exit(unlink(paths))
+  edges_csv <- data.table::fread(paths)
+  expect_type(edges_csv$from, "double") # not bit64::integer64
+  expect_true(as.numeric(big_id) %in% c(edges_csv$from, edges_csv$to))
 })
 
 test_that("cpp_extract dispatches a full osmdata object the same way", {

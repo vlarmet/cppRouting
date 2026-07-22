@@ -133,7 +133,12 @@ an error immediately (same reasoning as \code{osm} above). Recognized elements:
 }
 \value{
 Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
-(\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
+(\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files. For
+\code{output = "data.frame"}, \code{from}/\code{to}/\code{node_id} are \code{character} regardless of
+source: a node id is a label, not a quantity, matching what \code{makegraph()} itself already guarantees
+for \code{dict$ref}. For \code{output = "graph"}, that same real id is carried through \code{dict$ref};
+\code{data$from}/\code{data$to} stay \code{makegraph()}'s own compact integer index (its adjacency list is
+always built on that, not on the original id).
 }
 \description{
 Single entry point to build a \link{makegraph}-ready graph from a geographic linestring source. The

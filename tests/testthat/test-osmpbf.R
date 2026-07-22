@@ -34,11 +34,38 @@ test_that("cpp_extract on a .pbf keeps the real OSM node id, not a remapped dens
 
   res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
   # nodes 1-4 in the fixture (see helper-osmpbf.R); from/to must be a subset
-  # of the real ids, not a synthetic 0-based renumbering.
+  # of the real ids, not a synthetic 0-based renumbering. Character, not
+  # numeric: a node id is a label, not a quantity (matches makegraph()'s own
+  # dict$ref contract).
+  expect_type(res$data$from, "character")
   expect_setequal(c(res$data$from, res$data$to), 1:4)
 
   full <- cpp_extract(path, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
+  expect_type(full$coords$node_id, "character")
   expect_setequal(full$coords$node_id, 1:4)
+})
+
+test_that("a large OSM id survives epsg reprojection's csv rewrite pass without integer64 corruption", {
+  skip_if_not_installed("sf")
+  path <- tempfile(fileext = ".pbf")
+  on.exit(unlink(path))
+  big_id <- 6564874389 # a real-looking OSM node id, well past 2^31 (~2.147e9)
+  nodes <- data.frame(id = c(1, big_id), lat = c(47.00, 47.01), lon = c(5.00, 5.00))
+  ways <- list(list(refs = c(1, big_id), tags = list(highway = "residential")))
+  write_test_osmpbf(path, nodes, ways)
+
+  # epsg triggers reproject_coords_csv(): it reads coords.csv back with
+  # fread() (safe, since the C++ writer already appended ".0" to big_id),
+  # reprojects X/Y, then rewrites the file with fwrite() -- which, left
+  # unguarded, would print the now-in-memory whole-number double back out as
+  # plain digits, silently re-introducing the exact ambiguity the ".0" was
+  # there to prevent.
+  out_prefix <- tempfile()
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154, osm = list(progress = FALSE))
+  on.exit(unlink(paths), add = TRUE)
+  coords_csv <- data.table::fread(paths[2])
+  expect_type(coords_csv$node_id, "double") # not bit64::integer64
+  expect_true(big_id %in% coords_csv$node_id)
 })
 
 test_that("a real OSM id past the 32-bit integer range round-trips through csv without integer64 corruption", {

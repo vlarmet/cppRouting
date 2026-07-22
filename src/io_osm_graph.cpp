@@ -162,33 +162,37 @@ std::pair<long long, int> split_ways_into_edges(const std::vector<KeptWay> &kept
 
 // Shared pass 3 (in-memory variant): returns from/to/dist/clazz plus a
 // node_id/lon/lat table as an Rcpp::List. Used by the .pbf path and the
-// osmdata adapter. from/to/node_id carry the real OSM node id (as double --
-// current OSM ids already exceed 2^31, so plain `int`/IntegerVector would
-// silently overflow; double is exact up to 2^53, comfortably enough
-// headroom) rather than a synthetic dense index: OSM ids are already stable,
-// unique identifiers, so there's no reason to discard them the way Module A
-// (shapefile/sf, which has no such native id) has to.
+// osmdata adapter. from/to/node_id carry the real OSM node id, as character
+// (not a synthetic dense index: OSM ids are already stable, unique
+// identifiers, so there's no reason to discard them the way Module A
+// (shapefile/sf, which has no such native id) has to). character rather
+// than a numeric type because a node id is a label, not a quantity -- this
+// also matches what makegraph() itself already guarantees (dict$ref is
+// always character) and sidesteps int64/double range questions entirely,
+// which a numeric representation could not (current OSM ids already exceed
+// 2^31, the range of a plain `int`/IntegerVector).
 Rcpp::List build_edges_from_ways(const std::vector<KeptWay> &kept_ways,
                                   const NodeTable &nodes,
                                   bool progress){
   std::unordered_set<int64_t> seen;
-  std::vector<double> node_id_out, node_lat_out, node_lon_out;
+  std::vector<std::string> node_id_out;
+  std::vector<double> node_lat_out, node_lon_out;
   auto get_node_id = [&](int64_t osm_id) -> int64_t {
     if (seen.insert(osm_id).second) {
       auto coord = nodes.coord(osm_id);
-      node_id_out.push_back(static_cast<double>(osm_id));
+      node_id_out.push_back(std::to_string(osm_id));
       node_lat_out.push_back(coord.first);
       node_lon_out.push_back(coord.second);
     }
     return osm_id;
   };
 
-  std::vector<double> from, to;
+  std::vector<std::string> from, to;
   std::vector<double> dist;
   std::vector<int> clazz_out;
   std::vector<double> length_out;
   auto on_edge = [&](int64_t id1, int64_t id2, double cost, int clazz, double length_km){
-    from.push_back(static_cast<double>(id1)); to.push_back(static_cast<double>(id2));
+    from.push_back(std::to_string(id1)); to.push_back(std::to_string(id2));
     dist.push_back(cost); clazz_out.push_back(clazz);
     length_out.push_back(length_km);
   };

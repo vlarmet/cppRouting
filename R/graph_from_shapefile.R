@@ -56,6 +56,12 @@
 #' @details The shapefile is assumed to already be topologically clean, i.e. lines only meet at their
 #' endpoints (the convention of reference road networks such as ROUTE500/BD TOPO). Junctions in the middle of
 #' a line are not detected -- for that, see the OSM PBF import functions instead.
+#'
+#' \code{from}/\code{to}/\code{node_id} are a synthetic 0-based index (this source has no native node
+#' identity, unlike OSM), but \code{character} even so, for \code{output = "data.frame"}: a node id is a
+#' label, not a quantity, and this matches what \code{makegraph()} itself already guarantees for
+#' \code{dict$ref} regardless of source -- see \link{graph_from_osmpbf}'s \code{@details} for the OSM side of
+#' this same convention.
 #' @noRd
 graph_from_shapefile <- function(path,
                                   cost_field = NULL,

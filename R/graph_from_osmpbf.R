@@ -55,11 +55,17 @@
 #' \code{from}/\code{to}/\code{node_id} are the real OSM node id, not a synthetic 0-based index (unlike
 #' \link{graph_from_shapefile}/\link{graph_from_sf}, which have no native node identity to preserve) -- so a
 #' node can be cross-referenced directly against \code{openstreetmap.org/node/<id>} or joined against other
-#' OSM-derived data. \code{output = "graph"} carries this through \code{makegraph()}'s own \code{dict} as
-#' usual. For \code{output = "csv"}, real OSM ids already exceed 2^31, so \code{from}/\code{to}/\code{node_id}
-#' are written with a forced \code{.0} decimal: without it, \code{data.table::fread()} silently promotes the
-#' column to \code{bit64::integer64} once values cross that threshold, which without the (optional)
-#' \code{bit64} package installed holds outright garbage, not just an odd-looking print.
+#' OSM-derived data. For \code{output = "data.frame"}, they are \code{character}: a node id is a label, not a
+#' quantity, and this matches what \code{makegraph()} itself already guarantees for \code{dict$ref} regardless
+#' of source. \code{output = "graph"} carries the id through exactly that \code{dict} (\code{data$from}/
+#' \code{data$to} stay the internal compact integer index \code{makegraph()} always uses for its adjacency
+#' list). For \code{output = "csv"}, real OSM ids already exceed 2^31, so \code{from}/\code{to}/\code{node_id}
+#' are written with a forced \code{.0} decimal when needed: without it, \code{data.table::fread()} silently
+#' promotes the column to \code{bit64::integer64} once values cross that threshold, which without the
+#' (optional) \code{bit64} package installed holds outright garbage, not just an odd-looking print. Note that
+#' \code{fread()}'s type inference ignores quoting and leading zeros alike -- if you need the id preserved
+#' exactly as text (e.g. a future id scheme with meaningful leading zeros), read it back with
+#' \code{colClasses = list(character = "node_id")}.
 #'
 #' \code{output = "csv"} (without \code{max_memory}) streams edges/coordinates directly to disk as pass 3
 #' produces them rather than building the full result in R memory first, keeping peak RAM bounded by passes

@@ -141,6 +141,13 @@ reproject_coords_csv <- function(coords_path, is_geographic, source_crs, epsg){
   if (is.null(epsg) || !isTRUE(is_geographic)) return(invisible(NULL))
   coords <- data.table::fread(coords_path)
   coords <- reproject_coords(coords, is_geographic, source_crs, epsg)
+  # node_id round-trips through fread() above as a plain double (the C++
+  # writer already appended ".0" for any id past the int32 range -- see
+  # avoid_integer64_ambiguity()) -- but fwrite() below would print a
+  # whole-number double back out as plain digits, silently re-introducing
+  # the exact bit64::integer64 ambiguity this rewrite pass would otherwise
+  # undo. Reapply it before writing the final file.
+  coords$node_id <- avoid_integer64_ambiguity(as.character(coords$node_id))
   data.table::fwrite(coords, coords_path)
   invisible(NULL)
 }
@@ -200,20 +207,27 @@ finalize_geom_graph <- function(x1, y1, x2, y2, cost, direction, snap_digits,
   dispatch_graph_output(edges, coords, aux, output, out_prefix, want_coords)
 }
 
-# data.table::fwrite() prints a whole-number double column (e.g. a large
-# real OSM node id -- see graph_from_osmdata(), the one Module B path whose
-# ids reach dispatch_graph_output() rather than a dedicated C++ CSV writer)
-# as plain digits, no decimal point. fread() then auto-promotes it to
-# bit64::integer64 once values exceed 2^31 -- and without the bit64 package
-# installed (a Suggests-only dependency of neither package), that class
-# holds outright garbage (an int64 bit pattern reinterpreted as a plain
-# double), not merely a display quirk. Forcing one decimal place makes the
-# column unambiguously a double on read, exact for any id up to 2^53 --
-# comfortably past any real OSM id. Only applied when actually needed
-# (values beyond int32 range), so Module A's small dense ids -- never at
-# risk -- keep their existing, unaffected plain-integer CSV formatting.
+# from/to/node_id are character (node ids are labels, not quantities -- see
+# cpp_extract()'s docs), but a large real OSM id (see graph_from_osmdata(),
+# the one Module B path whose ids reach dispatch_graph_output() rather than
+# a dedicated C++ CSV writer) is still a string of plain digits, and
+# fread()'s type inference does not consult the source type: it sees plain
+# digits and, once they exceed 2^31, promotes the column to
+# bit64::integer64 regardless of quoting -- which without the bit64 package
+# installed (a Suggests-only dependency of neither package) holds outright
+# garbage (an int64 bit pattern reinterpreted as a plain double), not merely
+# a display quirk. Appending ".0" to the digit string (not a numeric
+# round-trip -- the original text is kept, just extended) makes the column
+# unambiguously a double on read, exact for any id up to 2^53 -- comfortably
+# past any real OSM id. Only applied when actually needed (values beyond
+# int32 range), so Module A's small dense ids -- never at risk -- keep their
+# existing, unaffected plain-digit CSV formatting.
 avoid_integer64_ambiguity <- function(x){
-  if (is.numeric(x) && any(abs(x) > .Machine$integer.max, na.rm = TRUE)) sprintf("%.1f", x) else x
+  if (!is.character(x)) return(x)
+  vals <- suppressWarnings(as.numeric(x))
+  needs_fix <- !is.na(vals) & abs(vals) > .Machine$integer.max
+  x[needs_fix] <- paste0(x[needs_fix], ".0")
+  x
 }
 
 # Shared by every Module A/B reader: turn already-built edges/coords/aux
@@ -247,5 +261,10 @@ dispatch_graph_output <- function(edges, coords, aux, output, out_prefix, want_c
     return(invisible(paths))
   }
 
+  # cpp_extract()'s aux is a named data.frame of extra per-edge attributes
+  # (keep_fields/keep_clazz/keep_length columns) -- passed straight through,
+  # since makegraph()'s aux natively accepts a named data.frame with one or
+  # more columns (see R/graphs.R), keeping each column's name and carrying
+  # all of them into the graph's attrib$aux at once.
   makegraph(edges, directed = TRUE, coords = coords, aux = aux)
 }

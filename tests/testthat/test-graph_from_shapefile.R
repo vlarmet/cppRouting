@@ -69,6 +69,17 @@ test_that("graph_from_shapefile builds the expected topology and direction expan
   expect_equal(merged$dist_got, merged$dist_exp, tolerance = 1e-6)
 })
 
+test_that("graph_from_shapefile's from/to/node_id are character, not numeric", {
+  # A node id is a label, not a quantity -- even Module A's synthetic dense
+  # index ("0", "1", ...) is character, matching Module B's real OSM ids and
+  # makegraph()'s own dict$ref contract, so cpp_extract() presents one
+  # consistent type for node identity regardless of source.
+  res <- graph_from_shapefile(test_shp, cost_field = "LONGUEUR", output = "data.frame")
+  expect_type(res$data$from, "character")
+  expect_type(res$data$to, "character")
+  expect_type(res$coords$node_id, "character")
+})
+
 test_that("graph_from_shapefile output='graph' returns a usable graph", {
   g <- graph_from_shapefile(test_shp,
                              cost_field = "LONGUEUR",

@@ -122,7 +122,12 @@
 #' }
 #'
 #' @return Depending on \code{output}: a \code{cppRouting_graph}, a named list of two data.frames
-#' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
+#' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files. For
+#' \code{output = "data.frame"}, \code{from}/\code{to}/\code{node_id} are \code{character} regardless of
+#' source: a node id is a label, not a quantity, matching what \code{makegraph()} itself already guarantees
+#' for \code{dict$ref}. For \code{output = "graph"}, that same real id is carried through \code{dict$ref};
+#' \code{data$from}/\code{data$to} stay \code{makegraph()}'s own compact integer index (its adjacency list is
+#' always built on that, not on the original id).
 #' @details Shapefile/sf sources are assumed to already be topologically clean, i.e. lines only meet at
 #' their endpoints. OSM sources
 #' (\code{.pbf} or \code{osmdata}) instead detect junctions in the middle of a way from OSM's own node ids

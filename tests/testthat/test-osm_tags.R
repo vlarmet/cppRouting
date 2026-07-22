@@ -75,9 +75,10 @@ test_that("oneway=-1 and oneway=reverse both produce a single backward-only edge
   expect_equal(nrow(res1$data), 1L)
   expect_equal(res1$data[, c("from", "to")], res2$data[, c("from", "to")])
   # backward: from the way's last node (osm id 2) to its first node (osm id
-  # 1) -- from/to carry the real OSM node id, not a remapped dense index.
-  expect_equal(res1$data$from, 2)
-  expect_equal(res1$data$to, 1)
+  # 1) -- from/to carry the real OSM node id (as character), not a remapped
+  # dense index.
+  expect_equal(res1$data$from, "2")
+  expect_equal(res1$data$to, "1")
 })
 
 test_that("access=no or access=private drops a way", {

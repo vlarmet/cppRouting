@@ -85,13 +85,24 @@ Rcpp::List build_geom_graph(const std::vector<double> &x1,
 
   dedupe_and_split(x1, y1, x2, y2, cost, direction, get_node_id, on_edge);
 
+  // from/to/node_id are node identifiers, not quantities -- returned as
+  // character (even though Module A's ids are just a synthetic dense index,
+  // 0-based) so cpp_extract() presents the same type for node identity
+  // across every source, matching what makegraph() itself already guarantees
+  // via its own dict (dict$ref is always character, regardless of source).
   int nbnode = static_cast<int>(node_x.size());
-  Rcpp::IntegerVector node_id(nbnode);
-  for (int i = 0; i < nbnode; i++) node_id[i] = i;
+  Rcpp::CharacterVector node_id(nbnode);
+  for (int i = 0; i < nbnode; i++) node_id[i] = std::to_string(i);
+
+  Rcpp::CharacterVector from_out(from.size()), to_out(to.size());
+  for (size_t i = 0; i < from.size(); i++) {
+    from_out[i] = std::to_string(from[i]);
+    to_out[i] = std::to_string(to[i]);
+  }
 
   return Rcpp::List::create(
-    Rcpp::Named("from") = Rcpp::wrap(from),
-    Rcpp::Named("to") = Rcpp::wrap(to),
+    Rcpp::Named("from") = from_out,
+    Rcpp::Named("to") = to_out,
     Rcpp::Named("dist") = Rcpp::wrap(dist),
     Rcpp::Named("origin") = Rcpp::wrap(origin),
     Rcpp::Named("node_id") = node_id,

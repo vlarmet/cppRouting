@@ -67,3 +67,34 @@ test_that("cpp_extract's osm/non_osm accept a partial list, keeping unspecified 
                                      directed = FALSE, keep_fields = NULL))
   expect_equal(g1, g2)
 })
+
+test_that("output = 'graph' carries a single-column aux (keep_fields) as a named data.frame", {
+  # makegraph()'s aux natively accepts a named data.frame (one or more
+  # numeric columns, each an additional aggregate-summable weight -- see
+  # get_distance_pair(..., aggregate_aux = TRUE)); cpp_extract()'s aux is
+  # passed straight through, column names preserved.
+  g <- cpp_extract(test_shp, non_osm = list(cost_field = "LONGUEUR", keep_fields = "LONGUEUR"), output = "graph")
+  expect_true(is.data.frame(g$attrib$aux))
+  expect_equal(names(g$attrib$aux), "LONGUEUR")
+  expect_equal(g$attrib$aux$LONGUEUR, g$data$dist) # LONGUEUR was also used as cost_field here
+})
+
+test_that("output = 'graph' carries a multi-column numeric aux (keep_fields + keep_length) intact", {
+  g <- cpp_extract(test_shp, non_osm = list(cost_field = "LONGUEUR", keep_fields = "LONGUEUR"),
+                    keep_length = TRUE, output = "graph")
+  expect_true(is.data.frame(g$attrib$aux))
+  expect_setequal(names(g$attrib$aux), c("LONGUEUR", "length"))
+  expect_equal(g$attrib$aux$LONGUEUR, g$data$dist)
+})
+
+test_that("output = 'graph' with a non-numeric keep_fields column errors via makegraph()'s aux validation", {
+  # keep_fields accepts any column type for output = "data.frame"/"csv" (it's
+  # purely informational there), but output = "graph" routes it through
+  # makegraph()'s aux, which requires every column to be numeric (it's an
+  # aggregate-summable edge weight) -- a character column like SENS
+  # correctly errors instead of silently doing something meaningless with it.
+  expect_error(
+    cpp_extract(test_shp, non_osm = list(cost_field = "LONGUEUR", keep_fields = c("LONGUEUR", "SENS")), output = "graph"),
+    "must be numeric"
+  )
+})
