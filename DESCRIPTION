@@ -20,11 +20,12 @@ Description: Calculation of distances, shortest paths and isochrones on weighted
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
-Imports: Rcpp (>= 1.0.7), RcppParallel, RcppProgress, data.table
+Imports: Rcpp (>= 1.0.7), RcppParallel, data.table
 LinkingTo: Rcpp, RcppParallel, RcppProgress
 SystemRequirements: GNU make
 URL: https://github.com/vlarmet/cppRouting
-Suggests: knitr, rmarkdown, igraph
+Suggests: knitr, rmarkdown, igraph, testthat (>= 3.0.0)
 VignetteBuilder: knitr
 NeedsCompilation: yes
 Config/roxygen2/version: 8.0.0
+Config/testthat/edition: 3
