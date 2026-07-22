@@ -22,12 +22,17 @@ get_distance_matrix(
 
 \item{algorithm}{Character. Only for contracted graph, \code{mch} for Many to many CH, \code{phast} for PHAST algorithm}
 
-\item{aggregate_aux}{Logical. If \code{TRUE}, the additional weight is summed along shortest paths.}
+\item{aggregate_aux}{Logical or character vector. If \code{TRUE}, the additional weight(s)
+declared in \link{makegraph}'s \code{aux} are summed along shortest paths (all columns, if
+\code{aux} was a data.frame). A character vector of column names restricts this to specific
+columns.}
 
 \item{allcores}{Logical (deprecated). If \code{TRUE}, all cores are used.}
 }
 \value{
-Matrix of shortest distances.
+Matrix of shortest distances, or of aggregated \code{aux} values when
+\code{aggregate_aux} is used. Requesting more than one \code{aux} column returns
+a named list of matrices (one per requested value) instead of a single matrix.
 }
 \description{
 Compute all shortest distance between origin and destination nodes.
@@ -42,12 +47,15 @@ If graph is contracted, the user has the choice between : \itemize{
 Shortest path is always computed according to the main edge weights, corresponding to the 3rd column of \code{df} argument in \code{makegraph()} function.
 If \code{aggregate_aux} argument is \code{TRUE}, the values returned are the sum of auxiliary weights along shortest paths.
 
+When several shortest paths tie on the main edge weight, \code{aggregate_aux} is summed along
+whichever tied path the search happens to settle on. Normal, \link{cpp_contract}-contracted and
+CCH graphs can break such ties differently, so the aggregated value for a given \code{from}/\code{to}
+pair may occasionally differ between them, even though the main shortest distance always matches
+exactly. This is expected: it reflects a genuine choice between equally short paths, not an error.
+
 All algorithms are \strong{multithreaded.} \code{allcores} argument is deprecated, please use \code{RcppParallel::setThreadOptions()} to set the number of threads.
 
 See details in package website : \url{https://github.com/vlarmet/cppRouting/blob/master/README.md}
-}
-\note{
-It is not possible to aggregate auxiliary weights on a Graph object coming from \link{cpp_simplify} function.
 }
 \examples{
 #Choose number of cores used by cppRouting

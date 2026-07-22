@@ -92,8 +92,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cppsimplify
-Rcpp::List cppsimplify(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int> keep, bool rm_loop, bool iterate, bool progress);
-RcppExport SEXP _cppRouting_cppsimplify(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP keepSEXP, SEXP rm_loopSEXP, SEXP iterateSEXP, SEXP progressSEXP) {
+Rcpp::List cppsimplify(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int> keep, bool rm_loop, bool iterate, bool progress, Rcpp::NumericMatrix aux);
+RcppExport SEXP _cppRouting_cppsimplify(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP keepSEXP, SEXP rm_loopSEXP, SEXP iterateSEXP, SEXP progressSEXP, SEXP auxSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -105,7 +105,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type rm_loop(rm_loopSEXP);
     Rcpp::traits::input_parameter< bool >::type iterate(iterateSEXP);
     Rcpp::traits::input_parameter< bool >::type progress(progressSEXP);
-    rcpp_result_gen = Rcpp::wrap(cppsimplify(gfrom, gto, gw, nb, keep, rm_loop, iterate, progress));
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type aux(auxSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppsimplify(gfrom, gto, gw, nb, keep, rm_loop, iterate, progress, aux));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -121,6 +122,181 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
     Rcpp::traits::input_parameter< bool >::type display_progress(display_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(cppcontract(gfrom, gto, gw, NbNodes, display_progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppcchprepare
+Rcpp::List cppcchprepare(std::vector<int>& gfrom, std::vector<int>& gto, int NbNodes, std::vector<int> order, bool display_progress);
+RcppExport SEXP _cppRouting_cppcchprepare(SEXP gfromSEXP, SEXP gtoSEXP, SEXP NbNodesSEXP, SEXP orderSEXP, SEXP display_progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type order(orderSEXP);
+    Rcpp::traits::input_parameter< bool >::type display_progress(display_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppcchprepare(gfrom, gto, NbNodes, order, display_progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppcchcustomize
+Rcpp::List cppcchcustomize(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int NbNodes, std::vector<int>& rank, std::vector<int>& tail, std::vector<int>& head, std::vector<int>& rank_first_out, std::vector<int>& rank_adj_head, std::vector<int>& rank_adj_arc, std::vector<int>& input_arc, std::vector<int>& input_forward);
+RcppExport SEXP _cppRouting_cppcchcustomize(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP rankSEXP, SEXP tailSEXP, SEXP headSEXP, SEXP rank_first_outSEXP, SEXP rank_adj_headSEXP, SEXP rank_adj_arcSEXP, SEXP input_arcSEXP, SEXP input_forwardSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type tail(tailSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type head(headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank_first_out(rank_first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank_adj_head(rank_adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank_adj_arc(rank_adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type input_arc(input_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type input_forward(input_forwardSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppcchcustomize(gfrom, gto, gw, NbNodes, rank, tail, head, rank_first_out, rank_adj_head, rank_adj_arc, input_arc, input_forward));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppdistcch
+Rcpp::NumericVector cppdistcch(int NbNodes, std::vector<int>& rank, std::vector<int>& first_out, std::vector<int>& adj_head, std::vector<int>& adj_arc, std::vector<int>& elimination_tree_parent, std::vector<double>& forward, std::vector<double>& backward, std::vector<int> dep, std::vector<int> arr);
+RcppExport SEXP _cppRouting_cppdistcch(SEXP NbNodesSEXP, SEXP rankSEXP, SEXP first_outSEXP, SEXP adj_headSEXP, SEXP adj_arcSEXP, SEXP elimination_tree_parentSEXP, SEXP forwardSEXP, SEXP backwardSEXP, SEXP depSEXP, SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type first_out(first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_head(adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_arc(adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type elimination_tree_parent(elimination_tree_parentSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type forward(forwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type backward(backwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppdistcch(NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, dep, arr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppdistmatcch
+Rcpp::NumericMatrix cppdistmatcch(int NbNodes, std::vector<int>& first_out, std::vector<int>& adj_head, std::vector<int>& adj_arc, std::vector<double>& forward, std::vector<double>& backward, std::vector<int> dep, std::vector<int> arr);
+RcppExport SEXP _cppRouting_cppdistmatcch(SEXP NbNodesSEXP, SEXP first_outSEXP, SEXP adj_headSEXP, SEXP adj_arcSEXP, SEXP forwardSEXP, SEXP backwardSEXP, SEXP depSEXP, SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type first_out(first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_head(adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_arc(adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type forward(forwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type backward(backwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppdistmatcch(NbNodes, first_out, adj_head, adj_arc, forward, backward, dep, arr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpppathvaluescch
+Rcpp::NumericMatrix cpppathvaluescch(std::vector<int>& gfrom, int NbNodes, std::vector<int>& rank, std::vector<int>& first_out, std::vector<int>& adj_head, std::vector<int>& adj_arc, std::vector<int>& elimination_tree_parent, std::vector<double>& forward, std::vector<double>& backward, std::vector<int>& forward_first_arc, std::vector<int>& forward_first_dir, std::vector<int>& forward_second_arc, std::vector<int>& forward_second_dir, std::vector<int>& forward_original, std::vector<int>& backward_first_arc, std::vector<int>& backward_first_dir, std::vector<int>& backward_second_arc, std::vector<int>& backward_second_dir, std::vector<int>& backward_original, std::vector<int> dep, std::vector<int> arr, Rcpp::NumericMatrix values);
+RcppExport SEXP _cppRouting_cpppathvaluescch(SEXP gfromSEXP, SEXP NbNodesSEXP, SEXP rankSEXP, SEXP first_outSEXP, SEXP adj_headSEXP, SEXP adj_arcSEXP, SEXP elimination_tree_parentSEXP, SEXP forwardSEXP, SEXP backwardSEXP, SEXP forward_first_arcSEXP, SEXP forward_first_dirSEXP, SEXP forward_second_arcSEXP, SEXP forward_second_dirSEXP, SEXP forward_originalSEXP, SEXP backward_first_arcSEXP, SEXP backward_first_dirSEXP, SEXP backward_second_arcSEXP, SEXP backward_second_dirSEXP, SEXP backward_originalSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP valuesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type first_out(first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_head(adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_arc(adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type elimination_tree_parent(elimination_tree_parentSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type forward(forwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type backward(backwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_first_arc(forward_first_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_first_dir(forward_first_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_second_arc(forward_second_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_second_dir(forward_second_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_original(forward_originalSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_first_arc(backward_first_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_first_dir(backward_first_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_second_arc(backward_second_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_second_dir(backward_second_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_original(backward_originalSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type values(valuesSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpppathvaluescch(gfrom, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dep, arr, values));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpppathcch
+Rcpp::List cpppathcch(int NbNodes, std::vector<int>& rank, std::vector<int>& gfrom, std::vector<int>& gto, std::vector<int>& first_out, std::vector<int>& adj_head, std::vector<int>& adj_arc, std::vector<int>& elimination_tree_parent, std::vector<double>& forward, std::vector<double>& backward, std::vector<int>& forward_first_arc, std::vector<int>& forward_first_dir, std::vector<int>& forward_second_arc, std::vector<int>& forward_second_dir, std::vector<int>& forward_original, std::vector<int>& backward_first_arc, std::vector<int>& backward_first_dir, std::vector<int>& backward_second_arc, std::vector<int>& backward_second_dir, std::vector<int>& backward_original, std::vector<std::string> dict, std::vector<int> keep, std::vector<int> dep, std::vector<int> arr);
+RcppExport SEXP _cppRouting_cpppathcch(SEXP NbNodesSEXP, SEXP rankSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP first_outSEXP, SEXP adj_headSEXP, SEXP adj_arcSEXP, SEXP elimination_tree_parentSEXP, SEXP forwardSEXP, SEXP backwardSEXP, SEXP forward_first_arcSEXP, SEXP forward_first_dirSEXP, SEXP forward_second_arcSEXP, SEXP forward_second_dirSEXP, SEXP forward_originalSEXP, SEXP backward_first_arcSEXP, SEXP backward_first_dirSEXP, SEXP backward_second_arcSEXP, SEXP backward_second_dirSEXP, SEXP backward_originalSEXP, SEXP dictSEXP, SEXP keepSEXP, SEXP depSEXP, SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type first_out(first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_head(adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_arc(adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type elimination_tree_parent(elimination_tree_parentSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type forward(forwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type backward(backwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_first_arc(forward_first_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_first_dir(forward_first_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_second_arc(forward_second_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_second_dir(forward_second_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_original(forward_originalSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_first_arc(backward_first_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_first_dir(backward_first_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_second_arc(backward_second_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_second_dir(backward_second_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_original(backward_originalSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type dict(dictSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type keep(keepSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpppathcch(NbNodes, rank, gfrom, gto, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dict, keep, dep, arr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppaoncchelim
+Rcpp::List cppaoncchelim(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int NbNodes, std::vector<int>& rank, std::vector<int>& first_out, std::vector<int>& adj_head, std::vector<int>& adj_arc, std::vector<int>& elimination_tree_parent, std::vector<double>& forward, std::vector<double>& backward, std::vector<int>& forward_first_arc, std::vector<int>& forward_first_dir, std::vector<int>& forward_second_arc, std::vector<int>& forward_second_dir, std::vector<int>& forward_original, std::vector<int>& backward_first_arc, std::vector<int>& backward_first_dir, std::vector<int>& backward_second_arc, std::vector<int>& backward_second_dir, std::vector<int>& backward_original, std::vector<int> dep, std::vector<int> arr, std::vector<double> dem);
+RcppExport SEXP _cppRouting_cppaoncchelim(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP NbNodesSEXP, SEXP rankSEXP, SEXP first_outSEXP, SEXP adj_headSEXP, SEXP adj_arcSEXP, SEXP elimination_tree_parentSEXP, SEXP forwardSEXP, SEXP backwardSEXP, SEXP forward_first_arcSEXP, SEXP forward_first_dirSEXP, SEXP forward_second_arcSEXP, SEXP forward_second_dirSEXP, SEXP forward_originalSEXP, SEXP backward_first_arcSEXP, SEXP backward_first_dirSEXP, SEXP backward_second_arcSEXP, SEXP backward_second_dirSEXP, SEXP backward_originalSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP demSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type NbNodes(NbNodesSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type first_out(first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_head(adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_arc(adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type elimination_tree_parent(elimination_tree_parentSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type forward(forwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type backward(backwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_first_arc(forward_first_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_first_dir(forward_first_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_second_arc(forward_second_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_second_dir(forward_second_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type forward_original(forward_originalSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_first_arc(backward_first_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_first_dir(backward_first_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_second_arc(backward_second_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_second_dir(backward_second_dirSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type backward_original(backward_originalSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type dem(demSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppaoncchelim(gfrom, gto, gw, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original, backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original, dep, arr, dem));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -232,6 +408,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cppmataddmulti
+Rcpp::NumericVector cppmataddmulti(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, Rcpp::NumericMatrix aux, int nb, std::vector<int> dep, std::vector<int> arr);
+RcppExport SEXP _cppRouting_cppmataddmulti(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP auxSEXP, SEXP nbSEXP, SEXP depSEXP, SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type aux(auxSEXP);
+    Rcpp::traits::input_parameter< int >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppmataddmulti(gfrom, gto, gw, aux, nb, dep, arr));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cppdistadd
 Rcpp::NumericVector cppdistadd(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, std::vector<double>& gadd, int nb, std::vector<double> lat, std::vector<double> lon, double k, std::vector<int> dep, std::vector<int> arr, int algo);
 RcppExport SEXP _cppRouting_cppdistadd(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP gaddSEXP, SEXP nbSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP kSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP algoSEXP) {
@@ -250,6 +443,27 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
     Rcpp::traits::input_parameter< int >::type algo(algoSEXP);
     rcpp_result_gen = Rcpp::wrap(cppdistadd(gfrom, gto, gw, gadd, nb, lat, lon, k, dep, arr, algo));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppdistaddmulti
+Rcpp::NumericMatrix cppdistaddmulti(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, Rcpp::NumericMatrix aux, int nb, std::vector<double> lat, std::vector<double> lon, double k, std::vector<int> dep, std::vector<int> arr, int algo);
+RcppExport SEXP _cppRouting_cppdistaddmulti(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP auxSEXP, SEXP nbSEXP, SEXP latSEXP, SEXP lonSEXP, SEXP kSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP algoSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type aux(auxSEXP);
+    Rcpp::traits::input_parameter< int >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type lat(latSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type lon(lonSEXP);
+    Rcpp::traits::input_parameter< double >::type k(kSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< int >::type algo(algoSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppdistaddmulti(gfrom, gto, gw, aux, nb, lat, lon, k, dep, arr, algo));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -279,6 +493,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cppdistaddCmulti
+Rcpp::NumericMatrix cppdistaddCmulti(std::vector<int>& orfrom, std::vector<int>& orto, std::vector<double>& orw, Rcpp::NumericMatrix aux, std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int>& rank, std::vector<int>& shortf, std::vector<int>& shortt, std::vector<int>& shortc, bool phast, std::vector<int> dep, std::vector<int> arr);
+RcppExport SEXP _cppRouting_cppdistaddCmulti(SEXP orfromSEXP, SEXP ortoSEXP, SEXP orwSEXP, SEXP auxSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP rankSEXP, SEXP shortfSEXP, SEXP shorttSEXP, SEXP shortcSEXP, SEXP phastSEXP, SEXP depSEXP, SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type orfrom(orfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type orto(ortoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type orw(orwSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type aux(auxSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type shortf(shortfSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type shortt(shorttSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type shortc(shortcSEXP);
+    Rcpp::traits::input_parameter< bool >::type phast(phastSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppdistaddCmulti(orfrom, orto, orw, aux, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cppaddC
 Rcpp::NumericMatrix cppaddC(std::vector<int>& orfrom, std::vector<int>& orto, std::vector<double>& orw, std::vector<double>& gadd, std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int>& rank, std::vector<int>& shortf, std::vector<int>& shortt, std::vector<int>& shortc, bool phast, std::vector<int> dep, std::vector<int> arr, int algo);
 RcppExport SEXP _cppRouting_cppaddC(SEXP orfromSEXP, SEXP ortoSEXP, SEXP orwSEXP, SEXP gaddSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP rankSEXP, SEXP shortfSEXP, SEXP shorttSEXP, SEXP shortcSEXP, SEXP phastSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP algoSEXP) {
@@ -302,6 +541,31 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
     Rcpp::traits::input_parameter< int >::type algo(algoSEXP);
     rcpp_result_gen = Rcpp::wrap(cppaddC(orfrom, orto, orw, gadd, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr, algo));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cppmataddCmulti
+Rcpp::NumericVector cppmataddCmulti(std::vector<int>& orfrom, std::vector<int>& orto, std::vector<double>& orw, Rcpp::NumericMatrix aux, std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, int nb, std::vector<int>& rank, std::vector<int>& shortf, std::vector<int>& shortt, std::vector<int>& shortc, bool phast, std::vector<int> dep, std::vector<int> arr);
+RcppExport SEXP _cppRouting_cppmataddCmulti(SEXP orfromSEXP, SEXP ortoSEXP, SEXP orwSEXP, SEXP auxSEXP, SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP nbSEXP, SEXP rankSEXP, SEXP shortfSEXP, SEXP shorttSEXP, SEXP shortcSEXP, SEXP phastSEXP, SEXP depSEXP, SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type orfrom(orfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type orto(ortoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type orw(orwSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type aux(auxSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< int >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type shortf(shortfSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type shortt(shorttSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type shortc(shortcSEXP);
+    Rcpp::traits::input_parameter< bool >::type phast(phastSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(cppmataddCmulti(orfrom, orto, orw, aux, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -349,6 +613,45 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<double> >::type dem(demSEXP);
     Rcpp::traits::input_parameter< int >::type algo(algoSEXP);
     rcpp_result_gen = Rcpp::wrap(cppaonC(orfrom, orto, orw, gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast, dep, arr, dem, algo));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cpptrafficcch
+Rcpp::List cpptrafficcch(std::vector<int>& gfrom, std::vector<int>& gto, std::vector<double>& gw, std::vector<double>& gflow, std::vector<double>& gaux, std::vector<double>& gftt, std::vector<double>& galpha, std::vector<double>& gbeta, std::vector<double>& gcap, int nb, std::vector<int> dep, std::vector<int> arr, std::vector<double> dem, double max_gap, int max_it, int method, std::vector<int>& rank, std::vector<int>& tail, std::vector<int>& head, std::vector<int>& first_out, std::vector<int>& adj_head, std::vector<int>& adj_arc, std::vector<int>& rank_first_out, std::vector<int>& rank_adj_head, std::vector<int>& rank_adj_arc, std::vector<int>& input_arc, std::vector<int>& input_forward, std::vector<int>& elimination_tree_parent, bool verbose);
+RcppExport SEXP _cppRouting_cpptrafficcch(SEXP gfromSEXP, SEXP gtoSEXP, SEXP gwSEXP, SEXP gflowSEXP, SEXP gauxSEXP, SEXP gfttSEXP, SEXP galphaSEXP, SEXP gbetaSEXP, SEXP gcapSEXP, SEXP nbSEXP, SEXP depSEXP, SEXP arrSEXP, SEXP demSEXP, SEXP max_gapSEXP, SEXP max_itSEXP, SEXP methodSEXP, SEXP rankSEXP, SEXP tailSEXP, SEXP headSEXP, SEXP first_outSEXP, SEXP adj_headSEXP, SEXP adj_arcSEXP, SEXP rank_first_outSEXP, SEXP rank_adj_headSEXP, SEXP rank_adj_arcSEXP, SEXP input_arcSEXP, SEXP input_forwardSEXP, SEXP elimination_tree_parentSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gfrom(gfromSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type gto(gtoSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gw(gwSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gflow(gflowSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gaux(gauxSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gftt(gfttSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type galpha(galphaSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gbeta(gbetaSEXP);
+    Rcpp::traits::input_parameter< std::vector<double>& >::type gcap(gcapSEXP);
+    Rcpp::traits::input_parameter< int >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type dep(depSEXP);
+    Rcpp::traits::input_parameter< std::vector<int> >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< std::vector<double> >::type dem(demSEXP);
+    Rcpp::traits::input_parameter< double >::type max_gap(max_gapSEXP);
+    Rcpp::traits::input_parameter< int >::type max_it(max_itSEXP);
+    Rcpp::traits::input_parameter< int >::type method(methodSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type tail(tailSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type head(headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type first_out(first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_head(adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type adj_arc(adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank_first_out(rank_first_outSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank_adj_head(rank_adj_headSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type rank_adj_arc(rank_adj_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type input_arc(input_arcSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type input_forward(input_forwardSEXP);
+    Rcpp::traits::input_parameter< std::vector<int>& >::type elimination_tree_parent(elimination_tree_parentSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(cpptrafficcch(gfrom, gto, gw, gflow, gaux, gftt, galpha, gbeta, gcap, nb, dep, arr, dem, max_gap, max_it, method, rank, tail, head, first_out, adj_head, adj_arc, rank_first_out, rank_adj_head, rank_adj_arc, input_arc, input_forward, elimination_tree_parent, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -428,18 +731,30 @@ static const R_CallMethodDef CallEntries[] = {
     {"_cppRouting_cpppath", (DL_FUNC) &_cppRouting_cpppath, 13},
     {"_cppRouting_cppdistmat", (DL_FUNC) &_cppRouting_cppdistmat, 6},
     {"_cppRouting_cpppathmat", (DL_FUNC) &_cppRouting_cpppathmat, 12},
-    {"_cppRouting_cppsimplify", (DL_FUNC) &_cppRouting_cppsimplify, 8},
+    {"_cppRouting_cppsimplify", (DL_FUNC) &_cppRouting_cppsimplify, 9},
     {"_cppRouting_cppcontract", (DL_FUNC) &_cppRouting_cppcontract, 5},
+    {"_cppRouting_cppcchprepare", (DL_FUNC) &_cppRouting_cppcchprepare, 5},
+    {"_cppRouting_cppcchcustomize", (DL_FUNC) &_cppRouting_cppcchcustomize, 12},
+    {"_cppRouting_cppdistcch", (DL_FUNC) &_cppRouting_cppdistcch, 10},
+    {"_cppRouting_cppdistmatcch", (DL_FUNC) &_cppRouting_cppdistmatcch, 8},
+    {"_cppRouting_cpppathvaluescch", (DL_FUNC) &_cppRouting_cpppathvaluescch, 22},
+    {"_cppRouting_cpppathcch", (DL_FUNC) &_cppRouting_cpppathcch, 24},
+    {"_cppRouting_cppaoncchelim", (DL_FUNC) &_cppRouting_cppaoncchelim, 24},
     {"_cppRouting_cppdistC", (DL_FUNC) &_cppRouting_cppdistC, 12},
     {"_cppRouting_cpppathC", (DL_FUNC) &_cppRouting_cpppathC, 14},
     {"_cppRouting_cppdistmatC", (DL_FUNC) &_cppRouting_cppdistmatC, 12},
     {"_cppRouting_cpppathmatC", (DL_FUNC) &_cppRouting_cpppathmatC, 13},
     {"_cppRouting_cpppadd", (DL_FUNC) &_cppRouting_cpppadd, 7},
+    {"_cppRouting_cppmataddmulti", (DL_FUNC) &_cppRouting_cppmataddmulti, 7},
     {"_cppRouting_cppdistadd", (DL_FUNC) &_cppRouting_cppdistadd, 11},
+    {"_cppRouting_cppdistaddmulti", (DL_FUNC) &_cppRouting_cppdistaddmulti, 11},
     {"_cppRouting_cppdistaddC", (DL_FUNC) &_cppRouting_cppdistaddC, 16},
+    {"_cppRouting_cppdistaddCmulti", (DL_FUNC) &_cppRouting_cppdistaddCmulti, 15},
     {"_cppRouting_cppaddC", (DL_FUNC) &_cppRouting_cppaddC, 16},
+    {"_cppRouting_cppmataddCmulti", (DL_FUNC) &_cppRouting_cppmataddCmulti, 15},
     {"_cppRouting_cppaon", (DL_FUNC) &_cppRouting_cppaon, 11},
     {"_cppRouting_cppaonC", (DL_FUNC) &_cppRouting_cppaonC, 16},
+    {"_cppRouting_cpptrafficcch", (DL_FUNC) &_cppRouting_cpptrafficcch, 29},
     {"_cppRouting_cpptraffic", (DL_FUNC) &_cppRouting_cpptraffic, 23},
     {"_cppRouting_cppalgB", (DL_FUNC) &_cppRouting_cppalgB, 27},
     {NULL, NULL, 0}

@@ -60,7 +60,40 @@ get_aon<-function(Graph, from, to, demand, algorithm = "bi",constant = 1){
   from_id <- Graph$dict$id[match(from,Graph$dict$ref)]
   to_id <- Graph$dict$id[match(to,Graph$dict$ref)]
 
-  if (length(Graph) == 5){
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_customize() before querying a CCH")
+
+  if (inherits(Graph, "cppRouting_cch_metric")){
+    res <- cppaoncchelim(Graph$original$data$from,
+                         Graph$original$data$to,
+                         Graph$weights,
+                         Graph$nbnode,
+                         Graph$rank,
+                         Graph$first_out,
+                         Graph$adj_head,
+                         Graph$adj_arc,
+                         Graph$elimination_tree_parent,
+                         Graph$weight$forward,
+                         Graph$weight$backward,
+                         Graph$weight$forward_first_arc,
+                         Graph$weight$forward_first_dir,
+                         Graph$weight$forward_second_arc,
+                         Graph$weight$forward_second_dir,
+                         Graph$weight$forward_original,
+                         Graph$weight$backward_first_arc,
+                         Graph$weight$backward_first_dir,
+                         Graph$weight$backward_second_arc,
+                         Graph$weight$backward_second_dir,
+                         Graph$weight$backward_original,
+                         from_id,
+                         to_id,
+                         demand)
+    res <- as.data.frame(res, col.names = c("from", "to", "cost", "flow"))
+    res$from <- Graph$dict$ref[match(res$from, Graph$dict$id)]
+    res$to <- Graph$dict$ref[match(res$to, Graph$dict$id)]
+    return(res)
+  }
+
+  if (inherits(Graph, "cppRouting_graph")){
     if (!algorithm %in% c("bi", "d", "nba")) stop("algorithm argument should be 'd', 'bi' or 'nba'")
     if (algorithm == "nba" & is.null(Graph$coords)) {
       algorithm <- "bi"
@@ -84,7 +117,7 @@ get_aon<-function(Graph, from, to, demand, algorithm = "bi",constant = 1){
     }
   }
 
-  if (length(Graph) == 6){
+  if (inherits(Graph, "cppRouting_contracted")){
     if (!algorithm %in% c("bi", "phast")) stop("algorithm argument should be 'phast' or 'bi'")
     if (algorithm == "bi"){
       res <- cppaonC(Graph$original$data$from, Graph$original$data$to, Graph$original$data$dist,

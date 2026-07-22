@@ -1,7 +1,10 @@
 #include "graph.h"
 #include "cgraph.h"
+#include "cch.h"
 #include "aon.h"
 #include "aggc.h"
+#include "distance_pair.h"
+#include "distance_mat.h"
 #include <string>
 #include <vector>
 #include <RcppParallel.h>
@@ -162,14 +165,37 @@ Rcpp::List cpppathmat(std::vector<int> &gfrom, std::vector<int> &gto, std::vecto
 // [[Rcpp::export]]
 
 Rcpp::List cppsimplify(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int nb,
-                       std::vector<int> keep, bool rm_loop, bool iterate, bool progress){
+                       std::vector<int> keep, bool rm_loop, bool iterate, bool progress,
+                       Rcpp::NumericMatrix aux){
 
   Graph network(gfrom, gto, gw, nb, true);
 
   network.simplify(rm_loop, keep, iterate, progress);
-  Rcpp::List res = network.getEdges();
+  Rcpp::List res = network.getEdgesWithOrigin();
 
-  return res;
+  Rcpp::List result(4);
+  result[0] = res[0];
+  result[1] = res[1];
+  result[2] = res[2];
+
+  int n_aux = aux.ncol();
+  if (n_aux > 0){
+    Rcpp::List origin = res[3];
+    Rcpp::NumericMatrix summed_aux(origin.size(), n_aux);
+    for (int i = 0; i < origin.size(); i++){
+      std::vector<int> rows = origin[i];
+      for (int col = 0; col < n_aux; col++){
+        double total = 0.0;
+        for (int r = 0; r < rows.size(); r++) total += aux(rows[r], col);
+        summed_aux(i, col) = total;
+      }
+    }
+    result[3] = summed_aux;
+  } else {
+    result[3] = Rcpp::NumericMatrix(0, 0);
+  }
+
+  return result;
 }
 
 
@@ -193,6 +219,192 @@ Rcpp::List cppcontract(std::vector<int> &gfrom,std::vector<int> &gto,std::vector
 }
 
 
+
+// [[Rcpp::export]]
+Rcpp::List cppcchprepare(std::vector<int> &gfrom, std::vector<int> &gto, int NbNodes, std::vector<int> order, bool display_progress = false){
+  CCHPrepared prepared = build_cch(gfrom, gto, NbNodes, order, display_progress);
+
+  Rcpp::List result(12);
+  result[0] = prepared.rank;
+  result[1] = prepared.tail;
+  result[2] = prepared.head;
+  result[3] = prepared.first_out;
+  result[4] = prepared.adj_head;
+  result[5] = prepared.adj_arc;
+  result[6] = prepared.rank_first_out;
+  result[7] = prepared.rank_adj_head;
+  result[8] = prepared.rank_adj_arc;
+  result[9] = prepared.input_arc;
+  result[10] = prepared.input_forward;
+  result[11] = prepared.elimination_tree_parent;
+  result.attr("names") = Rcpp::CharacterVector::create("rank", "tail", "head", "first_out", "adj_head", "adj_arc",
+                                                       "rank_first_out", "rank_adj_head", "rank_adj_arc",
+                                                       "input_arc", "input_forward", "elimination_tree_parent");
+  return result;
+}
+
+// [[Rcpp::export]]
+Rcpp::List cppcchcustomize(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int NbNodes,
+                           std::vector<int> &rank, std::vector<int> &tail, std::vector<int> &head,
+                           std::vector<int> &rank_first_out, std::vector<int> &rank_adj_head, std::vector<int> &rank_adj_arc,
+                           std::vector<int> &input_arc, std::vector<int> &input_forward){
+  DVec forward;
+  DVec backward;
+  IVec forward_first_arc;
+  IVec forward_first_dir;
+  IVec forward_second_arc;
+  IVec forward_second_dir;
+  IVec forward_original;
+  IVec backward_first_arc;
+  IVec backward_first_dir;
+  IVec backward_second_arc;
+  IVec backward_second_dir;
+  IVec backward_original;
+  customize_cch(gfrom, gto, gw, NbNodes, rank, tail, head, rank_first_out, rank_adj_head, rank_adj_arc,
+                input_arc, input_forward, forward, backward,
+                forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original);
+
+  Rcpp::List result(12);
+  result[0] = forward;
+  result[1] = backward;
+  result[2] = forward_first_arc;
+  result[3] = forward_first_dir;
+  result[4] = forward_second_arc;
+  result[5] = forward_second_dir;
+  result[6] = forward_original;
+  result[7] = backward_first_arc;
+  result[8] = backward_first_dir;
+  result[9] = backward_second_arc;
+  result[10] = backward_second_dir;
+  result[11] = backward_original;
+  result.attr("names") = Rcpp::CharacterVector::create("forward", "backward",
+                                                       "forward_first_arc", "forward_first_dir",
+                                                       "forward_second_arc", "forward_second_dir",
+                                                       "forward_original",
+                                                       "backward_first_arc", "backward_first_dir",
+                                                       "backward_second_arc", "backward_second_dir",
+                                                       "backward_original");
+  return result;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector cppdistcch(int NbNodes,
+                               std::vector<int> &rank,
+                               std::vector<int> &first_out, std::vector<int> &adj_head, std::vector<int> &adj_arc,
+                               std::vector<int> &elimination_tree_parent,
+                               std::vector<double> &forward, std::vector<double> &backward,
+                               std::vector<int> dep, std::vector<int> arr){
+  Rcpp::NumericVector result = Rcpp::wrap(distance_pair_cch(NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward, dep, arr));
+  check_nas_vec(result);
+  return result;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix cppdistmatcch(int NbNodes,
+                                  std::vector<int> &first_out, std::vector<int> &adj_head, std::vector<int> &adj_arc,
+                                  std::vector<double> &forward, std::vector<double> &backward,
+                                  std::vector<int> dep, std::vector<int> arr){
+  Rcpp::NumericMatrix result = distance_matrix_cch(NbNodes, first_out, adj_head, adj_arc, forward, backward, dep, arr);
+  check_nas_mat(result);
+  return result;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix cpppathvaluescch(std::vector<int> &gfrom,
+                                     int NbNodes,
+                                     std::vector<int> &rank,
+                                     std::vector<int> &first_out,
+                                     std::vector<int> &adj_head,
+                                     std::vector<int> &adj_arc,
+                                     std::vector<int> &elimination_tree_parent,
+                                     std::vector<double> &forward,
+                                     std::vector<double> &backward,
+                                     std::vector<int> &forward_first_arc,
+                                     std::vector<int> &forward_first_dir,
+                                     std::vector<int> &forward_second_arc,
+                                     std::vector<int> &forward_second_dir,
+                                     std::vector<int> &forward_original,
+                                     std::vector<int> &backward_first_arc,
+                                     std::vector<int> &backward_first_dir,
+                                     std::vector<int> &backward_second_arc,
+                                     std::vector<int> &backward_second_dir,
+                                     std::vector<int> &backward_original,
+                                     std::vector<int> dep,
+                                     std::vector<int> arr,
+                                     Rcpp::NumericMatrix values){
+  std::vector<double> flat_values(values.begin(), values.end());
+  Rcpp::NumericMatrix result = path_values_pair_cch(gfrom, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                                                    forward, backward,
+                                                    forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                                                    backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                                                    dep, arr, flat_values, values.ncol());
+  check_nas_mat(result);
+  return result;
+}
+
+// [[Rcpp::export]]
+Rcpp::List cpppathcch(int NbNodes,
+                      std::vector<int> &rank,
+                      std::vector<int> &gfrom,
+                      std::vector<int> &gto,
+                      std::vector<int> &first_out,
+                      std::vector<int> &adj_head,
+                      std::vector<int> &adj_arc,
+                      std::vector<int> &elimination_tree_parent,
+                      std::vector<double> &forward,
+                      std::vector<double> &backward,
+                      std::vector<int> &forward_first_arc,
+                      std::vector<int> &forward_first_dir,
+                      std::vector<int> &forward_second_arc,
+                      std::vector<int> &forward_second_dir,
+                      std::vector<int> &forward_original,
+                      std::vector<int> &backward_first_arc,
+                      std::vector<int> &backward_first_dir,
+                      std::vector<int> &backward_second_arc,
+                      std::vector<int> &backward_second_dir,
+                      std::vector<int> &backward_original,
+                      std::vector<std::string> dict,
+                      std::vector<int> keep,
+                      std::vector<int> dep,
+                      std::vector<int> arr){
+  vector<IVec> result = path_pair_cch(NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent, forward, backward,
+                                      gfrom, gto,
+                                      forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                                      backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                                      dep, arr, keep);
+  vector<string> dict_str(dict.begin(), dict.end());
+  vector<SVec> result_str(result.size());
+  for (size_t i = 0; i < result.size(); i++){
+    result_str[i].reserve(result[i].size());
+    for (size_t j = 0; j < result[i].size(); j++){
+      if (result[i][j] >= 0 && result[i][j] < (int)dict_str.size()){
+        result_str[i].push_back(dict_str[result[i][j]]);
+      }
+    }
+  }
+  return Rcpp::wrap(result_str);
+}
+
+// [[Rcpp::export]]
+Rcpp::List cppaoncchelim(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int NbNodes,
+                         std::vector<int> &rank,
+                         std::vector<int> &first_out, std::vector<int> &adj_head, std::vector<int> &adj_arc,
+                         std::vector<int> &elimination_tree_parent,
+                         std::vector<double> &forward, std::vector<double> &backward,
+                         std::vector<int> &forward_first_arc, std::vector<int> &forward_first_dir,
+                         std::vector<int> &forward_second_arc, std::vector<int> &forward_second_dir,
+                         std::vector<int> &forward_original,
+                         std::vector<int> &backward_first_arc, std::vector<int> &backward_first_dir,
+                         std::vector<int> &backward_second_arc, std::vector<int> &backward_second_dir,
+                         std::vector<int> &backward_original,
+                         std::vector<int> dep, std::vector<int> arr, std::vector<double> dem){
+  return aon_cch_elimination_grouped(gfrom, gto, gw, NbNodes, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                                     forward, backward,
+                                     forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                                     backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                                     dep, arr, dem);
+}
 
 // [[Rcpp::export]]
 
@@ -287,6 +499,23 @@ Rcpp::NumericMatrix cpppadd(std::vector<int> &gfrom, std::vector<int> &gto, std:
   return result;
 }
 
+// [[Rcpp::export]]
+Rcpp::NumericVector cppmataddmulti(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw,
+                                   Rcpp::NumericMatrix aux, int nb,
+                                   std::vector<int> dep, std::vector<int> arr){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(gfrom, gto, gw, aux_flat, n_aux, nb);
+
+  distanceMatAdd dijfunc(&network, dep, arr);
+  parallelFor(0, dep.size(), dijfunc, 1, 12);
+
+  Rcpp::NumericVector result = Rcpp::wrap(dijfunc.m_result);
+  result.attr("dim") = Rcpp::IntegerVector::create((int)dep.size(), (int)arr.size(), n_aux);
+  check_nas_vec(result);
+  return result;
+}
+
 
 
 // [[Rcpp::export]]
@@ -309,6 +538,34 @@ Rcpp::NumericVector cppdistadd(std::vector<int> &gfrom, std::vector<int> &gto, s
 }
 
 
+
+// [[Rcpp::export]]
+
+Rcpp::NumericMatrix cppdistaddmulti(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw,
+                                    Rcpp::NumericMatrix aux, int nb,
+                                    std::vector<double> lat, std::vector<double> lon, double k,
+                                    std::vector<int> dep, std::vector<int> arr, int algo){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(gfrom, gto, gw, aux_flat, n_aux, nb);
+
+  if (algo == 2 || algo == 3){
+    network.setLatLon(lat, lon);
+    network.k = k;
+  }
+
+  distancePairAdd dijfunc(&network, dep, arr, algo);
+  parallelFor(0, dep.size(), dijfunc, 1, 12);
+
+  Rcpp::NumericMatrix result(dep.size(), n_aux);
+  for (int col = 0; col < n_aux; col++){
+    for (int row = 0; row < (int)dep.size(); row++){
+      result(row, col) = dijfunc.m_result[(size_t)col * dep.size() + row];
+    }
+  }
+  check_nas_mat(result);
+  return result;
+}
 
 // [[Rcpp::export]]
 
@@ -336,6 +593,42 @@ Rcpp::NumericVector cppdistaddC(std::vector<int> &orfrom, std::vector<int> &orto
   return result;
 }
 
+// [[Rcpp::export]]
+
+Rcpp::NumericMatrix cppdistaddCmulti(std::vector<int> &orfrom, std::vector<int> &orto, std::vector<double> &orw, Rcpp::NumericMatrix aux,
+                                     std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int nb,
+                                     std::vector<int> &rank, std::vector<int> &shortf, std::vector<int> &shortt, std::vector<int> &shortc,
+                                     bool phast,
+                                     std::vector<int> dep, std::vector<int> arr){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(orfrom, orto, orw, aux_flat, n_aux, nb);
+
+  CGraph networkc(gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast);
+  networkc.n_add = n_aux;
+  networkc.construct_shortcuts();
+  networkc.to_adj_list(false, phast);
+  networkc.to_adj_list(true, phast);
+
+  aggCAdd dijfunc(&networkc, &network);
+  parallelFor(0, networkc.nbnode, dijfunc);
+
+  networkc.add = dijfunc.m_result;
+  networkc.addr = dijfunc.m_result2;
+
+  distancePairCAdd distfunc(&networkc, dep, arr);
+  parallelFor(0, dep.size(), distfunc, 1, 12);
+
+  Rcpp::NumericMatrix result(dep.size(), n_aux);
+  for (int col = 0; col < n_aux; col++){
+    for (int row = 0; row < (int)dep.size(); row++){
+      result(row, col) = distfunc.m_result[(size_t)col * dep.size() + row];
+    }
+  }
+  check_nas_mat(result);
+  return result;
+}
+
 
 // [[Rcpp::export]]
 
@@ -360,6 +653,38 @@ Rcpp::NumericMatrix cppaddC(std::vector<int> &orfrom, std::vector<int> &orto, st
   Rcpp::NumericMatrix result = Rcpp::wrap(networkc.routing_dmat(dep, arr, algo));
   check_nas_mat(result);
 
+  return result;
+}
+
+// [[Rcpp::export]]
+
+Rcpp::NumericVector cppmataddCmulti(std::vector<int> &orfrom, std::vector<int> &orto, std::vector<double> &orw, Rcpp::NumericMatrix aux,
+                                    std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw, int nb,
+                                    std::vector<int> &rank, std::vector<int> &shortf, std::vector<int> &shortt, std::vector<int> &shortc,
+                                    bool phast,
+                                    std::vector<int> dep, std::vector<int> arr){
+  int n_aux = aux.ncol();
+  std::vector<double> aux_flat(aux.begin(), aux.end());
+  Graph network(orfrom, orto, orw, aux_flat, n_aux, nb);
+
+  CGraph networkc(gfrom, gto, gw, nb, rank, shortf, shortt, shortc, phast);
+  networkc.n_add = n_aux;
+  networkc.construct_shortcuts();
+  networkc.to_adj_list(false, phast);
+  networkc.to_adj_list(true, phast);
+
+  aggCAdd dijfunc(&networkc, &network);
+  parallelFor(0, networkc.nbnode, dijfunc);
+
+  networkc.add = dijfunc.m_result;
+  networkc.addr = dijfunc.m_result2;
+
+  phastCAdd distfunc(&networkc, dep, arr);
+  parallelFor(0, dep.size(), distfunc, 1, 12);
+
+  Rcpp::NumericVector result = Rcpp::wrap(distfunc.m_result);
+  result.attr("dim") = Rcpp::IntegerVector::create((int)dep.size(), (int)arr.size(), n_aux);
+  check_nas_vec(result);
   return result;
 }
 
@@ -448,6 +773,62 @@ Rcpp::List cppaonC(std::vector<int> &orfrom, std::vector<int> &orto, std::vector
   return result;
 }
 
+
+// [[Rcpp::export]]
+
+Rcpp::List cpptrafficcch(std::vector<int> &gfrom, std::vector<int> &gto, std::vector<double> &gw,
+                         std::vector<double> &gflow,  std::vector<double> &gaux,  std::vector<double> &gftt,
+                         std::vector<double> &galpha,  std::vector<double> &gbeta,  std::vector<double> &gcap,
+                         int nb,
+                         std::vector<int> dep, std::vector<int> arr, std::vector<double> dem,
+                         double max_gap, int max_it, int method,
+                         std::vector<int> &rank,
+                         std::vector<int> &tail,
+                         std::vector<int> &head,
+                         std::vector<int> &first_out,
+                         std::vector<int> &adj_head,
+                         std::vector<int> &adj_arc,
+                         std::vector<int> &rank_first_out,
+                         std::vector<int> &rank_adj_head,
+                         std::vector<int> &rank_adj_arc,
+                         std::vector<int> &input_arc,
+                         std::vector<int> &input_forward,
+                         std::vector<int> &elimination_tree_parent,
+                         bool verbose){
+
+  Graph network(gfrom,gto, gw, gflow,gaux, gftt, galpha, gbeta, gcap, nb);
+
+  CCHPrepared prepared;
+  prepared.nbnode = nb;
+  prepared.rank = rank;
+  prepared.tail = tail;
+  prepared.head = head;
+  prepared.first_out = first_out;
+  prepared.adj_head = adj_head;
+  prepared.adj_arc = adj_arc;
+  prepared.rank_first_out = rank_first_out;
+  prepared.rank_adj_head = rank_adj_head;
+  prepared.rank_adj_arc = rank_adj_arc;
+  prepared.input_arc = input_arc;
+  prepared.input_forward = input_forward;
+  prepared.elimination_tree_parent = elimination_tree_parent;
+
+  network.assign_traffic(method, max_gap, max_it, dep, arr, dem, 7, false, false, verbose, &prepared);
+
+  Rcpp::List result(10);
+  result[0] = network.indG2;
+  result[1] = network.nodeG;
+  result[2] = network.ftt;
+  result[3] = network.wG;
+  result[4] = network.flow;
+  result[5] = network.cap;
+  result[6] = network.alpha;
+  result[7] = network.beta;
+  result[8] = network.gap;
+  result[9] = network.it;
+  return (result);
+
+}
 
 // [[Rcpp::export]]
 

@@ -1,3 +1,19 @@
+cppRouting v4.0
+===============
+Major changes
+
+-   Customizable Contraction Hierarchies (CCH) support, via `cpp_contract(..., customizable = TRUE)` and `cpp_customize()`. CCH separates preprocessing (topology) from customization (edge weights), so a prepared topology can be reused across many weight updates (e.g. congestion assignment) without a full re-contraction.
+-   `get_distance_pair`, `get_distance_matrix`, `get_path_pair` and `get_aon` all support CCH graphs, in addition to normal and classically-contracted graphs.
+-   `makegraph()`'s `aux` argument now accepts a `data.frame` with one or more named columns, in addition to a single vector. `aggregate_aux` in `get_distance_pair`/`get_distance_matrix` accepts `TRUE` (all columns) or a character vector of column names, and is now supported on normal, contracted (CH) and CCH graphs, and on graphs simplified with `cpp_simplify`. Aggregation runs inline in C++ during the shortest-path search itself, no path reconstruction needed.
+-   `assign_traffic(..., aon_method = "cch", cch = cch)` uses a prepared CCH topology for repeated traffic assignment iterations, avoiding a full re-contraction at each run.
+
+Minor changes
+
+-   `cpp_simplify()` result is now classed (`cppRouting_simplified`), fixing downstream functions that silently failed on a simplified graph.
+-   `cpp_simplify()` now correctly aggregates multiple auxiliary columns across merged edges (previously single-column only).
+-   `cpp_contract(..., customizable = TRUE)` shows progress, like classical contraction.
+-   Various CCH correctness and performance fixes: `get_path_pair` on CCH graphs, elimination ordering (near-linear instead of quadratic), many-to-many distance matrix on CCH graphs.
+
 cppRouting v3.2
 ===============
 

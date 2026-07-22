@@ -5,6 +5,8 @@
 #include <string>
 #include <RcppParallel.h>
 #include <Rcpp.h>
+
+struct CCHPrepared;
 using namespace std;
 
 // Priority queue comparator
@@ -46,6 +48,13 @@ public:
   SVec dict;
   G dataR;
 
+  // For each stored edge in `data`, the row indices into the original input
+  // edge table it represents. A fresh edge maps to itself; simplify() folds
+  // chains of edges into one and concatenates their origin lists so
+  // auxiliary edge weights can be summed once, after simplification, instead
+  // of being carried arithmetically through every intermediate merge.
+  vector<vector<IVec> > edge_origin;
+
   // Parallel graph : 3 vectors (adjacency list)
   IVec nodeG;
   IVec indG;
@@ -62,6 +71,7 @@ public:
   // additional weight
   DVec add;
   DVec addr;
+  int n_add = 1; // number of columns flattened into add/addr (multi-column aggregate_aux path only)
 
   /// reversed
   IVec nodeGr;
@@ -82,6 +92,13 @@ public:
   // Constructor with additional weight
   Graph(IVec &gfrom, IVec &gto, DVec &gw, DVec &gadd, int nb);
 
+  // Constructor with N additional weight columns (flattened, nbedge x n_aux,
+  // column-major). add/addr become flattened nbedge x n_aux matrices instead
+  // of a single column; used only by the multi-column aggregate_aux path so
+  // the single-column constructor above (and everything that depends on add
+  // being one value per edge) stays untouched.
+  Graph(IVec &gfrom, IVec &gto, DVec &gw, DVec &gauxflat, int n_aux, int nb);
+
   // constructor with full edges description
   Graph(IVec &gfrom, IVec &gto, DVec &gw,
         DVec &gflow, DVec &gaux, DVec &gftt,
@@ -95,6 +112,11 @@ public:
 
   // return edge description from current graph
   Rcpp::List getEdges();
+
+  // same as getEdges(), plus the origin edge-index list for every surviving
+  // edge (see edge_origin above). Used by cpp_simplify() to sum auxiliary
+  // weights over the original edges once simplification is done.
+  Rcpp::List getEdgesWithOrigin();
 
   // routing algorithms, grouped by return type
   DVec routing_dvec(IVec dep, IVec arr, int algo);
@@ -133,7 +155,8 @@ public:
 
   void assign_traffic(int method, double max_gap, int max_iter,
                       IVec dep, IVec arr, DVec dem, int mode,
-                      bool contract, bool phast, bool verbose);
+                      bool contract, bool phast, bool verbose,
+                      CCHPrepared* prepared_cch = NULL);
 
   void algorithmB(int batch_size, int n_batch, string file_path, double max_gap, int max_iter,
                          IVec dep, IVec arr, DVec dem, int mode, int inner_iter, double NUM_TOL,

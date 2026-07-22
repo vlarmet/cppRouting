@@ -36,6 +36,7 @@ public:
   // additional weight
   DVec add;
   DVec addr;
+  int n_add = 1; // number of columns flattened into add/addr (multi-column aggregate_aux path only)
 
   // constructors
   CGraph(Graph* graph); //from a c++ Graph object

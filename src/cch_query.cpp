@@ -1,0 +1,762 @@
+#include "cch_internal.h"
+
+using namespace cch_internal;
+
+struct CCHDistancePairWorker : public Worker {
+  // One-to-one distance queries on a customized CCH metric, using the
+  // elimination-tree query (RoutingKit-style): pairs are grouped by shared
+  // source or shared target so the ancestor-chain relaxation is shared
+  // across a whole group, instead of running a full bidirectional Dijkstra
+  // per pair. This is useful for distance APIs and correctness checks, but
+  // it does not recover paths and is not the traffic-assignment path.
+  int nb;
+  IVec &rank;
+  IVec &first_out;
+  IVec &adj_head;
+  IVec &adj_arc;
+  IVec &elimination_tree_parent;
+  DVec &forward;
+  DVec &backward;
+  IVec &dep;
+  IVec &arr;
+  vector<IVec> &groups;
+  bool group_sources;
+  DVec &result;
+
+  CCHDistancePairWorker(int nb,
+                        IVec &rank,
+                        IVec &first_out,
+                        IVec &adj_head,
+                        IVec &adj_arc,
+                        IVec &elimination_tree_parent,
+                        DVec &forward,
+                        DVec &backward,
+                        IVec &dep,
+                        IVec &arr,
+                        vector<IVec> &groups,
+                        bool group_sources,
+                        DVec &result)
+    : nb(nb), rank(rank), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
+      elimination_tree_parent(elimination_tree_parent), forward(forward), backward(backward),
+      dep(dep), arr(arr), groups(groups), group_sources(group_sources), result(result) {}
+
+  CCHDistancePairWorker(CCHDistancePairWorker &other, Split)
+    : nb(other.nb), rank(other.rank), first_out(other.first_out), adj_head(other.adj_head), adj_arc(other.adj_arc),
+      elimination_tree_parent(other.elimination_tree_parent), forward(other.forward), backward(other.backward),
+      dep(other.dep), arr(other.arr), groups(other.groups), group_sources(other.group_sources), result(other.result) {}
+
+  void operator()(std::size_t begin, std::size_t end){
+    DVec dist(nb, INF);
+    IVec pred_node(nb, -1);
+    IVec pred_arc(nb, -1);
+    IVec pred_dir(nb, -1);
+    IVec is_touched(nb, 0);
+    IVec touched;
+    IVec is_pinned_ancestor(nb, 0);
+    IVec pinned_stack;
+    IVec pinned_touched;
+
+    for (std::size_t group_id = begin; group_id != end; group_id++){
+      if (groups[group_id].size() == 0) continue;
+
+      int root = static_cast<int>(group_id);
+      touch_distance_node(root, dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      dist[root] = 0.0;
+
+      if (group_sources){
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      } else {
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      }
+
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int pinned = group_sources ? arr[k] : dep[k];
+        for_ancestors(elimination_tree_parent, pinned, [&](int node){
+          if (is_pinned_ancestor[node] == 0){
+            is_pinned_ancestor[node] = 1;
+            pinned_touched.push_back(node);
+            pinned_stack.push_back(node);
+          }
+          return true;
+        });
+      }
+
+      sort(pinned_stack.begin(), pinned_stack.end(), [&](int a, int b){
+        return rank[a] > rank[b];
+      });
+      for (int stack_pos = 0; stack_pos < pinned_stack.size(); stack_pos++){
+        int node = pinned_stack[stack_pos];
+        if (group_sources){
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        } else {
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        }
+      }
+
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int start = group_sources ? arr[k] : dep[k];
+        result[k] = dist[start];
+      }
+
+      clear_elimination_state(dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      for (int i = 0; i < pinned_touched.size(); i++) is_pinned_ancestor[pinned_touched[i]] = 0;
+      pinned_touched.clear();
+      pinned_stack.clear();
+    }
+  }
+};
+
+DVec distance_pair_cch(int nb,
+                       IVec &rank,
+                       IVec &first_out,
+                       IVec &adj_head,
+                       IVec &adj_arc,
+                       IVec &elimination_tree_parent,
+                       DVec &forward,
+                       DVec &backward,
+                       IVec dep,
+                       IVec arr){
+  // Distance-only pair query, using the elimination-tree query grouped by
+  // shared source or shared target. It computes shortest path costs but
+  // intentionally does not recover original road edges, so it cannot be
+  // used for AON flow loading.
+  IVec source_count(nb, 0);
+  IVec target_count(nb, 0);
+  int unique_sources = 0;
+  int unique_targets = 0;
+  for (int i = 0; i < dep.size(); i++){
+    if (source_count[dep[i]] == 0) unique_sources++;
+    if (target_count[arr[i]] == 0) unique_targets++;
+    source_count[dep[i]]++;
+    target_count[arr[i]]++;
+  }
+
+  bool group_sources = unique_sources <= unique_targets;
+  vector<IVec> groups(nb);
+  for (int i = 0; i < dep.size(); i++){
+    int group_id = group_sources ? dep[i] : arr[i];
+    groups[group_id].push_back(i);
+  }
+
+  DVec result(dep.size(), INF);
+  CCHDistancePairWorker worker(nb, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                               forward, backward, dep, arr, groups, group_sources, result);
+  if (dep.size() <= 1000 || nb <= 1000){
+    worker(0, nb);
+  } else {
+    parallelFor(0, nb, worker);
+  }
+
+  return result;
+}
+
+Rcpp::NumericMatrix distance_matrix_cch(int nb,
+                                        IVec &first_out,
+                                        IVec &adj_head,
+                                        IVec &adj_arc,
+                                        DVec &forward,
+                                        DVec &backward,
+                                        IVec dep,
+                                        IVec arr){
+  // Distance matrix helper (RPHAST-style many-to-many). It precomputes one
+  // backward upward search per destination and, for every node it touches,
+  // drops (destination column, distance) into that node's bucket. Each
+  // origin then runs a single forward upward search and only combines with
+  // the buckets of the nodes it actually touches, instead of rescanning
+  // every node in the graph for every (origin, destination) pair.
+  Rcpp::NumericMatrix result(dep.size(), arr.size());
+  fill(result.begin(), result.end(), INF);
+
+  vector<IVec> bucket_col(nb);
+  vector<DVec> bucket_dist(nb);
+  DVec dist_backward(nb, INF);
+  IVec touched;
+
+  for (int j = 0; j < arr.size(); j++){
+    dijkstra_up(arr[j], nb, first_out, adj_head, adj_arc, backward, dist_backward, touched);
+    for (int t = 0; t < touched.size(); t++){
+      int node = touched[t];
+      bucket_col[node].push_back(j);
+      bucket_dist[node].push_back(dist_backward[node]);
+      dist_backward[node] = INF;
+    }
+    touched.clear();
+  }
+
+  DVec dist_forward(nb, INF);
+  for (int i = 0; i < dep.size(); i++){
+    dijkstra_up(dep[i], nb, first_out, adj_head, adj_arc, forward, dist_forward, touched);
+    for (int t = 0; t < touched.size(); t++){
+      int node = touched[t];
+      double from_dist = dist_forward[node];
+      IVec &cols = bucket_col[node];
+      DVec &dists = bucket_dist[node];
+      for (int k = 0; k < cols.size(); k++){
+        double candidate = from_dist + dists[k];
+        if (candidate < result(i, cols[k])) result(i, cols[k]) = candidate;
+      }
+      dist_forward[node] = INF;
+    }
+    touched.clear();
+  }
+
+  return result;
+}
+
+struct CCHPathValuesPairWorker : public Worker {
+  // Pair query that routes on the customized CCH cost and accumulates one or
+  // more original-edge value columns along the selected shortest path.
+  IVec &gfrom;
+  int nb;
+  int n_values;
+  IVec &rank;
+  IVec &first_out;
+  IVec &adj_head;
+  IVec &adj_arc;
+  IVec &elimination_tree_parent;
+  DVec &forward;
+  DVec &backward;
+  IVec &forward_first_arc;
+  IVec &forward_first_dir;
+  IVec &forward_second_arc;
+  IVec &forward_second_dir;
+  IVec &forward_original;
+  IVec &backward_first_arc;
+  IVec &backward_first_dir;
+  IVec &backward_second_arc;
+  IVec &backward_second_dir;
+  IVec &backward_original;
+  IVec &dep;
+  IVec &arr;
+  DVec &values;
+  vector<IVec> &groups;
+  bool group_sources;
+  DVec &result;
+
+  CCHPathValuesPairWorker(IVec &gfrom,
+                          int nb,
+                          int n_values,
+                          IVec &rank,
+                          IVec &first_out,
+                          IVec &adj_head,
+                          IVec &adj_arc,
+                          IVec &elimination_tree_parent,
+                          DVec &forward,
+                          DVec &backward,
+                          IVec &forward_first_arc,
+                          IVec &forward_first_dir,
+                          IVec &forward_second_arc,
+                          IVec &forward_second_dir,
+                          IVec &forward_original,
+                          IVec &backward_first_arc,
+                          IVec &backward_first_dir,
+                          IVec &backward_second_arc,
+                          IVec &backward_second_dir,
+                          IVec &backward_original,
+                          IVec &dep,
+                          IVec &arr,
+                          DVec &values,
+                          vector<IVec> &groups,
+                          bool group_sources,
+                          DVec &result)
+    : gfrom(gfrom), nb(nb), n_values(n_values), rank(rank), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
+      elimination_tree_parent(elimination_tree_parent), forward(forward), backward(backward),
+      forward_first_arc(forward_first_arc), forward_first_dir(forward_first_dir),
+      forward_second_arc(forward_second_arc), forward_second_dir(forward_second_dir),
+      forward_original(forward_original),
+      backward_first_arc(backward_first_arc), backward_first_dir(backward_first_dir),
+      backward_second_arc(backward_second_arc), backward_second_dir(backward_second_dir),
+      backward_original(backward_original), dep(dep), arr(arr), values(values),
+      groups(groups), group_sources(group_sources), result(result) {}
+
+  CCHPathValuesPairWorker(CCHPathValuesPairWorker &other, Split)
+    : gfrom(other.gfrom), nb(other.nb), n_values(other.n_values), rank(other.rank),
+      first_out(other.first_out), adj_head(other.adj_head), adj_arc(other.adj_arc),
+      elimination_tree_parent(other.elimination_tree_parent),
+      forward(other.forward), backward(other.backward),
+      forward_first_arc(other.forward_first_arc), forward_first_dir(other.forward_first_dir),
+      forward_second_arc(other.forward_second_arc), forward_second_dir(other.forward_second_dir),
+      forward_original(other.forward_original),
+      backward_first_arc(other.backward_first_arc), backward_first_dir(other.backward_first_dir),
+      backward_second_arc(other.backward_second_arc), backward_second_dir(other.backward_second_dir),
+      backward_original(other.backward_original), dep(other.dep), arr(other.arr), values(other.values),
+      groups(other.groups), group_sources(other.group_sources), result(other.result) {}
+
+  void add_recovered_values(int pair_index,
+                            int start,
+                            int root,
+                            bool reverse_path,
+                            double cost,
+                            IVec &pred_node,
+                            IVec &pred_arc,
+                            IVec &pred_dir,
+                            IVec &path_arcs,
+                            IVec &path_dirs,
+                            IVec &path_edges){
+    int n_pairs = dep.size();
+    result[pair_index] = cost;
+    for (int col = 0; col < n_values; col++) result[(col + 1) * n_pairs + pair_index] = 0.0;
+
+    if (start == root) return;
+
+    int node = start;
+    while (node != root && pred_node[node] != -1){
+      path_arcs.push_back(pred_arc[node]);
+      path_dirs.push_back(pred_dir[node]);
+      node = pred_node[node];
+    }
+    if (node != root){
+      result[pair_index] = INF;
+      for (int col = 0; col < n_values; col++) result[(col + 1) * n_pairs + pair_index] = INF;
+      return;
+    }
+    if (reverse_path){
+      reverse(path_arcs.begin(), path_arcs.end());
+      reverse(path_dirs.begin(), path_dirs.end());
+    }
+
+    for (int i = 0; i < path_arcs.size(); i++){
+      unpack_metric_arc(path_arcs[i], path_dirs[i],
+                        forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                        backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                        path_edges);
+    }
+    for (int i = 0; i < path_edges.size(); i++){
+      int edge = path_edges[i];
+      if (edge < 0) continue;
+      for (int col = 0; col < n_values; col++){
+        result[(col + 1) * n_pairs + pair_index] += values[col * gfrom.size() + edge];
+      }
+    }
+  }
+
+  void operator()(std::size_t begin, std::size_t end){
+    DVec dist(nb, INF);
+    IVec pred_node(nb, -1);
+    IVec pred_arc(nb, -1);
+    IVec pred_dir(nb, -1);
+    IVec is_touched(nb, 0);
+    IVec touched;
+    IVec is_pinned_ancestor(nb, 0);
+    IVec pinned_stack;
+    IVec pinned_touched;
+    IVec path_arcs;
+    IVec path_dirs;
+    IVec path_edges;
+
+    for (std::size_t group_id = begin; group_id != end; group_id++){
+      if (groups[group_id].size() == 0) continue;
+
+      int root = static_cast<int>(group_id);
+      touch_distance_node(root, dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      dist[root] = 0.0;
+
+      if (group_sources){
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      } else {
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      }
+
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int pinned = group_sources ? arr[k] : dep[k];
+        for_ancestors(elimination_tree_parent, pinned, [&](int node){
+          if (is_pinned_ancestor[node] == 0){
+            is_pinned_ancestor[node] = 1;
+            pinned_touched.push_back(node);
+            pinned_stack.push_back(node);
+          }
+          return true;
+        });
+      }
+
+      sort(pinned_stack.begin(), pinned_stack.end(), [&](int a, int b){
+        return rank[a] > rank[b];
+      });
+      for (int stack_pos = 0; stack_pos < pinned_stack.size(); stack_pos++){
+        int node = pinned_stack[stack_pos];
+        if (group_sources){
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        } else {
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        }
+      }
+
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int start = group_sources ? arr[k] : dep[k];
+        if (dist[start] == INF) continue;
+
+        path_arcs.clear();
+        path_dirs.clear();
+        path_edges.clear();
+        add_recovered_values(k, start, root, group_sources, dist[start],
+                             pred_node, pred_arc, pred_dir, path_arcs, path_dirs, path_edges);
+      }
+
+      clear_elimination_state(dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      for (int i = 0; i < pinned_touched.size(); i++) is_pinned_ancestor[pinned_touched[i]] = 0;
+      pinned_touched.clear();
+      pinned_stack.clear();
+    }
+  }
+};
+
+Rcpp::NumericMatrix path_values_pair_cch(IVec &gfrom,
+                                         int nb,
+                                         IVec &rank,
+                                         IVec &first_out,
+                                         IVec &adj_head,
+                                         IVec &adj_arc,
+                                         IVec &elimination_tree_parent,
+                                         DVec &forward,
+                                         DVec &backward,
+                                         IVec &forward_first_arc,
+                                         IVec &forward_first_dir,
+                                         IVec &forward_second_arc,
+                                         IVec &forward_second_dir,
+                                         IVec &forward_original,
+                                         IVec &backward_first_arc,
+                                         IVec &backward_first_dir,
+                                         IVec &backward_second_arc,
+                                         IVec &backward_second_dir,
+                                         IVec &backward_original,
+                                         IVec dep,
+                                         IVec arr,
+                                         DVec &values,
+                                         int n_values){
+  IVec source_count(nb, 0);
+  IVec target_count(nb, 0);
+  int unique_sources = 0;
+  int unique_targets = 0;
+  for (int i = 0; i < dep.size(); i++){
+    if (source_count[dep[i]] == 0) unique_sources++;
+    if (target_count[arr[i]] == 0) unique_targets++;
+    source_count[dep[i]]++;
+    target_count[arr[i]]++;
+  }
+
+  bool group_sources = unique_sources <= unique_targets;
+  vector<IVec> groups(nb);
+  for (int i = 0; i < dep.size(); i++){
+    int group_id = group_sources ? dep[i] : arr[i];
+    groups[group_id].push_back(i);
+  }
+
+  DVec result((n_values + 1) * dep.size(), INF);
+  CCHPathValuesPairWorker worker(gfrom, nb, n_values, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                                 forward, backward,
+                                 forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                                 backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                                 dep, arr, values, groups, group_sources, result);
+  if (dep.size() <= 1000 || nb <= 1000){
+    worker(0, nb);
+  } else {
+    parallelFor(0, nb, worker);
+  }
+
+  Rcpp::NumericMatrix out(dep.size(), n_values + 1);
+  for (int col = 0; col < n_values + 1; col++){
+    for (int row = 0; row < dep.size(); row++){
+      out(row, col) = result[col * dep.size() + row];
+    }
+  }
+  return out;
+}
+
+struct CCHPathPairWorker : public Worker {
+  // Pair query that recovers the original node path on a customized CCH
+  // metric, using the elimination-tree query grouped by shared source or
+  // shared target (same algorithm as CCHPathValuesPairWorker), then unpacks
+  // each CCH arc on the resulting path to original edges and converts them
+  // to nodes via gfrom/gto.
+  int nb;
+  IVec &rank;
+  IVec &first_out;
+  IVec &adj_head;
+  IVec &adj_arc;
+  IVec &elimination_tree_parent;
+  DVec &forward;
+  DVec &backward;
+  IVec &dep;
+  IVec &arr;
+  IVec &keep;
+  vector<IVec> &groups;
+  bool group_sources;
+  vector<IVec> &result;
+  // For unpacking CCH arcs to original edges and then to nodes
+  IVec &gfrom;
+  IVec &gto;
+  IVec &forward_first_arc;
+  IVec &forward_first_dir;
+  IVec &forward_second_arc;
+  IVec &forward_second_dir;
+  IVec &forward_original;
+  IVec &backward_first_arc;
+  IVec &backward_first_dir;
+  IVec &backward_second_arc;
+  IVec &backward_second_dir;
+  IVec &backward_original;
+
+  CCHPathPairWorker(int nb,
+                    IVec &rank,
+                    IVec &first_out,
+                    IVec &adj_head,
+                    IVec &adj_arc,
+                    IVec &elimination_tree_parent,
+                    DVec &forward,
+                    DVec &backward,
+                    IVec &dep,
+                    IVec &arr,
+                    IVec &keep,
+                    vector<IVec> &groups,
+                    bool group_sources,
+                    vector<IVec> &result,
+                    IVec &gfrom,
+                    IVec &gto,
+                    IVec &forward_first_arc,
+                    IVec &forward_first_dir,
+                    IVec &forward_second_arc,
+                    IVec &forward_second_dir,
+                    IVec &forward_original,
+                    IVec &backward_first_arc,
+                    IVec &backward_first_dir,
+                    IVec &backward_second_arc,
+                    IVec &backward_second_dir,
+                    IVec &backward_original)
+    : nb(nb), rank(rank), first_out(first_out), adj_head(adj_head), adj_arc(adj_arc),
+      elimination_tree_parent(elimination_tree_parent),
+      forward(forward), backward(backward), dep(dep), arr(arr), keep(keep),
+      groups(groups), group_sources(group_sources), result(result),
+      gfrom(gfrom), gto(gto),
+      forward_first_arc(forward_first_arc), forward_first_dir(forward_first_dir),
+      forward_second_arc(forward_second_arc), forward_second_dir(forward_second_dir),
+      forward_original(forward_original),
+      backward_first_arc(backward_first_arc), backward_first_dir(backward_first_dir),
+      backward_second_arc(backward_second_arc), backward_second_dir(backward_second_dir),
+      backward_original(backward_original) {}
+
+  CCHPathPairWorker(CCHPathPairWorker &other, Split)
+    : nb(other.nb), rank(other.rank), first_out(other.first_out), adj_head(other.adj_head), adj_arc(other.adj_arc),
+      elimination_tree_parent(other.elimination_tree_parent),
+      forward(other.forward), backward(other.backward), dep(other.dep), arr(other.arr), keep(other.keep),
+      groups(other.groups), group_sources(other.group_sources), result(other.result),
+      gfrom(other.gfrom), gto(other.gto),
+      forward_first_arc(other.forward_first_arc), forward_first_dir(other.forward_first_dir),
+      forward_second_arc(other.forward_second_arc), forward_second_dir(other.forward_second_dir),
+      forward_original(other.forward_original),
+      backward_first_arc(other.backward_first_arc), backward_first_dir(other.backward_first_dir),
+      backward_second_arc(other.backward_second_arc), backward_second_dir(other.backward_second_dir),
+      backward_original(other.backward_original) {}
+
+  void unpack_arcs_to_nodes(const IVec &path_arcs,
+                            const IVec &path_dirs,
+                            IVec &out_nodes){
+    // Unpack CCH arcs to original edges, then convert to nodes.
+    IVec path_edges;
+    for (int i = 0; i < path_arcs.size(); i++){
+      unpack_metric_arc(path_arcs[i], path_dirs[i],
+                        forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                        backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original,
+                        path_edges);
+    }
+
+    // Convert original edges to nodes. For each edge (u,v), add v if it's not
+    // the same as the last added node.
+    for (int i = 0; i < path_edges.size(); i++){
+      int edge = path_edges[i];
+      if (edge < 0) continue;
+      int u = gfrom[edge];
+      int v = gto[edge];
+      // We need to determine direction. Since unpack_metric_arc may have
+      // reversed the edge, we check which endpoint matches the previous node.
+      if (out_nodes.empty()){
+        out_nodes.push_back(u);
+        out_nodes.push_back(v);
+      } else {
+        int last = out_nodes.back();
+        if (last == u){
+          out_nodes.push_back(v);
+        } else if (last == v){
+          // Edge was traversed in reverse, add u
+          out_nodes.push_back(u);
+        }
+      }
+    }
+  }
+
+  void operator()(std::size_t begin, std::size_t end){
+    DVec dist(nb, INF);
+    IVec pred_node(nb, -1);
+    IVec pred_arc(nb, -1);
+    IVec pred_dir(nb, -1);
+    IVec is_touched(nb, 0);
+    IVec touched;
+    IVec is_pinned_ancestor(nb, 0);
+    IVec pinned_stack;
+    IVec pinned_touched;
+    IVec path_arcs;
+    IVec path_dirs;
+
+    for (std::size_t group_id = begin; group_id != end; group_id++){
+      if (groups[group_id].size() == 0) continue;
+
+      int root = static_cast<int>(group_id);
+      touch_distance_node(root, dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      dist[root] = 0.0;
+
+      if (group_sources){
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      } else {
+        for_ancestors(elimination_tree_parent, root, [&](int node){
+          relax_outgoing_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+          return true;
+        });
+      }
+
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int pinned = group_sources ? arr[k] : dep[k];
+        for_ancestors(elimination_tree_parent, pinned, [&](int node){
+          if (is_pinned_ancestor[node] == 0){
+            is_pinned_ancestor[node] = 1;
+            pinned_touched.push_back(node);
+            pinned_stack.push_back(node);
+          }
+          return true;
+        });
+      }
+
+      sort(pinned_stack.begin(), pinned_stack.end(), [&](int a, int b){
+        return rank[a] > rank[b];
+      });
+      for (int stack_pos = 0; stack_pos < pinned_stack.size(); stack_pos++){
+        int node = pinned_stack[stack_pos];
+        if (group_sources){
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, backward, 0,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        } else {
+          relax_incoming_elimination(node, first_out, adj_head, adj_arc, forward, 1,
+                                     dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+        }
+      }
+
+      for (int pos = 0; pos < groups[group_id].size(); pos++){
+        int k = groups[group_id][pos];
+        int start = group_sources ? arr[k] : dep[k];
+
+        IVec path_result;
+        if (dist[start] != INF){
+          if (start != root){
+            path_arcs.clear();
+            path_dirs.clear();
+
+            int node = start;
+            while (node != root && pred_node[node] != -1){
+              path_arcs.push_back(pred_arc[node]);
+              path_dirs.push_back(pred_dir[node]);
+              node = pred_node[node];
+            }
+            if (node == root){
+              // group_sources: start=target, root=source, so the chain above
+              // was built target->source and needs reversing to source->target.
+              if (group_sources){
+                reverse(path_arcs.begin(), path_arcs.end());
+                reverse(path_dirs.begin(), path_dirs.end());
+              }
+              unpack_arcs_to_nodes(path_arcs, path_dirs, path_result);
+            }
+          }
+          if (path_result.empty()) path_result.push_back(start);
+        }
+        result[k] = path_result;
+      }
+
+      clear_elimination_state(dist, pred_node, pred_arc, pred_dir, is_touched, touched);
+      for (int i = 0; i < pinned_touched.size(); i++) is_pinned_ancestor[pinned_touched[i]] = 0;
+      pinned_touched.clear();
+      pinned_stack.clear();
+    }
+  }
+};
+
+vector<IVec> path_pair_cch(int nb,
+                           IVec &rank,
+                           IVec &first_out,
+                           IVec &adj_head,
+                           IVec &adj_arc,
+                           IVec &elimination_tree_parent,
+                           DVec &forward,
+                           DVec &backward,
+                           IVec &gfrom,
+                           IVec &gto,
+                           IVec &forward_first_arc,
+                           IVec &forward_first_dir,
+                           IVec &forward_second_arc,
+                           IVec &forward_second_dir,
+                           IVec &forward_original,
+                           IVec &backward_first_arc,
+                           IVec &backward_first_dir,
+                           IVec &backward_second_arc,
+                           IVec &backward_second_dir,
+                           IVec &backward_original,
+                           IVec dep,
+                           IVec arr,
+                           IVec keep){
+  IVec source_count(nb, 0);
+  IVec target_count(nb, 0);
+  int unique_sources = 0;
+  int unique_targets = 0;
+  for (int i = 0; i < dep.size(); i++){
+    if (source_count[dep[i]] == 0) unique_sources++;
+    if (target_count[arr[i]] == 0) unique_targets++;
+    source_count[dep[i]]++;
+    target_count[arr[i]]++;
+  }
+
+  bool group_sources = unique_sources <= unique_targets;
+  vector<IVec> groups(nb);
+  for (int i = 0; i < dep.size(); i++){
+    int group_id = group_sources ? dep[i] : arr[i];
+    groups[group_id].push_back(i);
+  }
+
+  vector<IVec> result(dep.size());
+  CCHPathPairWorker worker(nb, rank, first_out, adj_head, adj_arc, elimination_tree_parent,
+                           forward, backward, dep, arr, keep, groups, group_sources, result,
+                           gfrom, gto, forward_first_arc, forward_first_dir, forward_second_arc, forward_second_dir, forward_original,
+                           backward_first_arc, backward_first_dir, backward_second_arc, backward_second_dir, backward_original);
+  if (dep.size() <= 1000 || nb <= 1000){
+    worker(0, nb);
+  } else {
+    parallelFor(0, nb, worker);
+  }
+  return result;
+}

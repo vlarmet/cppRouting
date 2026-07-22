@@ -19,6 +19,11 @@
 #'
 #' If the input graph has been contracted by \link{cpp_contract} function, the algorithm is a modified bidirectional search.
 #'
+#' When several shortest paths tie on the main edge weight, the exact node sequence returned for a
+#' given \code{from}/\code{to} pair can differ between algorithms and graph representations (normal,
+#' contracted or CCH), since each may break the tie differently. All of these paths are equally
+#' optimal in terms of the main shortest distance.
+#'
 #' In \code{A*} and \code{NBA} algorithms, euclidean distance is used as heuristic function.
 #'
 #' All algorithms are \strong{multithreaded.} Please use \code{RcppParallel::setThreadOptions()} to set the number of threads.
@@ -75,7 +80,7 @@ get_path_pair<-function(Graph,from,to,algorithm="bi",constant=1,keep=NULL,long=F
     to_keep<-rep(1,Graph$nbnode)
   }
 
-  if (length(Graph) == 5){
+  if (inherits(Graph, "cppRouting_graph")){
     if (!is.null(Graph$coords)){
       if (algorithm %in% c("NBA","A*","bi")){
         if (algorithm=="A*"){
@@ -118,10 +123,19 @@ get_path_pair<-function(Graph,from,to,algorithm="bi",constant=1,keep=NULL,long=F
   }
 
 
-  if (length(Graph) == 6){
+  if (inherits(Graph, "cppRouting_contracted")){
     res <- cpppathC(Graph$data$from, Graph$data$to, Graph$data$dist, Graph$nbnode,
                     Graph$rank, Graph$shortcuts$shortf, Graph$shortcuts$shortt, Graph$shortcuts$shortc,
                     FALSE, Graph$dict$ref, to_keep, from_id, to_id, 0)
+  }
+
+  if (inherits(Graph, "cppRouting_cch_metric")){
+    res <- cpppathcch(Graph$nbnode, Graph$rank, Graph$original$data$from, Graph$original$data$to, Graph$first_out, Graph$adj_head, Graph$adj_arc,
+                      Graph$elimination_tree_parent,
+                      Graph$weight$forward, Graph$weight$backward,
+                      Graph$weight$forward_first_arc, Graph$weight$forward_first_dir, Graph$weight$forward_second_arc, Graph$weight$forward_second_dir, Graph$weight$forward_original,
+                      Graph$weight$backward_first_arc, Graph$weight$backward_first_dir, Graph$weight$backward_second_arc, Graph$weight$backward_second_dir, Graph$weight$backward_original,
+                      Graph$dict$ref, to_keep, from_id, to_id)
   }
 
 

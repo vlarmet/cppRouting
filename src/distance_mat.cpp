@@ -79,6 +79,87 @@ void distanceMat::dijkstra_mat(std::size_t begin, std::size_t end){
   }
 }
 
+// constructor
+distanceMatAdd::distanceMatAdd(Graph *gr, IVec dep, IVec arr):
+  m_gr(gr), m_dep(dep), m_arr(arr)
+{
+  n_add = m_gr->n_add;
+  m_result.assign((size_t)m_dep.size() * m_arr.size() * n_add, 0.0);
+}
+
+void distanceMatAdd::operator()(std::size_t begin, std::size_t end){
+  dijkstra_mat(begin, end);
+}
+
+// same as distanceMat::dijkstra_mat, generalized to n_add running sums, with
+// touched-array resets instead of full fills
+void distanceMatAdd::dijkstra_mat(std::size_t begin, std::size_t end){
+
+  int n_dep = (int)m_dep.size();
+  int n_arr = (int)m_arr.size();
+  int total = (int)m_gr->nodeG.size();
+
+  DVec distances(m_gr->nbnode, numeric_limits<double>::max());
+  DVec distadd((size_t)m_gr->nbnode * n_add, numeric_limits<double>::max());
+  IVec touched;
+
+  for (std::size_t k = begin; k != end; k++){
+
+    int start = m_dep[k];
+    distances[start] = 0.0;
+    for (int col = 0; col < n_add; col++){
+      distadd[(size_t)col * m_gr->nbnode + start] = 0.0;
+    }
+    touched.push_back(start);
+
+    PQ Q;
+    Q.push(make_pair(start, 0.0));
+
+    while (!Q.empty()) {
+      int v = Q.top().first;
+      double w = Q.top().second;
+      Q.pop();
+
+      if (w <= distances[v]) {
+
+        for (int i = m_gr->indG[v]; i<  m_gr->indG[v+1]; i++) {
+
+          int v2 = m_gr->nodeG[i];
+          double w2 = m_gr->wG[i];
+
+          if (distances[v] + w2 < distances[v2]) {
+            distances[v2] = distances[v] + w2;
+            for (int col = 0; col < n_add; col++){
+              distadd[(size_t)col * m_gr->nbnode + v2] = distadd[(size_t)col * m_gr->nbnode + v] + m_gr->add[(size_t)col * total + i];
+            }
+
+            Q.push(make_pair(v2, distances[v2]));
+            touched.push_back(v2);
+          }
+        }
+      }
+    }
+
+
+    for (int i = 0; i != n_arr; i++){
+      int node = m_arr[i];
+      for (int col = 0; col < n_add; col++){
+        m_result[(size_t)col * n_dep * n_arr + (size_t)i * n_dep + k] = distadd[(size_t)col * m_gr->nbnode + node];
+      }
+    }
+
+    //Reinitialize (touched-only)
+    for (int t = 0; t < (int)touched.size(); t++){
+      int node = touched[t];
+      distances[node] = numeric_limits<double>::max();
+      for (int col = 0; col < n_add; col++){
+        distadd[(size_t)col * m_gr->nbnode + node] = numeric_limits<double>::max();
+      }
+    }
+    touched.clear();
+  }
+}
+
 
 ///////////////////////////////////////////////////// contracted graph
 
@@ -258,6 +339,101 @@ void phastC::operator()(std::size_t begin, std::size_t end){
     if (add){
       std::fill(distadd.begin(),distadd.end(),std::numeric_limits<double>::max());
     }
+
+  }
+}
+
+// constructor
+phastCAdd::phastCAdd(CGraph *gr, IVec dep, IVec arr):
+  m_gr(gr), m_dep(dep), m_arr(arr)
+{
+  n_add = m_gr->n_add;
+  m_result.assign((size_t)m_dep.size() * m_arr.size() * n_add, 0.0);
+}
+
+// same as phastC, generalized to n_add running sums; add/addr already hold
+// per-shortcut sums precomputed by aggCAdd, so no unpacking happens here
+void phastCAdd::operator()(std::size_t begin, std::size_t end){
+
+  int n_dep = (int)m_dep.size();
+  int n_arr = (int)m_arr.size();
+  int total = (int)m_gr->nodeG.size();
+  int totalr = (int)m_gr->nodeGr.size();
+
+  DVec Distances(m_gr->nbnode, std::numeric_limits<double>::max());
+  DVec distadd((size_t)m_gr->nbnode * n_add, std::numeric_limits<double>::max());
+
+  for (std::size_t k=begin; k!=end;k++){
+
+    int StartNode=m_dep[k];
+
+    Distances[StartNode] = 0.0;
+    for (int col = 0; col < n_add; col++){
+      distadd[(size_t)col * m_gr->nbnode + StartNode] = 0.0;
+    }
+    PQ Q;
+    Q.push(std::make_pair(StartNode, 0.0));
+
+
+    while (true) {
+
+      if (Q.empty()){
+        break;
+      }
+
+      if (!Q.empty()){
+
+        int v=Q.top().first;
+        double w=Q.top().second;
+        Q.pop();
+
+        if (w <= Distances[v]) {
+          if (Stall_par(v, Distances, m_gr->nodeGr, m_gr->wGr, m_gr->indGr)) continue;
+          for (int i = m_gr->indG[v]; i< m_gr->indG[v+1]; i++){
+            int v2 = m_gr->nodeG[i];
+            double w2 = m_gr->wG[i];
+
+
+            if (Distances[v] + w2 < Distances[v2]) {
+              Distances[v2] = Distances[v] + w2;
+              for (int col = 0; col < n_add; col++){
+                distadd[(size_t)col * m_gr->nbnode + v2] = distadd[(size_t)col * m_gr->nbnode + v] + m_gr->add[(size_t)col * total + i];
+              }
+              Q.push(std::make_pair(v2, Distances[v2]));
+
+            }
+          }
+        }
+
+      }
+    }
+
+    //Backward
+
+    for (int i=0; i < (m_gr->indGr.size()-1); i++){
+
+      for (int j=m_gr->indGr[i]; j < m_gr->indGr[i+1]; j++){
+
+
+        if (Distances[m_gr->nodeGr[j]]+m_gr->wGr[j] < Distances[i]) {
+          Distances[i] = Distances[m_gr->nodeGr[j]]+m_gr->wGr[j];
+          for (int col = 0; col < n_add; col++){
+            distadd[(size_t)col * m_gr->nbnode + i] = distadd[(size_t)col * m_gr->nbnode + m_gr->nodeGr[j]] + m_gr->addr[(size_t)col * totalr + j];
+          }
+        }
+
+      }
+    }
+
+    for (int i=0; i != n_arr; i++){
+      int node = m_arr[i];
+      for (int col = 0; col < n_add; col++){
+        m_result[(size_t)col * n_dep * n_arr + (size_t)i * n_dep + k] = distadd[(size_t)col * m_gr->nbnode + node];
+      }
+    }
+
+    std::fill(Distances.begin(),Distances.end(),std::numeric_limits<double>::max());
+    std::fill(distadd.begin(),distadd.end(),std::numeric_limits<double>::max());
 
   }
 }

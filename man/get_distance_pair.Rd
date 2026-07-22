@@ -21,7 +21,10 @@ get_distance_pair(
 
 \item{to}{A vector of one or more vertices (destination).}
 
-\item{aggregate_aux}{Logical. If \code{TRUE}, the additional weight is summed along shortest paths.}
+\item{aggregate_aux}{Logical or character vector. If \code{TRUE}, the additional weight(s)
+declared in \link{makegraph}'s \code{aux} are summed along shortest paths (all columns, if
+\code{aux} was a data.frame). A character vector of column names restricts this to specific
+columns.}
 
 \item{algorithm}{character. \code{Dijkstra} for uni-directional Dijkstra, \code{bi} for bi-directional Dijkstra, \code{A*} for A star unidirectional search or \code{NBA} for New bi-directional A star .Default to \code{bi}}
 
@@ -31,7 +34,9 @@ Default to 1, when cost is expressed in the same unit than coordinates. See deta
 \item{allcores}{Logical (deprecated). If \code{TRUE}, all cores are used.}
 }
 \value{
-Vector of shortest distances.
+Vector of shortest distances, or of aggregated \code{aux} values when
+\code{aggregate_aux} is used. Requesting more than one \code{aux} column returns
+a data.frame with one column per requested value instead of a vector.
 }
 \description{
 Compute shortest distance between origin and destination nodes.
@@ -48,6 +53,12 @@ If the input graph has been contracted by \link{cpp_contract} function, the algo
 Shortest path is always computed according to the main edge weights, corresponding to the 3rd column of \code{df} argument in \link{makegraph} function.
 If \code{aggregate_aux} argument is \code{TRUE}, the values returned are the sum of auxiliary weights along shortest paths.
 
+When several shortest paths tie on the main edge weight, \code{aggregate_aux} is summed along
+whichever tied path the search happens to settle on. Normal, \link{cpp_contract}-contracted and
+CCH graphs can break such ties differently, so the aggregated value for a given \code{from}/\code{to}
+pair may occasionally differ between them, even though the main shortest distance always matches
+exactly. This is expected: it reflects a genuine choice between equally short paths, not an error.
+
 
 In A* and New Bidirectional A star algorithms, euclidean distance is used as heuristic function.
 
@@ -58,7 +69,6 @@ To understand the importance of constant parameter, see the package description 
 }
 \note{
 \code{from} and \code{to} must be the same length.
-It is not possible to aggregate auxiliary weights on a Graph object coming from \link{cpp_simplify} function.
 }
 \examples{
 #Choose number of cores used by cppRouting

@@ -16,6 +16,12 @@ void quickDelete2( int idx ,vector<int> &vec)
   vec.pop_back();
 }
 
+void quickDeleteVec( int idx ,vector<IVec> &vec)
+{
+  vec[idx] = vec.back();
+  vec.pop_back();
+}
+
 void Graph::simp(vector<IVec> &Gr,
                  IVec &Junction,
                  vector<IVec > &Edges,
@@ -234,6 +240,8 @@ void Graph::simp(vector<IVec> &Gr,
 
   DVec Acc(Edges.size());
   DVec Acc2(Edges.size());
+  vector<IVec> AccOrigin(Edges.size());
+  vector<IVec> AccOrigin2(Edges.size());
   for (int i=0; i < Edges.size(); ++i){
     IVec path=Edges[i];
     double w=0.0;
@@ -246,6 +254,7 @@ void Graph::simp(vector<IVec> &Gr,
       for (int m=0; m < data[node1].size(); ++m){
         if (data[node1][m].first==node2){
           w+=data[node1][m].second;
+          AccOrigin[i].insert(AccOrigin[i].end(), edge_origin[node1][m].begin(), edge_origin[node1][m].end());
         }
       }
 
@@ -266,6 +275,7 @@ void Graph::simp(vector<IVec> &Gr,
       for (int m=0; m < data[node1].size(); ++m){
         if (data[node1][m].first==node2){
           w2+=data[node1][m].second;
+          AccOrigin2[i].insert(AccOrigin2[i].end(), edge_origin[node1][m].begin(), edge_origin[node1][m].end());
         }
       }
 
@@ -284,9 +294,11 @@ void Graph::simp(vector<IVec> &Gr,
       vector<pair<int,double > > Gr_remov=data[Edges[i][j]];
 
       data[Edges[i][j]].erase(data[Edges[i][j]].begin(),data[Edges[i][j]].end());
+      edge_origin[Edges[i][j]].erase(edge_origin[Edges[i][j]].begin(),edge_origin[Edges[i][j]].end());
       for (int k=0; k < Gr[Edges[i][j]].size();k++){
         for (int m=0; m < data[Gr[Edges[i][j]][k]].size();m++){
           if (data[Gr[Edges[i][j]][k]][m].first==Edges[i][j]) {
+            quickDeleteVec(m,edge_origin[Gr[Edges[i][j]][k]]);
             quickDelete(m,data[Gr[Edges[i][j]][k]]);
           }
         }
@@ -314,9 +326,11 @@ void Graph::simp(vector<IVec> &Gr,
         vector<pair<int,double > > Gr_remov=data[i];
 
         data[i].erase(data[i].begin(),data[i].end());
+        edge_origin[i].erase(edge_origin[i].begin(),edge_origin[i].end());
         for (int k=0; k < Gr[i].size();k++){
           for (int m=0; m < data[Gr[i][k]].size();m++){
             if (data[Gr[i][k]][m].first==i) {
+              quickDeleteVec(m,edge_origin[Gr[i][k]]);
               quickDelete(m,data[Gr[i][k]]);
             }
           }
@@ -355,6 +369,7 @@ void Graph::simp(vector<IVec> &Gr,
         dup=true;
         if (data[node1][k].second >= Acc[i]){
           data[node1][k].second=Acc[i];
+          edge_origin[node1][k]=AccOrigin[i];
           break;
         }
 
@@ -364,6 +379,7 @@ void Graph::simp(vector<IVec> &Gr,
 
     if (dup==false) {
       data[node1].push_back(make_pair(node2,Acc[i]));
+      edge_origin[node1].push_back(AccOrigin[i]);
       Gr[node2].push_back(node1);
     }
 
@@ -375,6 +391,7 @@ void Graph::simp(vector<IVec> &Gr,
           dup=true;
           if (data[node2][k].second >= Acc2[i]){
             data[node2][k].second=Acc2[i];
+            edge_origin[node2][k]=AccOrigin2[i];
             break;
           }
 
@@ -384,6 +401,7 @@ void Graph::simp(vector<IVec> &Gr,
 
       if (dup==false) {
         data[node2].push_back(make_pair(node1,Acc2[i]));
+        edge_origin[node2].push_back(AccOrigin2[i]);
         Gr[node1].push_back(node2);
       }
     }

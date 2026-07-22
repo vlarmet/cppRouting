@@ -4,10 +4,14 @@
 #' @param from A vector of one or more vertices from which distances are calculated (origin).
 #' @param to A vector of one or more vertices (destination).
 #' @param algorithm Character. Only for contracted graph, \code{mch} for Many to many CH, \code{phast} for PHAST algorithm
-#' @param aggregate_aux Logical. If \code{TRUE}, the additional weight is summed along shortest paths.
+#' @param aggregate_aux Logical or character vector. If \code{TRUE}, the additional weight(s)
+#' declared in \link{makegraph}'s \code{aux} are summed along shortest paths (all columns, if
+#' \code{aux} was a data.frame). A character vector of column names restricts this to specific
+#' columns.
 #' @param allcores Logical (deprecated). If \code{TRUE}, all cores are used.
-#' @return Matrix of shortest distances.
-#' @note It is not possible to aggregate auxiliary weights on a Graph object coming from \link{cpp_simplify} function.
+#' @return Matrix of shortest distances, or of aggregated \code{aux} values when
+#' \code{aggregate_aux} is used. Requesting more than one \code{aux} column returns
+#' a named list of matrices (one per requested value) instead of a single matrix.
 #' @details If graph is not contracted, \code{get_distance_matrix()} recursively perform Dijkstra algorithm for each \code{from} nodes.
 #' If graph is contracted, the user has the choice between : \itemize{
 #'   \item many to many contraction hierarchies (\code{mch}) : optimal for square matrix.
@@ -16,6 +20,12 @@
 #'
 #' Shortest path is always computed according to the main edge weights, corresponding to the 3rd column of \code{df} argument in \code{makegraph()} function.
 #' If \code{aggregate_aux} argument is \code{TRUE}, the values returned are the sum of auxiliary weights along shortest paths.
+#'
+#' When several shortest paths tie on the main edge weight, \code{aggregate_aux} is summed along
+#' whichever tied path the search happens to settle on. Normal, \link{cpp_contract}-contracted and
+#' CCH graphs can break such ties differently, so the aggregated value for a given \code{from}/\code{to}
+#' pair may occasionally differ between them, even though the main shortest distance always matches
+#' exactly. This is expected: it reflects a genuine choice between equally short paths, not an error.
 #'
 #' All algorithms are \strong{multithreaded.} \code{allcores} argument is deprecated, please use \code{RcppParallel::setThreadOptions()} to set the number of threads.
 #'
@@ -59,9 +69,152 @@ get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux 
 
   if (allcores) message("allcores argument is deprecated since v3.0. \nPlease use RcppParallel::setThreadOptions() to set the number of threads")
 
+  if (inherits(Graph, "cppRouting_cch")) stop("Run cpp_customize() before querying a CCH")
+
+  if (inherits(Graph, "cppRouting_cch_metric")){
+    if (isFALSE(aggregate_aux)){
+      res <- cppdistmatcch(Graph$nbnode,
+                           Graph$first_out,
+                           Graph$adj_head,
+                           Graph$adj_arc,
+                           Graph$weight$forward,
+                           Graph$weight$backward,
+                           from_id,
+                           to_id)
+      rownames(res)<-from
+      colnames(res)<-to
+      return(res)
+    }
+
+    # aggregate_aux on CCH: expand to the full from x to cross product and
+    # reuse the pair-based path_values_pair_cch engine (grouped by shared
+    # source/target, so this stays efficient for a dense matrix), then
+    # reshape each requested column back into a from x to matrix.
+    resolved <- resolve_aggregate_aux(Graph$original$attrib$aux, aggregate_aux)
+    from_id_x <- rep(from_id, times = length(to_id))
+    to_id_x   <- rep(to_id, each = length(from_id))
+    result <- cpppathvaluescch(Graph$original$data$from,
+                               Graph$nbnode,
+                               Graph$rank,
+                               Graph$first_out,
+                               Graph$adj_head,
+                               Graph$adj_arc,
+                               Graph$elimination_tree_parent,
+                               Graph$weight$forward,
+                               Graph$weight$backward,
+                               Graph$weight$forward_first_arc,
+                               Graph$weight$forward_first_dir,
+                               Graph$weight$forward_second_arc,
+                               Graph$weight$forward_second_dir,
+                               Graph$weight$forward_original,
+                               Graph$weight$backward_first_arc,
+                               Graph$weight$backward_first_dir,
+                               Graph$weight$backward_second_arc,
+                               Graph$weight$backward_second_dir,
+                               Graph$weight$backward_original,
+                               from_id_x,
+                               to_id_x,
+                               resolved$matrix)
+
+    mats <- lapply(seq_along(resolved$names), function(col) {
+      m <- matrix(result[, col + 1], nrow = length(from), ncol = length(to))
+      rownames(m) <- from; colnames(m) <- to
+      m
+    })
+    names(mats) <- resolved$names
+    if (resolved$single_legacy) return(mats[[1]])
+    return(mats)
+  }
+
+  # Resolve aggregate_aux before the algorithm-dispatch blocks below (same
+  # strategy as get_distance_pair(): single-column requests are substituted
+  # into a local copy of Graph so the existing fast inline-summing code below
+  # runs unchanged; multi-column requests are handled once here, inline in
+  # C++ (see cppmataddmulti/cppmataddCmulti below), no path reconstruction).
+  aux_multi <- NULL
+  single_col_resolved <- NULL
+  if (!isFALSE(aggregate_aux)) {
+    if (inherits(Graph, "cppRouting_graph")) {
+      resolved <- resolve_aggregate_aux(Graph$attrib$aux, aggregate_aux)
+      if (ncol(resolved$matrix) > 1) {
+        aux_multi <- resolved
+      } else {
+        Graph$attrib$aux <- resolved$matrix[, 1]
+        aggregate_aux <- TRUE
+        single_col_resolved <- resolved
+      }
+    } else if (inherits(Graph, "cppRouting_contracted")) {
+      resolved <- resolve_aggregate_aux(Graph$original$attrib$aux, aggregate_aux)
+      if (ncol(resolved$matrix) > 1) {
+        aux_multi <- resolved
+      } else {
+        Graph$original$attrib$aux <- resolved$matrix[, 1]
+        aggregate_aux <- TRUE
+        single_col_resolved <- resolved
+      }
+    }
+  }
+
+  if (!is.null(aux_multi)) {
+    # Normal graph: aux columns summed inline during the same search (no
+    # path reconstruction, no R round-trip). Mirrors the scalar dispatch
+    # below: Dijkstra is rooted at the smaller side of from/to, transposing
+    # once at the end if `to` was the smaller side.
+    if (inherits(Graph, "cppRouting_graph")) {
+      if (length(from) < length(to)) {
+        arr3d <- cppmataddmulti(Graph$data[,1], Graph$data[,2], Graph$data[,3], aux_multi$matrix, Graph$nbnode, from_id, to_id)
+        transpose_needed <- FALSE
+      } else {
+        arr3d <- cppmataddmulti(Graph$data[,2], Graph$data[,1], Graph$data[,3], aux_multi$matrix, Graph$nbnode, to_id, from_id)
+        transpose_needed <- TRUE
+      }
+      mats <- lapply(seq_along(aux_multi$names), function(col) {
+        m <- matrix(arr3d[,,col], nrow = dim(arr3d)[1], ncol = dim(arr3d)[2])
+        if (transpose_needed) m <- t(m)
+        rownames(m) <- from; colnames(m) <- to
+        m
+      })
+      names(mats) <- aux_multi$names
+      if (aux_multi$single_legacy) return(mats[[1]])
+      return(mats)
+    }
+
+    # Contracted (CH) graph: aux columns summed inline via the same
+    # per-shortcut precompute pass (aggCAdd) used by get_distance_pair(),
+    # feeding a PHAST-based sweep (the only CH matrix algorithm that
+    # supports aux, same constraint as the existing single-column path,
+    # which is why `algorithm` is ignored here too).
+    if (inherits(Graph, "cppRouting_contracted")) {
+      invrank <- Graph$nbnode - Graph$rank
+      if (length(from) < length(to)) {
+        arr3d <- cppmataddCmulti(invrank[Graph$original$data[,1] + 1], invrank[Graph$original$data[,2] + 1], Graph$original$data[,3], aux_multi$matrix,
+                                 invrank[Graph$data[,1] + 1], invrank[Graph$data[,2] + 1], Graph$data[,3], Graph$nbnode, Graph$rank,
+                                 invrank[Graph$shortcuts$shortf + 1], invrank[Graph$shortcuts$shortt + 1], invrank[Graph$shortcuts$shortc + 1],
+                                 TRUE,
+                                 invrank[from_id + 1], invrank[to_id + 1])
+        transpose_needed <- FALSE
+      } else {
+        arr3d <- cppmataddCmulti(invrank[Graph$original$data[,2] + 1], invrank[Graph$original$data[,1] + 1], Graph$original$data[,3], aux_multi$matrix,
+                                 invrank[Graph$data[,2] + 1], invrank[Graph$data[,1] + 1], Graph$data[,3], Graph$nbnode, Graph$rank,
+                                 invrank[Graph$shortcuts$shortt + 1], invrank[Graph$shortcuts$shortf + 1], invrank[Graph$shortcuts$shortc + 1],
+                                 TRUE,
+                                 invrank[to_id + 1], invrank[from_id + 1])
+        transpose_needed <- TRUE
+      }
+      mats <- lapply(seq_along(aux_multi$names), function(col) {
+        m <- matrix(arr3d[,,col], nrow = dim(arr3d)[1], ncol = dim(arr3d)[2])
+        if (transpose_needed) m <- t(m)
+        rownames(m) <- from; colnames(m) <- to
+        m
+      })
+      names(mats) <- aux_multi$names
+      if (aux_multi$single_legacy) return(mats[[1]])
+      return(mats)
+    }
+  }
 
   # not contracted
-  if (length(Graph) == 5){
+  if (inherits(Graph, "cppRouting_graph")){
     if (aggregate_aux & length(Graph$attrib$aux) == 0) stop("network don't have additional weight")
 
       if (length(from)< length(to)){
@@ -86,7 +239,7 @@ get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux 
   }
 
   # contracted
-  if (length(Graph) == 6){
+  if (inherits(Graph, "cppRouting_contracted")){
     if (aggregate_aux & length(Graph$original$attrib$aux) == 0) stop("network don't have additional weight")
     invrank <- Graph$nbnode - Graph$rank
    # invrank2 <- data.frame(invrank = invrank, id = 0:(length(invrank)-1))
@@ -142,5 +295,12 @@ get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux 
 
   rownames(res)<-from
   colnames(res)<-to
+
+  if (!is.null(single_col_resolved) && !single_col_resolved$single_legacy) {
+    mats <- list(res)
+    names(mats) <- single_col_resolved$names
+    return(mats)
+  }
+
   return(res)
 }
