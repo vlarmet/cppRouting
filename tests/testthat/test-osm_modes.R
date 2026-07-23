@@ -14,10 +14,10 @@ test_that("profile auto-selection: mode picks the matching default profile when 
   path <- make_one_way_pbf(list(highway = "footway")) # not in the car/hgv profile, is in foot/bike
   on.exit(unlink(path))
 
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))$data), 0L)
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "foot", progress = FALSE))$data), 2L)
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "bicycle", progress = FALSE))$data), 0L) # cycleway, not footway
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "hgv", progress = FALSE))$data), 0L) # same profile as car
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(progress = FALSE))$data), 0L)
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "foot", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "bicycle", progress = FALSE))$data), 0L) # cycleway, not footway
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "hgv", progress = FALSE))$data), 0L) # same profile as car
 })
 
 test_that("mode = 'foot': foot=yes/foot=no override access, motor_vehicle tags are irrelevant", {
@@ -26,16 +26,16 @@ test_that("mode = 'foot': foot=yes/foot=no override access, motor_vehicle tags a
   path3 <- make_one_way_pbf(list(highway = "residential", motor_vehicle = "no")) # foot ignores this
   on.exit(unlink(c(path1, path2, path3)))
 
-  expect_equal(nrow(cpp_extract(path1, output = "data.frame", coords = FALSE, osm = list(mode = "foot", progress = FALSE))$data), 2L)
-  expect_equal(nrow(cpp_extract(path2, output = "data.frame", coords = FALSE, osm = list(mode = "foot", progress = FALSE))$data), 0L)
-  expect_equal(nrow(cpp_extract(path3, output = "data.frame", coords = FALSE, osm = list(mode = "foot", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path1, output = "data.frame", coords = FALSE, osm_params = list(mode = "foot", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path2, output = "data.frame", coords = FALSE, osm_params = list(mode = "foot", progress = FALSE))$data), 0L)
+  expect_equal(nrow(cpp_extract(path3, output = "data.frame", coords = FALSE, osm_params = list(mode = "foot", progress = FALSE))$data), 2L)
 })
 
 test_that("mode = 'foot': oneway is always ignored, and use_maxspeed has no effect", {
   path <- make_one_way_pbf(list(highway = "residential", oneway = "yes", maxspeed = "130"))
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm = list(mode = "foot", progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm_params = list(mode = "foot", progress = FALSE))
   expect_equal(nrow(res$data), 2L) # bidirectional despite oneway=yes
 
   foot_speed <- osm_foot_profile()$speed[osm_foot_profile()$highway == "residential"]
@@ -48,22 +48,22 @@ test_that("mode = 'bicycle': bicycle=yes/bicycle=no override access, vehicle=no 
   path3 <- make_one_way_pbf(list(highway = "residential", vehicle = "no"))
   on.exit(unlink(c(path1, path2, path3)))
 
-  expect_equal(nrow(cpp_extract(path1, output = "data.frame", coords = FALSE, osm = list(mode = "bicycle", progress = FALSE))$data), 2L)
-  expect_equal(nrow(cpp_extract(path2, output = "data.frame", coords = FALSE, osm = list(mode = "bicycle", progress = FALSE))$data), 0L)
-  expect_equal(nrow(cpp_extract(path3, output = "data.frame", coords = FALSE, osm = list(mode = "bicycle", progress = FALSE))$data), 0L)
+  expect_equal(nrow(cpp_extract(path1, output = "data.frame", coords = FALSE, osm_params = list(mode = "bicycle", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path2, output = "data.frame", coords = FALSE, osm_params = list(mode = "bicycle", progress = FALSE))$data), 0L)
+  expect_equal(nrow(cpp_extract(path3, output = "data.frame", coords = FALSE, osm_params = list(mode = "bicycle", progress = FALSE))$data), 0L)
 })
 
 test_that("mode = 'bicycle': oneway:bicycle=no allows contraflow cycling on an otherwise one-way street", {
   path <- make_one_way_pbf(list(highway = "residential", oneway = "yes", `oneway:bicycle` = "no"))
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "bicycle", progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "bicycle", progress = FALSE))
   expect_equal(nrow(res$data), 2L) # both directions despite oneway=yes
 
   # without the override, plain oneway=yes is respected for bicycle same as car
   path2 <- make_one_way_pbf(list(highway = "residential", oneway = "yes"))
   on.exit(unlink(path2), add = TRUE)
-  res2 <- cpp_extract(path2, output = "data.frame", coords = FALSE, osm = list(mode = "bicycle", progress = FALSE))
+  res2 <- cpp_extract(path2, output = "data.frame", coords = FALSE, osm_params = list(mode = "bicycle", progress = FALSE))
   expect_equal(nrow(res2$data), 1L)
 })
 
@@ -71,7 +71,7 @@ test_that("mode = 'bicycle': use_maxspeed has no effect", {
   path <- make_one_way_pbf(list(highway = "residential", maxspeed = "130"))
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm = list(mode = "bicycle", progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm_params = list(mode = "bicycle", progress = FALSE))
   bike_speed <- osm_bike_profile()$speed[osm_bike_profile()$highway == "residential"]
   expect_equal(res$data$dist, 60 * res$aux$length / bike_speed, tolerance = 1e-6)
 })
@@ -80,8 +80,8 @@ test_that("mode = 'hgv': hgv=no drops a way even if otherwise motor-vehicle acce
   path <- make_one_way_pbf(list(highway = "residential", hgv = "no"))
   on.exit(unlink(path))
 
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "car", progress = FALSE))$data), 2L)
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "hgv", progress = FALSE))$data), 0L)
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "car", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "hgv", progress = FALSE))$data), 0L)
 })
 
 test_that("mode = 'hgv': hgv=yes/hgv=destination re-authorize even if access=no", {
@@ -89,22 +89,22 @@ test_that("mode = 'hgv': hgv=yes/hgv=destination re-authorize even if access=no"
   path2 <- make_one_way_pbf(list(highway = "residential", access = "no", hgv = "destination"))
   on.exit(unlink(c(path1, path2)))
 
-  expect_equal(nrow(cpp_extract(path1, output = "data.frame", coords = FALSE, osm = list(mode = "hgv", progress = FALSE))$data), 2L)
-  expect_equal(nrow(cpp_extract(path2, output = "data.frame", coords = FALSE, osm = list(mode = "hgv", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path1, output = "data.frame", coords = FALSE, osm_params = list(mode = "hgv", progress = FALSE))$data), 2L)
+  expect_equal(nrow(cpp_extract(path2, output = "data.frame", coords = FALSE, osm_params = list(mode = "hgv", progress = FALSE))$data), 2L)
 })
 
 test_that("mode = 'hgv': motor_vehicle=no still denies (a general restriction applies to trucks too)", {
   path <- make_one_way_pbf(list(highway = "residential", motor_vehicle = "no"))
   on.exit(unlink(path))
 
-  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(mode = "hgv", progress = FALSE))$data), 0L)
+  expect_equal(nrow(cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(mode = "hgv", progress = FALSE))$data), 0L)
 })
 
 test_that("mode = 'hgv': use_maxspeed still applies, same as car", {
   path <- make_one_way_pbf(list(highway = "residential", maxspeed = "70"))
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm = list(mode = "hgv", progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm_params = list(mode = "hgv", progress = FALSE))
   expect_equal(res$data$dist, 60 * res$aux$length / 70, tolerance = 1e-6)
 })
 
@@ -118,5 +118,5 @@ test_that("osm_foot_profile()/osm_bike_profile() exclude motorway, osm_hgv_profi
 test_that("mode is validated against the known set", {
   path <- make_one_way_pbf(list(highway = "residential"))
   on.exit(unlink(path))
-  expect_error(cpp_extract(path, output = "data.frame", osm = list(mode = "unicycle")))
+  expect_error(cpp_extract(path, output = "data.frame", osm_params = list(mode = "unicycle")))
 })

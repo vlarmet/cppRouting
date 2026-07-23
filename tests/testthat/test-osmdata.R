@@ -84,7 +84,7 @@ test_that("graph_from_osmdata's csv output round-trips a large osm_id without in
 test_that("cpp_extract dispatches a full osmdata object the same way", {
   skip_if_not_installed("sf")
   x <- make_test_osmdata()
-  g1 <- cpp_extract(x, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+  g1 <- cpp_extract(x, output = "data.frame", coords = FALSE, osm_params = list(progress = FALSE))
   g2 <- cppRouting:::graph_from_osmdata(x, output = "data.frame", coords = FALSE, progress = FALSE)
   expect_equal(g1, g2)
 })

@@ -14,7 +14,7 @@ test_that("the recommended osmextract workflow (raw .pbf path) round-trips", {
   expect_true(grepl("\\.osm\\.pbf$", path))
 
   # epsg required: OSM coordinates are always geographic (WGS84).
-  res <- cpp_extract(path, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", epsg = 2154, osm_params = list(progress = FALSE))
   expect_true(nrow(res$data) > 0)
   expect_true(nrow(res$coords) > 0)
 })

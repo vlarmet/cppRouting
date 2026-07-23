@@ -6,7 +6,7 @@
 # common and lives here.
 
 # Merges a user-supplied list of overrides against a named list of defaults,
-# used by cpp_extract()'s `osm`/`non_osm` grouped-argument lists. A flat
+# used by cpp_extract()'s `osm_params`/`geom_params` grouped-argument lists. A flat
 # function argument gets typo protection for free from R's own "unused
 # argument" error; a list element does not (out$us_maxspeed <- FALSE would
 # just silently add an ignored element, leaving use_maxspeed at its default)

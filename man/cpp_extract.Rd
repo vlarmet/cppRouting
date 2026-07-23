@@ -12,8 +12,8 @@ cpp_extract(
   epsg = NULL,
   keep_length = FALSE,
   snap_digits = NULL,
-  osm = list(),
-  non_osm = list()
+  osm_params = list(),
+  geom_params = list()
 )
 }
 \arguments{
@@ -44,11 +44,11 @@ GeoPackage is not supported and has no plans to be: convert it to a shapefile fi
 \item{out_prefix}{Path prefix used when \code{output = "csv"}. Common to every source.}
 
 \item{coords}{logical. If \code{TRUE} (default), extract each node's coordinates: written to
-\code{<out_prefix>_coords.csv} (\code{output = "csv"}, including the \code{.pbf} \code{max_memory}
+\code{<out_prefix>_coords.csv} (\code{output = "csv"}, including the \code{.pbf} \code{max_mem}
 disk-backed pipeline), returned as a \code{data.frame(node_id, X, Y)} (\code{output = "data.frame"}), or
 passed to \code{makegraph(coords = ...)} (\code{output = "graph"}). Set to \code{FALSE} to skip this --
 e.g. if you already have node coordinates elsewhere and only need the graph topology. For the
-\code{max_memory} pipeline this also skips an entire external sort/merge pass, a real saving in disk I/O
+\code{max_mem} pipeline this also skips an entire external sort/merge pass, a real saving in disk I/O
 and time at continent scale, not just a smaller output. If the source coordinates are geographic
 (lat/lon -- always true for \code{.pbf}/\code{osmdata}) and \code{coords = TRUE}, \code{epsg} must be
 supplied (see below), otherwise this errors rather than silently returning coordinates that break the
@@ -57,18 +57,18 @@ A*/NBA algorithms (see \link{get_distance_pair}). Common to every source.}
 \item{epsg}{Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
 coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Only takes effect if
 \code{coords = TRUE} and the source CRS is geographic; already-projected coordinates (possible for
-shapefile/sf sources) are left as-is regardless. Not supported together with \code{osm$max_memory} on a
-\code{.pbf} source: reprojecting would require reading the whole coords table back into R, defeating the
+shapefile/sf sources) are left as-is regardless. Not supported together with \code{osm_params$max_mem} on
+a \code{.pbf} source: reprojecting would require reading the whole coords table back into R, defeating the
 point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
 afterward instead. Common to every source.}
 
 \item{keep_length}{logical. If \code{TRUE}, keep each edge's length (in km) as \code{aux}, regardless of
 how the main \code{cost} was actually resolved -- e.g. to get a time-based graph while still reporting
 physical distance. Shapefile/sf sources: the geometric length (unreliable for a geographic CRS, same
-caveat as \code{non_osm$length_field} below -- reproject or use \code{non_osm$keep_fields} with your own
-length column instead in that case). OSM sources: the haversine length. \code{output = "csv"} carries
-the same information as \code{output = "data.frame"}: \code{aux} is written to \verb{<out_prefix>_aux.csv}.
-Common to every source.}
+caveat as \code{geom_params$length_field} below -- reproject or use \code{geom_params$keep_fields} with
+your own length column instead in that case). OSM sources: the haversine length. \code{output = "csv"}
+carries the same information as \code{output = "data.frame"}: \code{aux} is written to
+\verb{<out_prefix>_aux.csv}. Common to every source.}
 
 \item{snap_digits}{integer. Shapefile/sf sources: decimal places used to round coordinates before
 deduplicating line endpoints into nodes. \code{osmdata} sources: decimal places used to match line
@@ -78,13 +78,13 @@ OSM node ids directly, no coordinate matching needed). Defaults (\code{NULL}) to
 decimal places to distinguish nearby points, but that precision is far too tight for projected
 coordinates, where it starts picking up floating-point noise between independently-digitized but
 logically-identical points rather than real geometric differences. The one argument that doesn't sort
-cleanly into \code{osm}/\code{non_osm}: it applies to shapefile/sf sources and to \code{osmdata}, but not
-to \code{.pbf}.}
+cleanly into \code{osm_params}/\code{geom_params}: it applies to shapefile/sf sources and to
+\code{osmdata}, but not to \code{.pbf}.}
 
-\item{osm}{A list of options for OSM sources (\code{.pbf}/\code{osmdata}/\code{osmextract}) only, ignored
-for shapefile/\code{sf}. Any subset may be supplied -- omitted elements keep their default below; an
-unrecognized element name raises an error immediately (rather than silently keeping its default, which is
-what a typo'd list element would otherwise do). Recognized elements:
+\item{osm_params}{A list of options for OSM sources (\code{.pbf}/\code{osmdata}/\code{osmextract}) only,
+ignored for shapefile/\code{sf}. Any subset may be supplied -- omitted elements keep their default below;
+an unrecognized element name raises an error immediately (rather than silently keeping its default, which
+is what a typo'd list element would otherwise do). Recognized elements:
 \itemize{
   \item \code{mode}: one of \code{"car"} (default), \code{"foot"}, \code{"bicycle"} or \code{"hgv"} --
   which access-tag/oneway resolution rules to apply (see \link{graph_from_osmpbf}'s \code{@details} for
@@ -103,20 +103,20 @@ what a typo'd list element would otherwise do). Recognized elements:
   for \code{mode = "foot"} (oneway is always ignored for that mode).
   \item \code{keep_clazz}: logical, default \code{FALSE}. If \code{TRUE}, keep each edge's resolved
   highway class id as \code{aux}.
-  \item \code{max_memory}: \code{.pbf} only (ignored for \code{osmdata}). A budget in megabytes for a
+  \item \code{max_mem}: \code{.pbf} only (ignored for \code{osmdata}). A budget in megabytes for a
   disk-backed pipeline that spills every intermediate table (not just the final result) to disk, keeping
   peak RAM close to this budget regardless of the input file's size -- for files too large to fit in RAM
   even with the default pipeline (e.g. a full-planet extract). Requires \code{output = "csv"}. See
   \code{graph_from_osmpbf} for details and the (rare but possible) requirement that nodes appear in
   increasing id order in the file.
-  \item \code{temp_dir}: \code{.pbf} only. Directory for temporary files when \code{max_memory} is set.
+  \item \code{tmp_path}: \code{.pbf} only. Directory for temporary files when \code{max_mem} is set.
   Defaults to \code{tempdir()}.
   \item \code{progress}: logical, default \code{TRUE}. Print progress messages while reading/matching.
 }}
 
-\item{non_osm}{A list of options for shapefile/\code{sf} sources only, ignored for OSM sources. Any
+\item{geom_params}{A list of options for shapefile/\code{sf} sources only, ignored for OSM sources. Any
 subset may be supplied -- omitted elements keep their default below; an unrecognized element name raises
-an error immediately (same reasoning as \code{osm} above). Recognized elements:
+an error immediately (same reasoning as \code{osm_params} above). Recognized elements:
 \itemize{
   \item \code{cost_field}: optional, name of a numeric attribute column to use directly as edge cost.
   \item \code{speed_field}: optional, name of a numeric attribute column holding a speed in km/h. Used
@@ -158,10 +158,10 @@ result) fails loudly rather than silently producing a wrong graph.
 \details{
 Arguments are grouped by which family of source they apply to: arguments that work the same way
 regardless of source stay as their own top-level parameter; source-specific ones are grouped into the
-\code{osm} or \code{non_osm} list (see those two parameters below for the full list of what each one
-accepts) -- so a shapefile/\code{sf} call never needs to mention \code{profile}/\code{use_maxspeed}, and
-a \code{.pbf}/\code{osmdata}/\code{osmextract} call never needs to mention \code{cost_field}/
-\code{direction_field}.
+\code{osm_params} or \code{geom_params} list (see those two parameters below for the full list of what
+each one accepts) -- so a shapefile/\code{sf} call never needs to mention \code{profile}/
+\code{use_maxspeed}, and a \code{.pbf}/\code{osmdata}/\code{osmextract} call never needs to mention
+\code{cost_field}/\code{direction_field}.
 
 Shapefile/sf sources are assumed to already be topologically clean, i.e. lines only meet at
 their endpoints. OSM sources

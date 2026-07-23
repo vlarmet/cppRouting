@@ -13,7 +13,7 @@ test_that("cpp_extract on a .pbf splits a way at a mid-way junction (node 2)", {
   on.exit(unlink(path))
 
   # epsg required: OSM coordinates are always geographic (WGS84).
-  res <- cpp_extract(path, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", epsg = 2154, osm_params = list(progress = FALSE))
 
   # 4 osm nodes in, but only 3 become graph nodes: node 2 (the junction),
   # and the two other endpoints referenced only once each collapse per way
@@ -32,7 +32,7 @@ test_that("cpp_extract on a .pbf keeps the real OSM node id, not a remapped dens
   path <- make_test_pbf()
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(progress = FALSE))
   # nodes 1-4 in the fixture (see helper-osmpbf.R); from/to must be a subset
   # of the real ids, not a synthetic 0-based renumbering. Character, not
   # numeric: a node id is a label, not a quantity (matches makegraph()'s own
@@ -40,7 +40,7 @@ test_that("cpp_extract on a .pbf keeps the real OSM node id, not a remapped dens
   expect_type(res$data$from, "character")
   expect_setequal(c(res$data$from, res$data$to), 1:4)
 
-  full <- cpp_extract(path, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
+  full <- cpp_extract(path, output = "data.frame", epsg = 2154, osm_params = list(progress = FALSE))
   expect_type(full$coords$node_id, "character")
   expect_setequal(full$coords$node_id, 1:4)
 })
@@ -61,7 +61,7 @@ test_that("a large OSM id survives epsg reprojection's csv rewrite pass without 
   # plain digits, silently re-introducing the exact ambiguity the ".0" was
   # there to prevent.
   out_prefix <- tempfile()
-  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154, osm = list(progress = FALSE))
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154, osm_params = list(progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   coords_csv <- data.table::fread(paths[2])
   expect_type(coords_csv$node_id, "double") # not bit64::integer64
@@ -77,7 +77,7 @@ test_that("a real OSM id past the 32-bit integer range round-trips through csv w
   write_test_osmpbf(path, nodes, ways)
 
   out_prefix <- tempfile()
-  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, osm = list(progress = FALSE))
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, osm_params = list(progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   edges_csv <- data.table::fread(paths)
   expect_type(edges_csv$from, "double") # not bit64::integer64
@@ -91,7 +91,7 @@ test_that("cpp_extract on a .pbf resolves oneway correctly and drops non-profile
   ways <- list(list(refs = c(1, 2), tags = list(highway = "footway"))) # not in the default car profile
   write_test_osmpbf(path, nodes, ways)
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(progress = FALSE))
   expect_equal(nrow(res$data), 0L)
   expect_null(res$coords)
 })
@@ -139,15 +139,15 @@ test_that("cpp_extract on a .pbf with coords=FALSE drops coords from every outpu
   path <- make_test_pbf()
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(progress = FALSE))
   expect_null(res$coords)
   expect_equal(nrow(res$data), 5L)
 
-  g <- cpp_extract(path, coords = FALSE, osm = list(progress = FALSE))
+  g <- cpp_extract(path, coords = FALSE, osm_params = list(progress = FALSE))
   expect_null(g$coords)
 
   out_prefix <- tempfile()
-  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, osm = list(progress = FALSE))
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, osm_params = list(progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   expect_length(paths, 1L)
   expect_true(file.exists(paths))
@@ -158,21 +158,21 @@ test_that("cpp_extract on a .pbf stops on geographic coordinates unless coords=F
   path <- make_test_pbf()
   on.exit(unlink(path))
 
-  expect_error(cpp_extract(path, output = "data.frame", osm = list(progress = FALSE)), "geographic")
+  expect_error(cpp_extract(path, output = "data.frame", osm_params = list(progress = FALSE)), "geographic")
 
   # coords = FALSE bypasses the issue entirely.
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, osm_params = list(progress = FALSE))
   expect_null(res$coords)
 
   # epsg reprojects instead of erroring.
   skip_if_not_installed("sf")
-  res2 <- cpp_extract(path, output = "data.frame", epsg = 2154, osm = list(progress = FALSE))
+  res2 <- cpp_extract(path, output = "data.frame", epsg = 2154, osm_params = list(progress = FALSE))
   expect_equal(nrow(res2$coords), 4L)
   expect_true(all(res2$coords$X > 1e5)) # Lambert-93 easting, not longitude degrees
 
   # csv mode: reprojection happens via a read-back-rewrite of coords.csv.
   out_prefix <- tempfile()
-  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154, osm = list(progress = FALSE))
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154, osm_params = list(progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   coords_csv <- data.table::fread(paths[2])
   expect_true(all(coords_csv$X > 1e5))
@@ -181,12 +181,12 @@ test_that("cpp_extract on a .pbf stops on geographic coordinates unless coords=F
 test_that("cpp_extract on a .pbf rejects epsg together with max_memory", {
   out_prefix <- tempfile()
   expect_error(
-    cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, epsg = 2154, osm = list(max_memory = 300)),
+    cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, epsg = 2154, osm_params = list(max_mem = 300)),
     "not supported together with max_memory"
   )
   # coords = FALSE sidesteps the conflict (nothing to reproject).
   expect_error(
-    cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, epsg = 2154, coords = FALSE, osm = list(max_memory = 300)),
+    cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, epsg = 2154, coords = FALSE, osm_params = list(max_mem = 300)),
     "File not found" # gets past the epsg/max_memory guard, fails on the (nonexistent) file instead
   )
 })
@@ -195,7 +195,7 @@ test_that("cpp_extract on a .pbf keep_length keeps haversine length (km) as aux,
   path <- make_test_pbf()
   on.exit(unlink(path))
 
-  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm = list(progress = FALSE))
+  res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE, osm_params = list(progress = FALSE))
   expect_false(is.null(res$aux$length))
   # way A-B-C and way B-D are both "residential" (40 km/h, the default profile speed):
   # dist = 60*length/speed = 1.5*length
@@ -203,7 +203,7 @@ test_that("cpp_extract on a .pbf keep_length keeps haversine length (km) as aux,
 
   # combined with keep_clazz: both aux columns present
   res2 <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE,
-                       osm = list(keep_clazz = TRUE, progress = FALSE))
+                       osm_params = list(keep_clazz = TRUE, progress = FALSE))
   expect_setequal(names(res2$aux), c("clazz", "length"))
 })
 
@@ -213,13 +213,13 @@ test_that("cpp_extract on a .pbf output='csv' writes the same aux as output='dat
 
   out_prefix <- tempfile()
   paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, coords = FALSE, keep_length = TRUE,
-                        osm = list(keep_clazz = TRUE, progress = FALSE))
+                        osm_params = list(keep_clazz = TRUE, progress = FALSE))
   on.exit(unlink(paths), add = TRUE)
   expect_length(paths, 2L) # edges, aux (no coords)
   aux_csv <- data.table::fread(paths[2])
 
   res <- cpp_extract(path, output = "data.frame", coords = FALSE, keep_length = TRUE,
-                      osm = list(keep_clazz = TRUE, progress = FALSE))
+                      osm_params = list(keep_clazz = TRUE, progress = FALSE))
   expect_equal(aux_csv$clazz, res$aux$clazz)
   expect_equal(aux_csv$length, res$aux$length, tolerance = 1e-6)
 })
