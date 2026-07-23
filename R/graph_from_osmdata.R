@@ -16,9 +16,10 @@
 #' (\code{data}, \code{coords}), or (invisibly) the paths of the written CSV files.
 #' @details Every non-\code{osm_id} column of \code{x$osm_lines} is treated as an OSM tag (its column name
 #' as the key, its value for that row as the value) when resolving the profile/access/oneway/maxspeed
-#' rules -- exactly matching how \code{osmdata_sf()} flattens tags into columns. A line whose vertex cannot
-#' be matched to any \code{$osm_points} coordinate (beyond \code{snap_digits} tolerance) is dropped, with a
-#' warning.
+#' rules -- exactly matching how \code{osmdata_sf()} flattens tags into columns. \code{mode} selects which
+#' of these rules apply, exactly as in \link{graph_from_osmpbf}'s \code{@details}. A line whose vertex
+#' cannot be matched to any \code{$osm_points} coordinate (beyond \code{snap_digits} tolerance) is dropped,
+#' with a warning.
 #'
 #' \code{from}/\code{to}/\code{node_id} are the real \code{osm_id} from \code{$osm_points}, not a synthetic
 #' 0-based index, and \code{character} (not numeric) for \code{output = "data.frame"} -- see
@@ -27,7 +28,8 @@
 #' \code{bit64::integer64} corruption on read without the \code{bit64} package).
 #' @noRd
 graph_from_osmdata <- function(x,
-                                profile = osm_car_profile(),
+                                mode = c("car", "foot", "bicycle", "hgv"),
+                                profile = NULL,
                                 use_maxspeed = TRUE,
                                 assume_oneway_motorway = TRUE,
                                 keep_clazz = FALSE,
@@ -39,6 +41,11 @@ graph_from_osmdata <- function(x,
                                 epsg = NULL,
                                 progress = TRUE){
 
+  mode <- match.arg(mode)
+  if (is.null(profile)) {
+    profile <- switch(mode, car = osm_car_profile(), foot = osm_foot_profile(),
+                       bicycle = osm_bike_profile(), hgv = osm_hgv_profile())
+  }
   output <- match.arg(output)
   if (!inherits(x, "osmdata")) stop("x must be the full result of osmdata::osmdata_sf() (class 'osmdata')")
   if (is.null(x$osm_lines) || is.null(x$osm_points)) {
@@ -128,7 +135,7 @@ graph_from_osmdata <- function(x,
   result <- cpp_build_osm_graph_from_data(lapply(ways$refs, as.numeric), way_tag_keys, way_tag_vals,
                                            as.numeric(points$osm_id), pt_xy[, 2], pt_xy[, 1],
                                            as.character(profile$highway), as.integer(profile$clazz), as.numeric(profile$speed),
-                                           use_maxspeed, assume_oneway_motorway)
+                                           use_maxspeed, assume_oneway_motorway, mode)
 
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)

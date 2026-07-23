@@ -307,7 +307,7 @@ void run_passes_1_2(const std::string &path,
                      const std::vector<std::string> &profile_highway,
                      const std::vector<int> &profile_clazz,
                      const std::vector<double> &profile_speed,
-                     bool use_maxspeed, bool assume_oneway_motorway, bool progress,
+                     bool use_maxspeed, bool assume_oneway_motorway, const std::string &mode, bool progress,
                      std::vector<KeptWay> &kept_ways,
                      NodeTable &nodes){
   osm_tags::Profile profile = make_profile(profile_highway, profile_clazz, profile_speed);
@@ -319,7 +319,7 @@ void run_passes_1_2(const std::string &path,
     [&](const OsmWay &way){
       if (way.refs.size() < 2) return;
       double speed; int direction; int clazz;
-      if (!resolve_way(way.tags, profile, use_maxspeed, assume_oneway_motorway, speed, direction, clazz)) return;
+      if (!resolve_way(way.tags, profile, use_maxspeed, assume_oneway_motorway, mode, speed, direction, clazz)) return;
       kept_ways.push_back(KeptWay{way.refs, speed, direction, clazz});
       raw_refs.insert(raw_refs.end(), way.refs.begin(), way.refs.end());
     });
@@ -341,11 +341,12 @@ Rcpp::List build_osm_graph(std::string path,
                             std::vector<double> profile_speed,
                             bool use_maxspeed,
                             bool assume_oneway_motorway,
+                            std::string mode,
                             bool progress){
   std::vector<KeptWay> kept_ways;
   NodeTable nodes;
   run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
-                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
+                 use_maxspeed, assume_oneway_motorway, mode, progress, kept_ways, nodes);
 
   if (progress) Rcpp::Rcout << "pass 3/3: splitting ways at junctions and building edges..." << std::endl;
   return build_edges_from_ways(kept_ways, nodes, progress);
@@ -358,6 +359,7 @@ Rcpp::List cpp_write_osm_graph_csv(std::string path,
                                      std::vector<double> profile_speed,
                                      bool use_maxspeed,
                                      bool assume_oneway_motorway,
+                                     std::string mode,
                                      std::string edges_path,
                                      std::string coords_path,
                                      std::string aux_path,
@@ -368,7 +370,7 @@ Rcpp::List cpp_write_osm_graph_csv(std::string path,
   std::vector<KeptWay> kept_ways;
   NodeTable nodes;
   run_passes_1_2(path, profile_highway, profile_clazz, profile_speed,
-                 use_maxspeed, assume_oneway_motorway, progress, kept_ways, nodes);
+                 use_maxspeed, assume_oneway_motorway, mode, progress, kept_ways, nodes);
 
   if (progress) Rcpp::Rcout << "pass 3/3: splitting ways at junctions and streaming edges to CSV..." << std::endl;
   return write_edges_from_ways_csv(kept_ways, nodes, edges_path, coords_path, aux_path,
@@ -382,9 +384,10 @@ Rcpp::List cpp_build_osm_graph(std::string path,
                                  std::vector<double> profile_speed,
                                  bool use_maxspeed,
                                  bool assume_oneway_motorway,
+                                 std::string mode,
                                  bool progress){
   return build_osm_graph(path, profile_highway, profile_clazz, profile_speed,
-                          use_maxspeed, assume_oneway_motorway, progress);
+                          use_maxspeed, assume_oneway_motorway, mode, progress);
 }
 
 // osmdata adapter entry point: way_refs/way_tag_keys/way_tag_vals are
@@ -404,7 +407,8 @@ Rcpp::List cpp_build_osm_graph_from_data(Rcpp::List way_refs,
                                           std::vector<int> profile_clazz,
                                           std::vector<double> profile_speed,
                                           bool use_maxspeed,
-                                          bool assume_oneway_motorway){
+                                          bool assume_oneway_motorway,
+                                          std::string mode){
 
   osm_tags::Profile profile = make_profile(profile_highway, profile_clazz, profile_speed);
 
@@ -423,7 +427,7 @@ Rcpp::List cpp_build_osm_graph_from_data(Rcpp::List way_refs,
     for (size_t k = 0; k < keys.size() && k < vals.size(); k++) tags.push_back(OsmTag{keys[k], vals[k]});
 
     double speed; int direction; int clazz;
-    if (!resolve_way(tags, profile, use_maxspeed, assume_oneway_motorway, speed, direction, clazz)) continue;
+    if (!resolve_way(tags, profile, use_maxspeed, assume_oneway_motorway, mode, speed, direction, clazz)) continue;
 
     std::vector<int64_t> refs(refs_d.size());
     for (size_t i = 0; i < refs_d.size(); i++) refs[i] = static_cast<int64_t>(refs_d[i]);

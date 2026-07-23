@@ -14,7 +14,7 @@ run_disk_pipeline <- function(path, max_memory_mb = 0.0001, keep_clazz = FALSE, 
   profile <- osm_car_profile()
   cppRouting:::cpp_build_osm_graph_disk_csv(
     path, as.character(profile$highway), as.integer(profile$clazz), as.numeric(profile$speed),
-    TRUE, TRUE, max_memory_mb, tempdir(), edges_path, coords_path, aux_path,
+    TRUE, TRUE, "car", max_memory_mb, tempdir(), edges_path, coords_path, aux_path,
     TRUE, keep_clazz, keep_length, FALSE)
   out <- list(data = data.table::fread(edges_path), coords = data.table::fread(coords_path))
   if (keep_clazz || keep_length) out$aux <- data.table::fread(aux_path)

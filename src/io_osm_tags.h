@@ -54,10 +54,60 @@ inline Profile make_profile(const std::vector<std::string> &highway,
   return profile;
 }
 
-// Resolves highway/access/maxspeed/oneway tags against the profile. Returns
+// Resolves access tags for a given mode, following OSM's documented access
+// hierarchy (access -> vehicle -> motor_vehicle -> mode-specific leaf tag;
+// foot sits outside the vehicle branch entirely), least to most specific --
+// a later, more specific check overrides an earlier one. The one exception
+// is "car", whose check order (motor_vehicle/motorcar THEN vehicle) predates
+// this generalization and is preserved exactly as-is for backward
+// compatibility, even though it technically checks vehicle (less specific)
+// after motorcar (more specific).
+inline bool resolve_access(const std::vector<OsmTag> &tags, const std::string &mode){
+  bool allowed = true;
+  const std::string *access = find_tag(tags, "access");
+  if (access && (*access == "no" || *access == "private")) allowed = false;
+
+  if (mode == "foot"){
+    const std::string *foot = find_tag(tags, "foot");
+    if (foot && is_yesish(*foot)) allowed = true;
+    if (foot && *foot == "no") allowed = false;
+    return allowed;
+  }
+
+  if (mode == "bicycle"){
+    const std::string *vehicle = find_tag(tags, "vehicle");
+    if (vehicle && *vehicle == "no") allowed = false;
+    const std::string *bicycle = find_tag(tags, "bicycle");
+    if (bicycle && is_yesish(*bicycle)) allowed = true;
+    if (bicycle && *bicycle == "no") allowed = false;
+    return allowed;
+  }
+
+  // car and hgv both sit under motor_vehicle -- exact pre-existing car
+  // order preserved (see comment above).
+  const std::string *motor_vehicle = find_tag(tags, "motor_vehicle");
+  const std::string *motorcar = find_tag(tags, "motorcar");
+  if (motor_vehicle && is_yesish(*motor_vehicle)) allowed = true;
+  if (motorcar && is_yesish(*motorcar)) allowed = true;
+  if (motor_vehicle && *motor_vehicle == "no") allowed = false;
+  if (motorcar && *motorcar == "no") allowed = false;
+  const std::string *vehicle = find_tag(tags, "vehicle");
+  if (vehicle && *vehicle == "no") allowed = false;
+  if (mode != "hgv") return allowed;
+
+  // hgv-specific tag checked last (most specific wins), e.g. hgv=destination
+  // (is_yesish) re-authorizes, hgv=no overrides even motorcar=yes.
+  const std::string *hgv = find_tag(tags, "hgv");
+  if (hgv && is_yesish(*hgv)) allowed = true;
+  if (hgv && *hgv == "no") allowed = false;
+  return allowed;
+}
+
+// Resolves highway/access/maxspeed/oneway tags against the profile, for a
+// given mode ("car" (default semantics), "foot", "bicycle", "hgv"). Returns
 // false if the way should be dropped entirely.
 inline bool resolve_way(const std::vector<OsmTag> &tags, const Profile &profile,
-                         bool use_maxspeed, bool assume_oneway_motorway,
+                         bool use_maxspeed, bool assume_oneway_motorway, const std::string &mode,
                          double &out_speed, int &out_direction, int &out_clazz){
   const std::string *highway = find_tag(tags, "highway");
   if (!highway) return false;
@@ -67,23 +117,21 @@ inline bool resolve_way(const std::vector<OsmTag> &tags, const Profile &profile,
   out_clazz = it->second.first;
   out_speed = it->second.second;
 
-  bool allowed = true;
-  const std::string *access = find_tag(tags, "access");
-  if (access && (*access == "no" || *access == "private")) allowed = false;
-  const std::string *motor_vehicle = find_tag(tags, "motor_vehicle");
-  const std::string *motorcar = find_tag(tags, "motorcar");
-  if (motor_vehicle && is_yesish(*motor_vehicle)) allowed = true;
-  if (motorcar && is_yesish(*motorcar)) allowed = true;
-  if (motor_vehicle && *motor_vehicle == "no") allowed = false;
-  if (motorcar && *motorcar == "no") allowed = false;
-  const std::string *vehicle = find_tag(tags, "vehicle");
-  if (vehicle && *vehicle == "no") allowed = false;
-  if (!allowed) return false;
+  if (!resolve_access(tags, mode)) return false;
 
-  if (use_maxspeed){
+  // maxspeed is a legal speed limit for motor vehicles -- meaningless for a
+  // pedestrian/cyclist's assumed pace, so only applied for car/hgv.
+  if (use_maxspeed && (mode == "car" || mode == "hgv")){
     const std::string *maxspeed = find_tag(tags, "maxspeed");
     double kmh;
     if (maxspeed && parse_maxspeed_kmh(*maxspeed, kmh) && kmh > 0) out_speed = kmh;
+  }
+
+  // Pedestrians aren't meaningfully one-way: a rare explicit oneway:foot=yes
+  // is not honored in this version (documented simplification).
+  if (mode == "foot"){
+    out_direction = 0;
+    return true;
   }
 
   out_direction = 0;
@@ -92,6 +140,14 @@ inline bool resolve_way(const std::vector<OsmTag> &tags, const Profile &profile,
   else if (oneway && (*oneway == "-1" || *oneway == "reverse")) out_direction = 2;
   else if (oneway && (*oneway == "no" || *oneway == "false" || *oneway == "0")) out_direction = 0;
   else if (assume_oneway_motorway && (*highway == "motorway" || *highway == "motorway_link")) out_direction = 1;
+
+  // Contraflow cycling: a one-way street can still be legally ridden the
+  // "wrong" way by bicycle, tagged oneway:bicycle=no -- overrides whatever
+  // the plain oneway tag said.
+  if (mode == "bicycle"){
+    const std::string *oneway_bicycle = find_tag(tags, "oneway:bicycle");
+    if (oneway_bicycle && (*oneway_bicycle == "no" || *oneway_bicycle == "false" || *oneway_bicycle == "0")) out_direction = 0;
+  }
 
   return true;
 }

@@ -86,13 +86,21 @@ for shapefile/\code{sf}. Any subset may be supplied -- omitted elements keep the
 unrecognized element name raises an error immediately (rather than silently keeping its default, which is
 what a typo'd list element would otherwise do). Recognized elements:
 \itemize{
+  \item \code{mode}: one of \code{"car"} (default), \code{"foot"}, \code{"bicycle"} or \code{"hgv"} --
+  which access-tag/oneway resolution rules to apply (see \link{graph_from_osmpbf}'s \code{@details} for
+  the exact tags checked per mode). If \code{profile} is left \code{NULL}, also selects the matching
+  default profile (\link{osm_car_profile}/\link{osm_foot_profile}/\link{osm_bike_profile}/
+  \link{osm_hgv_profile}).
   \item \code{profile}: a data.frame with columns \code{highway}, \code{clazz}, \code{speed} (see
-  \link{osm_car_profile} for the default): which \code{highway} tag values to keep, and their class id /
-  default speed (km/h) when not overridden by \code{maxspeed}.
+  \code{osm_car_profile} and friends): which \code{highway} tag values to keep, and their class id /
+  default speed (km/h) when not overridden by \code{maxspeed}. Defaults (\code{NULL}) to the profile
+  matching \code{mode}; pass your own to override independently of \code{mode}.
   \item \code{use_maxspeed}: logical, default \code{TRUE}. If \code{TRUE}, a way's \code{maxspeed} tag
-  overrides the profile's default speed when present and parseable (plain km/h, or \code{"<n> mph"}).
+  overrides the profile's default speed when present and parseable (plain km/h, or \code{"<n> mph"}). No
+  effect for \code{mode = "foot"}/\code{"bicycle"}.
   \item \code{assume_oneway_motorway}: logical, default \code{TRUE}. If \code{TRUE}, \code{motorway}/
-  \code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}.
+  \code{motorway_link} ways are treated as one-way unless explicitly tagged \code{oneway=no}. Irrelevant
+  for \code{mode = "foot"} (oneway is always ignored for that mode).
   \item \code{keep_clazz}: logical, default \code{FALSE}. If \code{TRUE}, keep each edge's resolved
   highway class id as \code{aux}.
   \item \code{max_memory}: \code{.pbf} only (ignored for \code{osmdata}). A budget in megabytes for a

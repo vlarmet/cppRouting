@@ -18,6 +18,7 @@ Rcpp::List build_osm_graph(std::string path,
                             std::vector<double> profile_speed,
                             bool use_maxspeed,
                             bool assume_oneway_motorway,
+                            std::string mode,
                             bool progress);
 
 #endif

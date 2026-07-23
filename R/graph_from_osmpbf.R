@@ -3,14 +3,23 @@
 #' Internal implementation for the \code{.pbf}/\code{.osm.pbf} source of \link{cpp_extract}; not exported
 #' directly.
 #' @param path Path to the \code{.osm.pbf} file.
+#' @param mode One of \code{"car"} (default), \code{"foot"}, \code{"bicycle"} or \code{"hgv"}: which
+#' access/oneway resolution rules to apply (see Details). If \code{profile} is left \code{NULL}, also
+#' selects the matching default profile (\link{osm_car_profile}/\link{osm_foot_profile}/
+#' \link{osm_bike_profile}/\link{osm_hgv_profile}).
 #' @param profile A data.frame with columns \code{highway}, \code{clazz}, \code{speed} (see
-#' \link{osm_car_profile} for the default): which \code{highway} tag values to keep, and their class id /
-#' default speed (km/h) when not overridden by \code{maxspeed}.
+#' \link{osm_car_profile} and friends): which \code{highway} tag values to keep, and their class id /
+#' default speed (km/h) when not overridden by \code{maxspeed}. Defaults (\code{NULL}) to the profile
+#' matching \code{mode}; pass your own to override independently of \code{mode} (e.g. a custom \code{mode
+#' = "car"} profile restricted to a subset of road types).
 #' @param use_maxspeed logical. If \code{TRUE} (default), a way's \code{maxspeed} tag overrides the
-#' profile's default speed when present and parseable (plain km/h, or \code{"<n> mph"}).
+#' profile's default speed when present and parseable (plain km/h, or \code{"<n> mph"}). Has no effect for
+#' \code{mode = "foot"}/\code{"bicycle"}: \code{maxspeed} is a legal limit for motor vehicles, meaningless
+#' for an assumed walking/cycling pace.
 #' @param assume_oneway_motorway logical. If \code{TRUE} (default), \code{motorway}/\code{motorway_link}
 #' ways are treated as one-way (forward, first node to last) unless an explicit \code{oneway=no} tag says
 #' otherwise. Standard OSM \code{oneway} tag values (\code{yes}/\code{-1}/\code{no}) always take precedence.
+#' Irrelevant for \code{mode = "foot"}, which ignores \code{oneway} entirely (see Details).
 #' @param keep_clazz logical. If \code{TRUE}, keep each edge's resolved highway class id as \code{aux}
 #' (see \link{makegraph}). For \code{output = "csv"} (including the \code{max_memory} disk-backed
 #' pipeline), this is written as an extra \code{<out_prefix>_aux.csv} instead, one row per edge in
@@ -49,8 +58,19 @@
 #' node ids, not coordinate matching: a way can pass through a junction in its middle, and this is detected
 #' (a node referenced by >= 2 kept ways, or a way's own endpoint) and split into separate edges accordingly.
 #' A way referencing a node outside the file (a regional extract cut through a way) is dropped entirely, a
-#' small, expected loss limited to the extract's edge. Turn restrictions, barriers and non-car profiles are
-#' not supported yet.
+#' small, expected loss limited to the extract's edge. Turn restrictions and barriers are not supported yet.
+#'
+#' \code{mode} controls access-tag and oneway resolution, following OSM's documented access hierarchy
+#' (\code{access} -> \code{vehicle} -> \code{motor_vehicle} -> a mode-specific leaf tag; \code{foot} sits
+#' outside the \code{vehicle} branch): \code{"car"} checks \code{motor_vehicle}/\code{motorcar}/
+#' \code{vehicle} (unchanged from previous versions); \code{"foot"} checks only \code{foot} and always
+#' treats ways as bidirectional (a rare explicit \code{oneway:foot=yes} is not honored in this version);
+#' \code{"bicycle"} checks \code{vehicle}/\code{bicycle}, and additionally respects \code{oneway:bicycle=no}
+#' (contraflow cycling on an otherwise one-way street) overriding the plain \code{oneway} tag; \code{"hgv"}
+#' checks the same tags as \code{"car"} plus \code{hgv} (most specific, checked last) -- \code{hgv=no}
+#' excludes a way even if generally open to motor vehicles, \code{hgv=destination}/\code{hgv=yes}
+#' re-authorizes it. Weight/height/width restrictions (\code{maxweight}, \code{maxheight}, ...) are not
+#' resolved against a vehicle's actual dimensions in this version.
 #'
 #' \code{from}/\code{to}/\code{node_id} are the real OSM node id, not a synthetic 0-based index (unlike
 #' \link{graph_from_shapefile}/\link{graph_from_sf}, which have no native node identity to preserve) -- so a
@@ -82,7 +102,8 @@
 #' itself -- violated files raise a clear error rather than silently producing a wrong graph.
 #' @noRd
 graph_from_osmpbf <- function(path,
-                               profile = osm_car_profile(),
+                               mode = c("car", "foot", "bicycle", "hgv"),
+                               profile = NULL,
                                use_maxspeed = TRUE,
                                assume_oneway_motorway = TRUE,
                                keep_clazz = FALSE,
@@ -95,6 +116,11 @@ graph_from_osmpbf <- function(path,
                                temp_dir = tempdir(),
                                progress = TRUE){
 
+  mode <- match.arg(mode)
+  if (is.null(profile)) {
+    profile <- switch(mode, car = osm_car_profile(), foot = osm_foot_profile(),
+                       bicycle = osm_bike_profile(), hgv = osm_hgv_profile())
+  }
   output <- match.arg(output)
   if (output == "csv" && is.null(out_prefix)) stop("out_prefix must be provided when output = 'csv'")
   if (!is.null(max_memory)) {
@@ -126,7 +152,7 @@ graph_from_osmpbf <- function(path,
                                   as.character(profile$highway),
                                   as.integer(profile$clazz),
                                   as.numeric(profile$speed),
-                                  use_maxspeed, assume_oneway_motorway,
+                                  use_maxspeed, assume_oneway_motorway, mode,
                                   as.numeric(max_memory), temp_dir,
                                   edges_path, coords_path, aux_path,
                                   coords, keep_clazz, keep_length, progress)
@@ -148,7 +174,7 @@ graph_from_osmpbf <- function(path,
                              as.character(profile$highway),
                              as.integer(profile$clazz),
                              as.numeric(profile$speed),
-                             use_maxspeed, assume_oneway_motorway,
+                             use_maxspeed, assume_oneway_motorway, mode,
                              edges_path, coords_path, aux_path,
                              coords, keep_clazz, keep_length, progress)
     if (coords) reproject_coords_csv(coords_path, TRUE, 4326L, epsg)
@@ -162,7 +188,7 @@ graph_from_osmpbf <- function(path,
                                  as.character(profile$highway),
                                  as.integer(profile$clazz),
                                  as.numeric(profile$speed),
-                                 use_maxspeed, assume_oneway_motorway, progress)
+                                 use_maxspeed, assume_oneway_motorway, mode, progress)
 
   edges <- data.frame(from = result$from, to = result$to, dist = result$dist)
   coords_df <- data.frame(node_id = result$node_id, X = result$lon, Y = result$lat)

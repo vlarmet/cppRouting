@@ -88,6 +88,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
                                  std::vector<double> profile_speed,
                                  bool use_maxspeed,
                                  bool assume_oneway_motorway,
+                                 std::string mode,
                                  double max_memory_mb,
                                  std::string temp_dir,
                                  std::string edges_path,
@@ -121,7 +122,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
       [&](const OsmWay &way){
         if (way.refs.size() < 2) return;
         double speed; int direction; int clazz;
-        if (!osm_tags::resolve_way(way.tags, profile, use_maxspeed, assume_oneway_motorway, speed, direction, clazz)) return;
+        if (!osm_tags::resolve_way(way.tags, profile, use_maxspeed, assume_oneway_motorway, mode, speed, direction, clazz)) return;
         ways_writer.write_way(speed, direction, clazz, way.refs);
         for (int64_t ref : way.refs) ref_sorter.add(ref);
         n_kept_ways++;
@@ -375,6 +376,7 @@ Rcpp::List cpp_build_osm_graph_disk_csv(std::string path,
                                           std::vector<double> profile_speed,
                                           bool use_maxspeed,
                                           bool assume_oneway_motorway,
+                                          std::string mode,
                                           double max_memory_mb,
                                           std::string temp_dir,
                                           std::string edges_path,
@@ -385,6 +387,6 @@ Rcpp::List cpp_build_osm_graph_disk_csv(std::string path,
                                           bool keep_length,
                                           bool progress){
   return build_osm_graph_disk(path, profile_highway, profile_clazz, profile_speed,
-                               use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir,
+                               use_maxspeed, assume_oneway_motorway, mode, max_memory_mb, temp_dir,
                                edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress);
 }

@@ -9,20 +9,20 @@ cpp_write_geom_graph_csv <- function(x1, y1, x2, y2, cost, direction, snap_digit
     .Call(`_cppRouting_cpp_write_geom_graph_csv`, x1, y1, x2, y2, cost, direction, snap_digits, edges_path, coords_path, want_coords)
 }
 
-cpp_write_osm_graph_csv <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress) {
-    .Call(`_cppRouting_cpp_write_osm_graph_csv`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress)
+cpp_write_osm_graph_csv <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress) {
+    .Call(`_cppRouting_cpp_write_osm_graph_csv`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress)
 }
 
-cpp_build_osm_graph <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress) {
-    .Call(`_cppRouting_cpp_build_osm_graph`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, progress)
+cpp_build_osm_graph <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode, progress) {
+    .Call(`_cppRouting_cpp_build_osm_graph`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode, progress)
 }
 
-cpp_build_osm_graph_from_data <- function(way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway) {
-    .Call(`_cppRouting_cpp_build_osm_graph_from_data`, way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway)
+cpp_build_osm_graph_from_data <- function(way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode) {
+    .Call(`_cppRouting_cpp_build_osm_graph_from_data`, way_refs, way_tag_keys, way_tag_vals, node_ids, node_lats, node_lons, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode)
 }
 
-cpp_build_osm_graph_disk_csv <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress) {
-    .Call(`_cppRouting_cpp_build_osm_graph_disk_csv`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, max_memory_mb, temp_dir, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress)
+cpp_build_osm_graph_disk_csv <- function(path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode, max_memory_mb, temp_dir, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress) {
+    .Call(`_cppRouting_cpp_build_osm_graph_disk_csv`, path, profile_highway, profile_clazz, profile_speed, use_maxspeed, assume_oneway_motorway, mode, max_memory_mb, temp_dir, edges_path, coords_path, aux_path, want_coords, keep_clazz, keep_length, progress)
 }
 
 cpp_osmpbf_counts <- function(path) {
