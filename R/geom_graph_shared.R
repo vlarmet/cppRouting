@@ -136,19 +136,77 @@ reproject_coords <- function(coords, is_geographic, source_crs, epsg){
 
 # Same, but operating on an already-written coords.csv in place -- used by
 # the CSV-streaming writers (Module A/B), which write coordinates directly
-# from C++ and never hold the full coords table in R otherwise.
+# from C++ and never hold the full coords table in R otherwise. Bulk (no
+# memory budget): the whole file is read at once, matching the peak-RAM
+# profile those paths already accept.
 reproject_coords_csv <- function(coords_path, is_geographic, source_crs, epsg){
+  reproject_coords_csv_chunked(coords_path, is_geographic, source_crs, epsg, mem_budget_mb = NULL)
+}
+
+# Chunked variant of reproject_coords_csv(). The max_memory disk pipeline
+# promises peak RAM within its stated budget, so it cannot use the bulk path
+# (one fread() + one st_transform() over the whole coords table): it calls
+# this instead, reading the csv in row chunks sized from mem_budget_mb --
+# 1024 bytes/row covers the fread'd columns, the source sf geometry and the
+# transformed copy, keeping the peak well under budget. chunk_rows overrides
+# the computed size (tests force many chunks on tiny fixtures). The result is
+# written to a side file first and renamed into place, so a failure mid-way
+# never leaves a half-reprojected coords.csv behind.
+reproject_coords_csv_chunked <- function(coords_path, is_geographic, source_crs, epsg,
+                                          mem_budget_mb = NULL, progress = FALSE, chunk_rows = NULL){
   if (is.null(epsg) || !isTRUE(is_geographic)) return(invisible(NULL))
-  coords <- data.table::fread(coords_path)
-  coords <- reproject_coords(coords, is_geographic, source_crs, epsg)
-  # node_id round-trips through fread() above as a plain double (the C++
-  # writer already appended ".0" for any id past the int32 range -- see
-  # avoid_integer64_ambiguity()) -- but fwrite() below would print a
-  # whole-number double back out as plain digits, silently re-introducing
-  # the exact bit64::integer64 ambiguity this rewrite pass would otherwise
-  # undo. Reapply it before writing the final file.
-  coords$node_id <- avoid_integer64_ambiguity(as.character(coords$node_id))
-  data.table::fwrite(coords, coords_path)
+  if (!requireNamespace("sf", quietly = TRUE)) {
+    stop("Package 'sf' is required to reproject coordinates (epsg argument). Install it, or leave epsg = NULL.")
+  }
+  chunk_rows <- if (is.null(chunk_rows)) {
+    if (is.null(mem_budget_mb)) .Machine$integer.max
+    else max(10000L, as.integer((mem_budget_mb * 1024 * 1024) / 1024))
+  } else chunk_rows
+  tmp_out <- paste0(coords_path, ".reproj.tmp")
+  on.exit(unlink(tmp_out), add = TRUE)
+  k <- 0L
+  repeat {
+    # fread(skip =) skips lines from the start of the file, so chunk k
+    # starts 1 + k*chunk_rows lines in: the header plus the k already-read
+    # chunks. For k >= 1 the header is skipped over rather than detected, so
+    # the column names are forced explicitly (they are exactly the three
+    # the C++ writer emits). Each call re-scans from the file start --
+    # O(n^2/chunk) in total, but that is plain sequential reading against
+    # the sf::st_transform() work, and it is the same chunked approach the
+    # old max_memory error message used to tell users to do themselves.
+    chunk <- tryCatch(
+      data.table::fread(coords_path, skip = 1L + k * chunk_rows, nrows = chunk_rows,
+                          col.names = c("node_id", "X", "Y")),
+      error = function(e) {
+        # fread errors when `skip` lands past the last line. That only
+        # happens when the file holds an exact multiple of chunk rows (or
+        # is header-only): a clean end-of-file, i.e. nothing left to read.
+        # Any other fread failure is rethrown, not swallowed.
+        if (grepl("input only has", conditionMessage(e))) {
+          data.frame(node_id = character(0), X = numeric(0), Y = numeric(0))
+        } else stop(e)
+      }
+    )
+    if (nrow(chunk) == 0) break
+    pts <- sf::st_as_sf(chunk, coords = c("X", "Y"), crs = source_crs)
+    pts <- sf::st_transform(pts, epsg)
+    xy <- sf::st_coordinates(pts)
+    # node_id round-trips through fread() as a plain double (the C++ writer
+    # already appended ".0" for any id past the int32 range -- see
+    # avoid_integer64_ambiguity()) -- but fwrite() below would print a
+    # whole-number double back out as plain digits, silently re-introducing
+    # the exact bit64::integer64 ambiguity this rewrite pass would otherwise
+    # undo. Reapply it before writing the final file.
+    out_chunk <- data.frame(node_id = avoid_integer64_ambiguity(as.character(chunk$node_id)),
+                             X = xy[, 1], Y = xy[, 2])
+    data.table::fwrite(out_chunk, tmp_out, append = k > 0L, col.names = k == 0L)
+    if (isTRUE(progress)) message(sprintf("reproject coords: chunk %d (%d rows)", k + 1L, nrow(chunk)))
+    if (nrow(chunk) < chunk_rows) break
+    k <- k + 1L
+  }
+  # No data rows at all (header-only file): nothing was written, the
+  # original file stands as-is (there is nothing to reproject).
+  if (file.exists(tmp_out)) file.rename(tmp_out, coords_path)
   invisible(NULL)
 }
 

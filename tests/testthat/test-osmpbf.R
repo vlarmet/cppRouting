@@ -178,17 +178,28 @@ test_that("cpp_extract on a .pbf stops on geographic coordinates unless coords=F
   expect_true(all(coords_csv$X > 1e5))
 })
 
-test_that("cpp_extract on a .pbf rejects epsg together with max_memory", {
+test_that("cpp_extract on a .pbf reprojects coords with max_memory, staying within the budget", {
+  skip_if_not_installed("sf")
+  path <- make_test_pbf()
+  on.exit(unlink(path))
+
   out_prefix <- tempfile()
-  expect_error(
-    cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, epsg = 2154, osm_params = list(max_mem = 300)),
-    "not supported together with max_memory"
-  )
-  # coords = FALSE sidesteps the conflict (nothing to reproject).
-  expect_error(
-    cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, epsg = 2154, coords = FALSE, osm_params = list(max_mem = 300)),
-    "File not found" # gets past the epsg/max_memory guard, fails on the (nonexistent) file instead
-  )
+  paths <- cpp_extract(path, output = "csv", out_prefix = out_prefix, epsg = 2154,
+                        osm_params = list(max_mem = 300, progress = FALSE))
+  on.exit(unlink(paths), add = TRUE)
+  expect_length(paths, 2L)
+
+  # Must carry the same projected values as the in-RAM path's reprojection.
+  ref_prefix <- tempfile()
+  ref_paths <- cpp_extract(path, output = "csv", out_prefix = ref_prefix, epsg = 2154,
+                            osm_params = list(progress = FALSE))
+  on.exit(unlink(ref_paths), add = TRUE)
+  got <- data.table::fread(paths[2]); ref <- data.table::fread(ref_paths[2])
+  expect_equal(nrow(got), nrow(ref))
+  expect_equal(sort(got$node_id), sort(ref$node_id))
+  expect_equal(sort(got$X), sort(ref$X), tolerance = 1e-9)
+  expect_equal(sort(got$Y), sort(ref$Y), tolerance = 1e-9)
+  expect_true(all(got$X > 1e5)) # Lambert-93 easting, not longitude degrees
 })
 
 test_that("cpp_extract on a .pbf keep_length keeps haversine length (km) as aux, consistent with dist", {

@@ -42,10 +42,9 @@
 #' algorithms.
 #' @param epsg Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
 #' coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Required whenever
-#' \code{coords = TRUE} (OSM coordinates are always geographic). Not supported together with
-#' \code{max_memory}: reprojecting would require reading the whole coords table back into R, defeating the
-#' point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
-#' afterward instead (e.g. in chunks with \code{sf::st_transform()}).
+#' \code{coords = TRUE} (OSM coordinates are always geographic). Together with \code{max_memory}, the
+#' reprojection runs in row chunks sized from the \code{max_memory} budget, so peak RAM stays within that
+#' budget even on the disk-backed pipeline.
 #' @param max_memory Optional. A budget in megabytes for the disk-backed pipeline (see Details). When set,
 #' \code{output} must be \code{"csv"}: the whole point is to never materialize the result (or the
 #' intermediate node/way tables) beyond this budget, so returning a graph/data.frame to R would defeat it.
@@ -131,12 +130,6 @@ graph_from_osmpbf <- function(path,
     if (!is.numeric(max_memory) || length(max_memory) != 1 || is.na(max_memory) || max_memory <= 0) {
       stop("max_memory must be a single positive number (megabytes), not: ", paste(deparse(max_memory), collapse = " "))
     }
-    if (!is.null(epsg) && coords) {
-      stop("epsg is not supported together with max_memory: reprojecting would require reading the full ",
-           "coords table back into R, defeating the whole point of the disk-backed pipeline's bounded RAM. ",
-           "Either drop max_memory, set coords = FALSE, or reproject <out_prefix>_coords.csv yourself ",
-           "afterward (e.g. in chunks with sf::st_transform()).")
-    }
   }
   stop_if_geographic_coords_unhandled(TRUE, coords, epsg)
   if (!file.exists(path)) stop("File not found: ", path)
@@ -156,6 +149,15 @@ graph_from_osmpbf <- function(path,
                                   as.numeric(max_memory), temp_dir,
                                   edges_path, coords_path, aux_path,
                                   coords, keep_clazz, keep_length, progress)
+    if (coords) {
+      # Reproject in row chunks sized from the max_memory budget: the C++
+      # step above has returned, so its intermediates are gone and the whole
+      # budget is available for this pass -- peak RAM stays within
+      # max_memory even with epsg set (the bulk read-back-and-rewrite the
+      # in-RAM csv path uses would blow the budget on a large coords table).
+      reproject_coords_csv_chunked(coords_path, TRUE, 4326L, epsg,
+                                    mem_budget_mb = as.numeric(max_memory), progress = progress)
+    }
     paths <- edges_path
     if (coords) paths <- c(paths, coords_path)
     if (keep_clazz || keep_length) paths <- c(paths, aux_path)

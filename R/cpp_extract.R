@@ -50,10 +50,9 @@
 #' @param epsg Optional. A projected EPSG code (or anything \code{sf::st_crs()} accepts) to reproject node
 #' coordinates into, via \code{sf::st_transform()} (requires the \code{sf} package). Only takes effect if
 #' \code{coords = TRUE} and the source CRS is geographic; already-projected coordinates (possible for
-#' shapefile/sf sources) are left as-is regardless. Not supported together with \code{osm_params$max_mem} on
-#' a \code{.pbf} source: reprojecting would require reading the whole coords table back into R, defeating the
-#' point of the disk-backed pipeline's bounded RAM -- reproject \verb{<out_prefix>_coords.csv} yourself
-#' afterward instead. Common to every source.
+#' shapefile/sf sources) are left as-is regardless. Together with \code{osm_params$max_mem} on a
+#' \code{.pbf} source, the reprojection runs in row chunks sized from the \code{max_mem} budget, so peak
+#' RAM stays within that budget even on the disk-backed pipeline. Common to every source.
 #' @param keep_length logical. If \code{TRUE}, keep each edge's length (in km) as \code{aux}, regardless of
 #' how the main \code{cost} was actually resolved -- e.g. to get a time-based graph while still reporting
 #' physical distance. Shapefile/sf sources: the geometric length (unreliable for a geographic CRS, same

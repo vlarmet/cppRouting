@@ -72,10 +72,10 @@ test_that("cpp_extract(max_memory=...) reaches the disk pipeline and matches the
   pbf <- "/home/vincent/cppRouting/pbf/bourgogne-260717.osm.pbf"
   skip_if_not(file.exists(pbf), "local test pbf not available")
 
-  # epsg isn't supported together with max_memory (see the dedicated test for
-  # that guard), and OSM coordinates are always geographic -- coords = FALSE
-  # here; coords parity for the disk pipeline itself is already covered by
-  # the raw C++-level test above.
+  # OSM coordinates are always geographic -- coords = FALSE here; coords
+  # parity for the disk pipeline itself is already covered by the raw
+  # C++-level test above, and epsg + max_memory by the dedicated test in
+  # test-osmpbf.R.
   out_prefix <- tempfile()
   paths <- cpp_extract(pbf, output = "csv", out_prefix = out_prefix, coords = FALSE,
                         osm_params = list(max_mem = 300, progress = FALSE))
@@ -132,4 +132,39 @@ test_that("cpp_extract() rejects an invalid max_memory", {
   expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm_params = list(max_mem = NA_real_)), "positive number")
   expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm_params = list(max_mem = "300")), "positive number")
   expect_error(cpp_extract("dummy.pbf", output = "csv", out_prefix = out_prefix, osm_params = list(max_mem = c(100, 200))), "positive number")
+})
+
+test_that("reproject_coords_csv_chunked: chunked reprojection equals the bulk one, with many forced chunks", {
+  skip_if_not_installed("sf")
+  path <- make_test_pbf() # 4-node fixture
+  on.exit(unlink(path))
+
+  # Raw disk pipeline output: WGS84 coords (the raw C++ call bypasses the
+  # R-level geographic-coordinates guard, same as the other disk tests).
+  raw <- run_disk_pipeline(path)$coords
+  expect_true(all(raw$Y > -90 & raw$Y < 90)) # lat/lon, not yet projected
+
+  # In-RAM path with epsg: the reference projected values.
+  ref_prefix <- tempfile()
+  ref_paths <- cpp_extract(path, output = "csv", out_prefix = ref_prefix, epsg = 2154,
+                            osm_params = list(progress = FALSE))
+  on.exit(unlink(ref_paths), add = TRUE)
+  ref <- data.table::fread(ref_paths[2])
+
+  # Force two reproject chunks on the 4-row fixture (2 rows each) and check
+  # the concatenation is row-for-row the bulk reprojection.
+  work <- tempfile(); data.table::fwrite(raw, work)
+  on.exit(unlink(work), add = TRUE)
+  cppRouting:::reproject_coords_csv_chunked(work, TRUE, 4326L, 2154, progress = FALSE, chunk_rows = 2)
+  got <- data.table::fread(work)
+  expect_equal(nrow(got), 4L)
+  expect_equal(sort(got$node_id), sort(ref$node_id))
+  expect_equal(sort(got$X), sort(ref$X), tolerance = 1e-9)
+  expect_equal(sort(got$Y), sort(ref$Y), tolerance = 1e-9)
+
+  # Empty input (header-only csv) is a no-op that keeps the file intact.
+  empty <- tempfile(); data.table::fwrite(data.frame(node_id = character(0), X = numeric(0), Y = numeric(0)), empty)
+  on.exit(unlink(empty), add = TRUE)
+  cppRouting:::reproject_coords_csv_chunked(empty, TRUE, 4326L, 2154, progress = FALSE, chunk_rows = 2)
+  expect_equal(nrow(data.table::fread(empty)), 0L)
 })
