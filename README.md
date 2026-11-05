@@ -26,6 +26,7 @@ November 24, 2022
     -   [Compute possible detours within a fixed additional
         cost](#compute-possible-detours-within-a-fixed-additional-cost)
     -   [Contraction hierarchies](#contraction-hierarchies)
+    -   [Customizable contraction hierarchies](#customizable-contraction-hierarchies)
     -   [Work with dual weighted
         network](#work-with-dual-weighted-network)
 -   [Network simplification](#network-simplification)
@@ -213,6 +214,7 @@ All graph attributes should **never** be modified by the user.
 
 `cppRouting` package provide these functions :
 
+-   `cpp_extract` : extract a routable network from geographic source (OpenStreetMap, shapefiles)
 -   `get_distance_matrix` : compute distance matrix (between all
     combinations origin-destination nodes - *one-to-many*),  
 -   `get_distance_pair` : compute distances between origin and
@@ -231,7 +233,8 @@ All graph attributes should **never** be modified by the user.
     calculation is faster and remains true. This function can be applied
     to very large graphs (several millions of nodes).  
 -   `cpp_contract` : contract the graph by applying **contraction
-    hierarchies** algorithm.  
+    hierarchies (CH)** or **customizable contraction hierarchies (CCH)** algorithm.  
+-   `cpp_customize` : assign edge weights to a graph contracted with CCH 
 -   `get_aon` : given an origin-destination matrix, compute
     All-or-Nothing assignment.  
 -   `assign_traffic` : given an origin-destination matrix, estimate the
@@ -258,6 +261,13 @@ Path algorithms proposed by the package are :
 -   **7** PHAST algorithm (Hardware-accelerated shortest path trees),
     *one-to-all* algorithm adapted to contraction hierarchies (Delling &
     al., 2011)
+-   **8** *one-to-one* and *one-to-many* query on **customizable
+    contraction hierarchies** (CCH), as implemented in
+    [RoutingKit](https://github.com/routingkit/routingkit): bidirectional search
+    restricted to the contracted hierarchy (forward search from the source,
+    backward search from the target), where edge weights can be updated after
+    contraction. The *one-to-many* variant reuses one backward search per
+    target through per-node buckets (RPHAST-style many-to-many).
 
 *1*, *2*, *3* and *4* are available for **one-to-one** calculation in
 `get_distance_pair` and `get_path_pair` functions on a
@@ -288,6 +298,15 @@ function on a **non-contracted** graph.
 
 *6* and *7* are available for **one-to-many** calculation in
 `get_distance_matrix` function on a **contracted** graph.
+
+*8* is used in
+`get_distance_pair`, `get_path_pair` and `get_distance_matrix` functions on a
+**customized CCH** graph (`cpp_contract(Graph, customizable = TRUE)` followed
+by `cpp_customize`). Unlike *5* and *6*, edge weights are not fixed at
+contraction time: the hierarchy is prepared once, and customization only
+updates arc costs, which is much cheaper than re-contracting the graph. This
+is what makes CCH well suited for traffic assignment, where congestion changes
+travel times at every iteration.
 
 Let’s compare different path algorithms in terms of performance.  
 For `A*` and `NBA` algorithms, coordinates are defined in meters and max
@@ -425,7 +444,7 @@ p
 
 ![](README_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
-## Contraction hierarchies
+## Contraction hierarchies (CH)
 
 Contraction hierarchies is a speed-up technique for finding shortest
 path on a network. It was proposed by Geisberger & al.(2008).  
@@ -463,9 +482,25 @@ ressources :
 -   [detailed author
     thesis](http://algo2.iti.kit.edu/documents/routeplanning/geisberger_dipl.pdf)
 
+## Customizable contraction hierarchies (CCH)
+
+Customizable contraction hierarchies is also a speed-up technique for finding shortest
+path on a network (J. Dibbelt, B. Strasser, D. Wagner (2014)). Unlike standard contraction hierarchies, only network's topology is used during *contraction* phase (cost is not taken into account). The main advantage is the ability to update the network's weights without needing to reconstruct the graph.  
+This algorithm actually needs three phases :  
+-   preprocessing phase called *contraction* with `cpp_contract(customizable=TRUE)`
+    function
+-   weights assignation using `cpp_customize()` function
+-   query phase : similar to contraction hierarchies 
+
+Nodes are ordered using min-degree order but the user can provide its own order with `order` argument.  
+This technique is slightly slower than CH during a query, but it is more flexible and perfectly suited for traffic assignment where edge weights are updated at each iteration.  
+
 ``` r
-#Contraction of input graph
+#Contraction of input graph using CH
 graph3 <- cpp_contract(graph, silent=TRUE)
+
+#Contraction of input graph using CCH
+graph4 <- cpp_contract(graph, customizable=TRUE, silent=TRUE)
 
 #Calculate distances on the contracted graph
 system.time(
@@ -589,28 +624,28 @@ ROUTE 500
 685118
 </td>
 <td style="text-align:center;">
-14
+13
 </td>
 <td style="text-align:center;">
-bi
+cch
 </td>
 <td style="text-align:center;">
-11.00
+0.80
 </td>
 <td style="text-align:center;">
-22.00
+1.75
 </td>
 <td style="text-align:center;">
-55.00
+3.93
 </td>
 <td style="text-align:center;">
-110.00
+7.92
 </td>
 <td style="text-align:center;">
-1100.00
+68.82
 </td>
 <td style="text-align:center;">
-11000.00
+302.17
 </td>
 </tr>
 <tr>
@@ -624,7 +659,7 @@ ROUTE 500
 685118
 </td>
 <td style="text-align:center;">
-14
+-
 </td>
 <td style="text-align:center;">
 nba
@@ -694,28 +729,28 @@ OSM France
 10389741
 </td>
 <td style="text-align:center;">
-154
+111
 </td>
 <td style="text-align:center;">
-bi
+cch
 </td>
 <td style="text-align:center;">
-309.40
+2.91
 </td>
 <td style="text-align:center;">
-618.80
+5.34
 </td>
 <td style="text-align:center;">
-1547.00
+12.07
 </td>
 <td style="text-align:center;">
-3094.00
+22.97
 </td>
 <td style="text-align:center;">
-30940.00
+221.63
 </td>
 <td style="text-align:center;">
-309400.00
+2096.49
 </td>
 </tr>
 <tr>
@@ -729,7 +764,7 @@ OSM France
 10389741
 </td>
 <td style="text-align:center;">
-154
+-
 </td>
 <td style="text-align:center;">
 nba
@@ -799,28 +834,28 @@ OSM Europe
 36890020
 </td>
 <td style="text-align:center;">
-536
+330
 </td>
 <td style="text-align:center;">
-bi
+cch
 </td>
 <td style="text-align:center;">
-1159.20
+7.39
 </td>
 <td style="text-align:center;">
-2318.40
+11.38
 </td>
 <td style="text-align:center;">
-5796.00
+23.36
 </td>
 <td style="text-align:center;">
-11592.00
+43.33
 </td>
 <td style="text-align:center;">
-115920.00
+402.75
 </td>
 <td style="text-align:center;">
-1159200.00
+4007.01
 </td>
 </tr>
 <tr>
@@ -834,7 +869,7 @@ OSM Europe
 36890020
 </td>
 <td style="text-align:center;">
-536
+-
 </td>
 <td style="text-align:center;">
 nba
@@ -867,31 +902,34 @@ nba
 </tr>
 <tr>
 <td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> bi : bidirectional search on the original graph
+<sup></sup> cch : customizable contraction hierarchies (topology contracted once, weights customized)
 </td>
 </tr>
 <tr>
 <td style="padding: 0; border:0;" colspan="100%">
 <sup></sup> nba : new bidirectional A\* on the original graph
 </td>
+</tr><tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup></sup> OSM Europe cch values are a linear extrapolation from the measured 1,000 and 10,000 query timings
+</td>
 </tr>
 </tfoot>
 </table>
 
-Here are the plots (in log-log) of query time improvement factor of *one
-to one CH* algorithm compared to bidirectional Dijkstra and NBA :  
+Here are the plots (in log-log) of query time improvement factor of *CH*
+(solid lines) and *CCH* (dotted lines) algorithms compared to NBA :  
 ![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 As we can see on the plot, the larger is the graph, the higher is the
 benefit of using contraction hierarchies. For OSM Europe, query time can
-be faster by a factor of **5000** compared to bidirectional Dijkstra and
-**2500** to NBA.
+be faster by a factor of **2800** with CH and **150** with CCH compared to NBA.
 
 ##### Distance matrix
 
 Here are the measurements of query time (in second) of contraction
 hierarchies on different graphs.  
-We compare *PHAST* and *many to many CH* to Dijkstra algorithm on square
+We compare *PHAST* and *many to many CH* and *CCH* to Dijkstra algorithm on square
 matrix (i.e the sets of source and target nodes are of equal length).
 
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
@@ -976,6 +1014,27 @@ phast
 ROUTE 500
 </td>
 <td style="text-align:center;">
+cch
+</td>
+<td style="text-align:center;">
+2.21
+</td>
+<td style="text-align:center;">
+6.39
+</td>
+<td style="text-align:center;">
+41.63
+</td>
+<td style="text-align:center;">
+165.79
+</td>
+</tr>
+
+<tr>
+<td style="text-align:center;font-weight: bold;">
+ROUTE 500
+</td>
+<td style="text-align:center;">
 Dijkstra
 </td>
 <td style="text-align:center;">
@@ -1031,6 +1090,27 @@ phast
 1005.00
 </td>
 </tr>
+<tr>
+<td style="text-align:center;font-weight: bold;">
+OSM France
+</td>
+<td style="text-align:center;">
+cch
+</td>
+<td style="text-align:center;">
+5.24
+</td>
+<td style="text-align:center;">
+12.76
+</td>
+<td style="text-align:center;">
+67.45
+</td>
+<td style="text-align:center;">
+248.41
+</td>
+</tr>
+
 <tr>
 <td style="text-align:center;font-weight: bold;">
 OSM France
@@ -1096,6 +1176,27 @@ phast
 OSM Europe
 </td>
 <td style="text-align:center;">
+cch
+</td>
+<td style="text-align:center;">
+9.92
+</td>
+<td style="text-align:center;">
+20.58
+</td>
+<td style="text-align:center;">
+91.06
+</td>
+<td style="text-align:center;">
+304.90
+</td>
+</tr>
+
+<tr>
+<td style="text-align:center;font-weight: bold;">
+OSM Europe
+</td>
+<td style="text-align:center;">
 Dijkstra
 </td>
 <td style="text-align:center;">
@@ -1126,6 +1227,16 @@ graph
 </tr>
 <tr>
 <td style="padding: 0; border:0;" colspan="100%">
+<sup></sup> cch : many-to-many query on the customizable CCH (upward searches + per-node buckets)
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup></sup> cch 10,000 : quadratic extrapolation from the measured values at 1000, 2000 and 5000
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
 <sup></sup> Dijkstra : Dijkstra search on the original graph
 </td>
 </tr>
@@ -1148,26 +1259,31 @@ Here are the plots (in log-log) of query time improvement factor of
 ![](README_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 Benefits are less important than *one-to-one* queries but still
-interesting. For OSM Europe, query time can be faster by a factor of
-**100*.  
+interesting. For *CCH*, query time is up to **291** times faster than
+Dijkstra (OSM Europe, 1000 queries). *CCH* is **15 to 46** times faster
+than *PHAST*, and on OSM Europe it is even faster than *many-to-many CH*
+for query counts below 10000 (9.9 s vs 39.2 s for 1000 queries, and 304.9
+s vs 291.3 s for 10000 queries).  
 PHAST’s improvement is constant since it iteratively perform an
 *one-to-all\* search, just like original Dijkstra.  
 *many to many CH* is well adapted for **square matrix\*\*.
 
-Here are the plots of query time of *PHAST* and *many to many CH* on
-assymetric matrix (i.e. number of source and number of target are
-unequal) with *\|S\| / \|T\|* the number of sources divided by the
-number of targets :
+Here is the plot of query times of the three algorithms on asymmetric
+matrices (i.e. the number of sources and the number of targets are
+unequal), with *\|S\|/\|T\|* the number of sources divided by the number of
+targets. The matrix size is kept constant: *\|S\| x \|T\| = 1,048,576*.
 
 ![](README_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
-Note that this plot is the same for *\|T\| / \|S\|*.  
-*PHAST* algorithm is much faster for rectangular matrix. The rate *\|S\|
-/ \|T\|* where *many to many CH* is better varies according the graph
-size. For example, if we have to calculate a distance matrix between
-10000 sources and 10 targets (or 10 sources and 10000 targets) on OSM
-France, we must use *PHAST*. On the other hand, if we want a matrix of
-10000 sources and 8000 targets, we use *many to many CH* algorithm.
+Note that this plot is the same for *\|T\| / \|S\|* (the query times were
+measured to be symmetric, within 1-2 %, for both mirror shapes on
+ROUTE500 and OSM France).  
+*PHAST* is by far the fastest when the matrix is very unbalanced (ratio
+of 256 or more), because it only performs one search per source. As the
+matrix approaches the square shape, *CCH* takes over on OSM France and
+OSM Europe, while *many-to-many CH* remains competitive only on the
+small ROUTE500 network. *many-to-many CH* is never the best algorithm
+on OSM France or OSM Europe.
 
 ## Work with dual weighted network
 
@@ -1840,9 +1956,15 @@ sgr <- makegraph(df = net[,c("from", "to", "ftime")], directed = TRUE,
 # benchmark using all cores. We don't test NBA* because we don't have node coordinates
 RcppParallel::setThreadOptions(numThreads = parallel::detectCores())
 
+cch <- cpp_contract(sgr, customizable = TRUE, silent = TRUE)
+
 microbenchmark(
   pairwise = pw <- get_aon(Graph = sgr, from = trips$from, to = trips$to, demand = trips$demand, algorithm = "bi"),
   matrixlike = ml <- get_aon(Graph = sgr, from = trips$from, to = trips$to, demand = trips$demand, algorithm = "d"),
+  cch = {
+    cch_metric <- cpp_customize(cch)
+    caon <- get_aon(Graph = cch_metric, from = trips$from, to = trips$to, demand = trips$demand)
+  },
   times = 1
 )
 ```
@@ -1851,9 +1973,14 @@ microbenchmark(
     ##        expr       min        lq      mean    median        uq       max neval
     ##    pairwise 75.414786 75.414786 75.414786 75.414786 75.414786 75.414786     1
     ##  matrixlike  1.411425  1.411425  1.411425  1.411425  1.411425  1.411425     1
+    ##         cch  1.901310  1.901310  1.901310  1.901310  1.901310  1.901310     1
 
 By setting matrix-like AON calculation, we speed up computation time by
-a factor of 50 for link-based methods.
+a factor of 50 for link-based methods.  
+On this network, CCH is slightly slower than matrix-like Dijkstra
+(**1.9 s** vs **1.2 s**): its main advantage appears in `assign_traffic`, where the
+topology is contracted once and only re-customized (about 0.04 s) whenever
+edge weights change during congestion iterations.
 
 ``` r
 sgr <- makegraph(df = net[,c("from", "to", "ftime")], directed = TRUE,
