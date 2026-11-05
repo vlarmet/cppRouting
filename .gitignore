@@ -7,3 +7,5 @@ src/*.o
 src/*.so
 src/*.dll
 .Rproj.user
+data_readme/benchmark_*.csv
+data_readme/assymetry_*.csv
