@@ -31,9 +31,7 @@ writing a raw vector at query time: the edge table stored in the CCH doubles
 when the graph was built with \code{directed = FALSE}, so a raw vector is easy
 to get the wrong length or order for, and a mismatch is silently accepted.
 A raw numeric vector must then hold one value per edge of
-\code{CCH$original$data}, in that exact order. It is discouraged except for
-traffic assignment (\link{assign_traffic}), where congested travel times are
-computed at runtime and are not available at \code{makegraph} time.
+\code{CCH$original$data}, in that exact order. 
 }
 \examples{
 RcppParallel::setThreadOptions(numThreads = 1)
