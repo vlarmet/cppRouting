@@ -106,7 +106,11 @@ public:
     it.streams_.resize(run_paths_.size());
     for (size_t i = 0; i < run_paths_.size(); i++){
       it.streams_[i].open(run_paths_[i].c_str(), std::ios::binary);
-      if (!it.streams_[i]) throw std::runtime_error("Cannot reopen external sort run: " + run_paths_[i]);
+      if (!it.streams_[i])
+        throw std::runtime_error("Cannot reopen external sort run " + std::to_string(i) + " of " +
+                                  std::to_string(run_paths_.size()) + ": " + run_paths_[i] +
+                                  " (on Windows the per-process limit on concurrently open files is ~512, "
+                                  "so use a larger chunk capacity / fewer runs)");
       Record first;
       if (it.streams_[i].read(reinterpret_cast<char*>(&first), sizeof(Record)))
         it.heap_.push(typename Iterator::HeapEntry{first, i, &cmp_});

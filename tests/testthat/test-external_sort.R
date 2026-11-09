@@ -6,7 +6,12 @@
 test_that("cpp_test_external_sort matches sort() across chunk sizes and edge cases", {
   set.seed(42)
   for (cc in c(1L, 2L, 13L, 100L, 5000L)) {
-    x <- sample(-1e6:1e6, 2000, replace = TRUE) * 1.0
+    # n values at chunk_capacity cc produce ceiling(n/cc) runs, all held
+    # open at once during the k-way merge. Windows (MinGW-w64 CRT) caps
+    # concurrently open files at ~512 per process, so keep n small enough
+    # that even cc = 1 stays well under that; 200 runs is still a genuine
+    # k-way merge.
+    x <- sample(-1e6:1e6, 200, replace = TRUE) * 1.0
     got <- cppRouting:::cpp_test_external_sort(x, chunk_capacity = cc, temp_dir = tempdir())
     expect_identical(got, sort(x), info = paste("chunk_capacity =", cc))
   }
