@@ -381,27 +381,27 @@ void Graph::to_adj_list(bool reversed){
 DVec Graph::routing_dvec(IVec dep, IVec arr, int algo){
 
   distancePair dijfunc(this, dep, arr, algo);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
   return dijfunc.m_result;
 }
 
 vector<SVec> Graph::routing_svec(IVec dep, IVec arr, IVec keep, double lim, int algo){
 
   pathPair dijfunc(this, dep, arr, keep, lim, algo);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
   return dijfunc.m_result;
 }
 
 Rcpp::NumericMatrix Graph::routing_dmat(IVec dep, IVec arr){
   Rcpp::NumericMatrix result(dep.size(), arr.size());
   distanceMat dijfunc(this, dep, arr, result);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
   return result;
 }
 
 vector<SVec> Graph::routing_smat(IVec dep, IVec arr, IVec keep, DVec lim, bool setdif, int algo){
 
   pathMat dijfunc(this, dep, arr, keep, lim, setdif, algo);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
   return dijfunc.m_result;
 }

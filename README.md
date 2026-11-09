@@ -2,13 +2,12 @@
 
 Creating and maintaining an open source project takes significant time and effort. If you find value in our work and would like to see it continue to grow and improve, please consider making a donation. Your support helps us cover hosting costs, development tools, and allows us to dedicate more time to enhancing this project. Every contribution, no matter how small, makes a big difference. Thank you for supporting open source!  
 
-[<img src="https://www.scclive.org/wp-content/uploads/2017/03/PayPal-Donate-Button.png" width="150">](https://www.paypal.com/donate/?hosted_button_id=SNBP8ZWMMYCDA)
+[<img src="https://www.scclive.org/wp-content/uploads/2017/03/PayPal-Donate-Button.png" width="150">](https://www.paypal.com/donate/?hosted_button_id=SNBP8ZWMMYCDA)  
 
-cppRouting v3 : Algorithms for Routing and Solving the Traffic
-Assignment Problem
+cppRouting v4 : Algorithms for Routing and Solving the Traffic Assignment Problem
 ================
 Vincent LARMET
-November 24, 2022
+November 09, 2026
 
 -   [Package presentation](#package-presentation)
 -   [Installation](#installation)
@@ -20,15 +19,15 @@ November 24, 2022
         `cppRouting`](#set-the-number-of-threads-used-by-cpprouting)
     -   [Instantiate the graph](#instantiate-the-graph)
 -   [Main functions](#main-functions)
+-   [Network extraction](#network-extraction)
 -   [Routing](#routing)
     -   [Algorithms](#algorithms)
     -   [Compute isochrones](#compute-isochrones)
     -   [Compute possible detours within a fixed additional
         cost](#compute-possible-detours-within-a-fixed-additional-cost)
-    -   [Contraction hierarchies](#contraction-hierarchies)
-    -   [Customizable contraction hierarchies](#customizable-contraction-hierarchies)
-    -   [Work with dual weighted
-        network](#work-with-dual-weighted-network)
+    -   [Contraction hierarchies (CH)](#contraction-hierarchies-ch)
+    -   [Customizable contraction hierarchies (CCH)](#customizable-contraction-hierarchies-cch)
+    -   [Work with multiple weights network](#work-with-multiple-weights-network)
 -   [Network simplification](#network-simplification)
 -   [Traffic assignment](#traffic-assignment)
     -   [All-or-Nothing (AON)](#all-or-nothing-aon)
@@ -54,39 +53,41 @@ November 24, 2022
         municipality in the context of commuting in
         Bourgogne-Franche-Comte
         region](#application-4--calculate-the-flow-of-people-crossing-each-municipality-in-the-context-of-commuting-in-bourgogne-franche-comte-region)
--   [Benchmark with other R packages](#benchmark-with-other-r-packages)
+    -   [Application 5 : Estimate the commuter traffic at user equilibrium in Bourgogne-Franche-Comte](#application-5--estimate-the-commuter-traffic-at-user-equilibrium-in-bourgogne-franche-comte)
 -   [Citation](#citation)
 
 # Package presentation
 
 `cppRouting` is an `R` package which provide **routing** algorithms
 (shortest paths/distances, isochrones) and **traffic assignment**
-solvers on non-negative weighted graphs.  
+solvers on non-negative weighted graphs.
 `cppRouting` is characterized by :
 
 -   its ability to work on large road graphs (country/continent scale)
 -   its large choice of `one-to-one` shortest path algorithms
--   its implementation of **contraction hierarchies** and associated
-    routing algorithms
+-   its implementation of **contraction hierarchies**, **customizable
+    contraction hierarchies** and associated routing algorithms
 -   its large choice of algorithms for solving the **traffic assignment
     problem (TAP)**
 -   its high performance through memory usage and parallel programming
 
 `cppRouting` is therefore particularly adapted for geographer, or
-whoever who need to calculate accessibility indicators at large scale.  
+whoever who need to calculate accessibility indicators at large scale.
 All algorithms are written in C++ and mainly use containers from the
-Standard Template Library (STL).  
+Standard Template Library (STL).
 This package have been made with `Rcpp` and `RcppParallel` packages.
 
 # Installation
 
 ### Stable version from CRAN
 
+
 ``` r
 install.packages("cppRouting")
 ```
 
 ### or from github
+
 
 ``` r
 library(remotes)
@@ -96,43 +97,43 @@ remotes::install_github("vlarmet/cppRouting")
 # What are we talking about ?
 
 `cppRouting` implements algorithms belonging to **graph theory**, so
-let’s define what a graph is.  
+let's define what a graph is.
 A graph is commonly used to represent a network, which is composed of
 vertices connected by edges.
 
-![](README_files/figure-gfm/example_graph.png)<!-- -->
+![](https://www.researchgate.net/profile/Hai-Jun-Zhou/publication/300370830/figure/fig1/AS:613866690080787@1523368632234/An-graph-with-N-12-vertices-and-M-21-weighted-edges-In-this-example-the-two-weights.png)
 
-In `cppRouting`, an edge has at least three attributes : vertice’s ID
-from which it start, vertice’s ID from which it end and a weight
-(length, flow, travel time …).
+In `cppRouting`, an edge has at least three attributes : vertice's ID
+from which it start, vertice's ID from which it end and a weight
+(length, flow, travel time ...).
 
 # Readme Data
 
-**This README file and all time measurements were made on a Windows 10
-computer, with 11th generation i5 (6 cores) processor and 32GB of
-memory. **  
+**This README file and all time measurements were made on an Ubuntu computer, with 13th generation i7 (10 cores) processor and 32GB of
+memory.**
 The data presented here is the official french road network describing
-over 500000 km of roads.  
+over 300000 km of roads.
 All data used in this README are free and can be downloaded here :
 
--   roads : <http://professionnels.ign.fr/route500>  
--   general practitioners location :
-    <https://www.insee.fr/fr/statistiques/3568614?sommaire=3568656#consulter>  
--   maternity wards location :
-    <https://www.insee.fr/fr/statistiques/3568611?sommaire=3568656#dictionnaire>  
--   shapefile of the \~36000 communes in France :
-    <http://professionnels.ign.fr/adminexpress>  
+-   roads : <https://data.cquest.org/ign/route500/ROUTE500_3-0__SHP_LAMB93_FXX_2021-11-03.7z>
+-   general practitioners and maternity ward locations :
+    <https://api.insee.fr/melodi/file/DS_BPE/DS_BPE_2025_CSV_FR>
+-   population :
+    <https://www.insee.fr/fr/statistiques/7739582?sommaire=7728826>
+-   shapefile of the ~36000 communes in France :
+    <http://professionnels.ign.fr/adminexpress>
 -   commuting to work from the French national census :
-    <https://www.insee.fr/fr/statistiques/3566477#consulter>
+    <https://www.insee.fr/fr/statistiques/fichier/8998300/base-flux-mobilite-domicile-lieu-travail-2023_csv.zip>
 
 Graph data have been preprocessed for more readability (see
-data_preparation.R).
+`data_preparation.R`).
 
-The final graph is composed of 234615 nodes and 685118 edges.  
+The final graph is composed of 911 769 nodes and 2 595 571 edges.
 Data has to be a 3 columns data.frame or matrix containing from, to and
 a cost/distance column. Here the cost is the time needed to travel in
 each edges (in minutes). From and to are vertices IDs (character or
 numeric).
+
 
 ``` r
 library(cppRouting)
@@ -164,33 +165,40 @@ coord  <-  read.csv("coordinates.csv",colClasses = c("character","numeric","nume
 
 #### Head of road network data
 
+
 ``` r
 head(roads)
 ```
 
-    ##   from     to    weight
-    ## 1    0 224073 0.4028571
-    ## 2    1  65036 3.5280000
-    ## 3    2 173723 1.8480000
-    ## 4    3      2 2.5440000
-    ## 5    4 113129 4.9680000
-    ## 6    5      4 1.6680000
+```
+##   from to    weight
+## 1    0  1 2.1200000
+## 2    1  0 2.1200000
+## 3    1  2 0.8600000
+## 4    2  1 0.8600000
+## 5    3  4 0.1745455
+## 6    4  3 0.1745455
+```
 
 #### Head of coordinates data
+
 
 ``` r
 head(coord)
 ```
 
-    ##   ID        X       Y
-    ## 1  0 805442.8 6458384
-    ## 2  1 552065.9 6790520
-    ## 3  2 556840.2 6790475
-    ## 4  3 554883.7 6790020
-    ## 5  4 548345.2 6791000
-    ## 6  5 547141.3 6790434
+```
+##   ID        X       Y
+## 1  0 894833.5 6265744
+## 2  1 894051.2 6262806
+## 3  2 893427.9 6261751
+## 4  3 340196.8 6276241
+## 5  4 340108.9 6275932
+## 6  5 433102.7 6715832
+```
 
 ### Set the number of threads used by `cppRouting`
+
 
 ``` r
 RcppParallel::setThreadOptions(numThreads = 1)
@@ -198,13 +206,14 @@ RcppParallel::setThreadOptions(numThreads = 1)
 
 ### Instantiate the graph
 
+
 ``` r
 #Instantiate a graph with coordinates
 graph  <-  makegraph(roads, directed = T, coords = coord)
 ```
 
-Graph object have some useful attributes for the user :  
-- `graph$nbnode` : total number of vertices,  
+Graph object have some useful attributes for the user :
+- `graph$nbnode` : total number of vertices,
 - `graph$dict$ref` : vertices ids.
 
 Other attributes are internals data and have no interest for the user.
@@ -214,31 +223,72 @@ All graph attributes should **never** be modified by the user.
 
 `cppRouting` package provide these functions :
 
--   `cpp_extract` : extract a routable network from geographic source (OpenStreetMap, shapefiles)
+-   `cpp_extract` : extract a routable network from geographic source
+    (OpenStreetMap, shapefiles)
 -   `get_distance_matrix` : compute distance matrix (between all
-    combinations origin-destination nodes - *one-to-many*),  
+    combinations origin-destination nodes - *one-to-many*),
 -   `get_distance_pair` : compute distances between origin and
-    destination by pair (*one-to-one*),  
+    destination by pair (*one-to-one*),
 -   `get_path_pair` : compute shortest paths between origin and
-    destination by pair (*one-to-one*),  
+    destination by pair (*one-to-one*),
 -   `get_multi_paths` : compute shortest paths between all origin nodes
-    and all destination nodes (*one-to-many*),  
+    and all destination nodes (*one-to-many*),
 -   `get_isochrone` : compute isochrones/isodistances with one or
-    multiple breaks.  
+    multiple breaks.
 -   `get_detour` : return nodes that are reachable within a fixed
     additional cost around shortest paths. This function can be useful
-    in producing accessibility indicators.  
+    in producing accessibility indicators.
 -   `cpp_simplify` : remove non-intersection nodes, duplicated edges and
     isolated loops in the graph. Graph topology is preserved so distance
     calculation is faster and remains true. This function can be applied
-    to very large graphs (several millions of nodes).  
+    to very large graphs (several millions of nodes).
 -   `cpp_contract` : contract the graph by applying **contraction
-    hierarchies (CH)** or **customizable contraction hierarchies (CCH)** algorithm.  
--   `cpp_customize` : assign edge weights to a graph contracted with CCH 
+    hierarchies (CH)** or **customizable contraction hierarchies (CCH)**
+    algorithm.
+-   `cpp_customize` : assign edge weights to a graph contracted with
+    CCH
 -   `get_aon` : given an origin-destination matrix, compute
-    All-or-Nothing assignment.  
+    All-or-Nothing assignment.
 -   `assign_traffic` : given an origin-destination matrix, estimate the
-    traffic flows on the network.
+    traffic flows on the network (user equilibrium).
+
+# Network extraction
+
+`cppRouting` is able to extract a routable network from the most used
+geographic sources:
+- **OpenStreetMap** - object from `osmdata` R package - cached file from
+`osmextract` R package - `.osm.pbf` file on disk (downloadable at
+[Geofabrik](https://download.geofabrik.de/)) - **generic
+`LINESTRING/MULTILINESTRING` datasets** - shapefile (`.shp`, `.dbf`,
+`.prj`, `.shx`) on disk - `sf` object
+
+Extraction is done through an optimized C++ engine, without extra
+dependencies, using `cpp_extract()` function.
+France's road network used here have been extracted using the following
+command :
+
+```         
+# path to ROUTE500 LINESTRING shapefile
+shp <- ".../RESEAU_ROUTIER/TRONCON_ROUTE.shp"
+
+# extract network, nodes coordinates, auxiliary edges weights (length) in csv files
+cppRouting::cpp_extract(
+  shp, 
+  output = "csv", 
+  out_prefix = "route500", 
+  coords = TRUE, 
+  keep_length = TRUE,
+  geom_params = list(
+    speed_field = "vitesse",
+    length_field = "LONGUEUR",
+    direction_field = "SENS",
+    direction_values = list(forward = "Sens direct", backward = "Sens inverse", twoway = "Double sens"),
+    keep_fields = "LONGUEUR"
+  )
+)
+```
+
+See detailed examples in `cpp_extract_tutorial.md`.
 
 # Routing
 
@@ -251,8 +301,8 @@ Path algorithms proposed by the package are :
 
 -   **1** uni-directional Dijkstra algorithm,
 -   **2** bi-directional Dijkstra algorithm,
--   **3** uni-directional A\* algorithm  
--   **4** New bi-directional A\* algorithm (Piljs & Post, 2009 : see
+-   **3** uni-directional A* algorithm
+-   **4** New bi-directional A* algorithm (Piljs & Post, 2009 : see
     <http://repub.eur.nl/pub/16100/ei2009-10.pdf>)
 -   **5** *one-to-one* bi-directional Dijkstra adapted to contraction
     hierarchies (Geisberger & al., 2008)
@@ -263,30 +313,31 @@ Path algorithms proposed by the package are :
     al., 2011)
 -   **8** *one-to-one* and *one-to-many* query on **customizable
     contraction hierarchies** (CCH), as implemented in
-    [RoutingKit](https://github.com/routingkit/routingkit): bidirectional search
-    restricted to the contracted hierarchy (forward search from the source,
-    backward search from the target), where edge weights can be updated after
-    contraction. The *one-to-many* variant reuses one backward search per
-    target through per-node buckets (RPHAST-style many-to-many).
+    [RoutingKit](https://github.com/routingkit/routingkit):
+    bidirectional search restricted to the contracted hierarchy (forward
+    search from the source, backward search from the target), where edge
+    weights can be updated after contraction. The *one-to-many* variant
+    reuses one backward search per target through per-node buckets
+    (RPHAST-style many-to-many).
 
 *1*, *2*, *3* and *4* are available for **one-to-one** calculation in
 `get_distance_pair` and `get_path_pair` functions on a
 **non-contracted** graph. In these functions, uni-directional Dijkstra
-algorithm is stopped when the destination node is reached.  
+algorithm is stopped when the destination node is reached.
 `A*` and `NBA*` are relevant if geographic coordinates of all nodes are
 provided. Note that coordinates should be expressed in a **projection
-system**.  
+system**.
 To be accurate and efficient, `A*` and `NBA*` algorithms should use an
 admissible heuristic function (here the Euclidean distance), i.e cost
-and heuristic function must be expressed in the same unit.  
+and heuristic function must be expressed in the same unit.
 In `cppRouting`, heuristic function `h` for a node (n) is defined such
-that :  
+that :
 **h(n,d) = ED(n,d) / k** with *h* the heuristic, *ED* the Euclidean
-distance, *d* the destination node and a constant *k*.  
+distance, *d* the destination node and a constant *k*.
 So in the case where coordinates are expressed in meters and cost is
 expressed in time, *k* is the maximum speed allowed on the road. By
 default, constant is 1 and is designed for graphs with cost expressed in
-the same unit than coordinates (for example in meters).  
+the same unit than coordinates (for example in meters).
 If coordinates cannot be provided, bi-directional Dijkstra algorithm is
 the best option in terms of performance.
 
@@ -299,19 +350,20 @@ function on a **non-contracted** graph.
 *6* and *7* are available for **one-to-many** calculation in
 `get_distance_matrix` function on a **contracted** graph.
 
-*8* is used in
-`get_distance_pair`, `get_path_pair` and `get_distance_matrix` functions on a
-**customized CCH** graph (`cpp_contract(Graph, customizable = TRUE)` followed
-by `cpp_customize`). Unlike *5* and *6*, edge weights are not fixed at
+*8* is used in `get_distance_pair`, `get_path_pair` and
+`get_distance_matrix` functions on a **customized CCH** graph
+(`cpp_contract(Graph, customizable = TRUE)` followed by
+`cpp_customize`). Unlike *5* and *6*, edge weights are not fixed at
 contraction time: the hierarchy is prepared once, and customization only
-updates arc costs, which is much cheaper than re-contracting the graph. This
-is what makes CCH well suited for traffic assignment, where congestion changes
-travel times at every iteration.
+updates arc costs, which is much cheaper than re-contracting the graph.
+This is what makes CCH well suited for traffic assignment, where
+congestion changes travel times at every iteration.
 
-Let’s compare different path algorithms in terms of performance.  
+Let's compare different path algorithms in terms of performance.
 For `A*` and `NBA` algorithms, coordinates are defined in meters and max
 speed is 110km/h; so for the heuristic function to be admissible, we
 have to convert meters to minutes by setting constant to 110/0.06 :
+
 
 ``` r
 #Generate 2000 random origin and destination nodes
@@ -324,28 +376,33 @@ microbenchmark(dijkstra=pair_dijkstra  <-  get_distance_pair(graph, origin, dest
                times=1)
 ```
 
-    ## Unit: seconds
-    ##      expr       min        lq      mean    median        uq       max neval
-    ##  dijkstra 28.648378 28.648378 28.648378 28.648378 28.648378 28.648378     1
-    ##     bidir 22.463780 22.463780 22.463780 22.463780 22.463780 22.463780     1
-    ##     astar 19.207150 19.207150 19.207150 19.207150 19.207150 19.207150     1
-    ##       nba  9.976939  9.976939  9.976939  9.976939  9.976939  9.976939     1
+```
+## Unit: seconds
+##      expr       min        lq      mean    median        uq       max neval
+##  dijkstra 122.87958 122.87958 122.87958 122.87958 122.87958 122.87958     1
+##     bidir  83.18095  83.18095  83.18095  83.18095  83.18095  83.18095     1
+##     astar  74.30699  74.30699  74.30699  74.30699  74.30699  74.30699     1
+##       nba  34.97340  34.97340  34.97340  34.97340  34.97340  34.97340     1
+```
 
 #### Output
+
 
 ``` r
 head(cbind(pair_dijkstra,pair_bidijkstra,pair_astar,pair_nba))
 ```
 
-    ##      pair_dijkstra pair_bidijkstra pair_astar pair_nba
-    ## [1,]      258.4616        258.4616   258.4616 258.4616
-    ## [2,]      464.5499        464.5499   464.5499 464.5499
-    ## [3,]      294.5504        294.5504   294.5504 294.5504
-    ## [4,]      302.7190        302.7190   302.7190 302.7190
-    ## [5,]      120.1393        120.1393   120.1393 120.1393
-    ## [6,]      578.0233        578.0233   578.0233 578.0233
+```
+##      pair_dijkstra pair_bidijkstra pair_astar  pair_nba
+## [1,]     191.74489       191.74489  191.74489 191.74489
+## [2,]     519.59685       519.59685  519.59685 519.59685
+## [3,]     308.14500       308.14500  308.14500 308.14500
+## [4,]      77.99867        77.99867   77.99867  77.99867
+## [5,]     194.39985       194.39985  194.39985 194.39985
+## [6,]     314.71795       314.71795  314.71795 314.71795
+```
 
-So, how to choose the algorithm ? It’s simple, the faster, the better.
+So, how to choose the algorithm ? It's simple, the faster, the better.
 If coordinates are provided, go for `NBA`, else go for bidirectional
 Dijkstra. Uni-directional Dijkstra and `A*` algorithms should be used if
 main memory is (almost) full because they require only one graph instead
@@ -354,17 +411,20 @@ of two (forward and backward).
 ## Compute isochrones
 
 An isochrone is a set of nodes reachable from a node within a fixed
-limit.  
-Let’s compute isochrones around Dijon city
+limit.
+Let's compute isochrones around Dijon city
+
 
 ``` r
+#Node nearest to the Dijon commune centroid (from the node-to-commune correspondence file)
+dijon_id <- as.character(ndcom$id_noeud[ndcom$com == "21231"])
 #Compute isochrones
-iso  <-  get_isochrone(graph, from = "205793", lim = c(15, 25, 45, 60, 90, 120))
+iso  <-  get_isochrone(graph, from = dijon_id, lim = c(15, 25, 45, 60, 90, 120))
 #Convert nodes to concave polygons with concaveman package
 poly  <-  lapply(iso[[1]], function(x){
   x  <-  data.frame(noeuds=x, stringsAsFactors = F)
   x  <-  left_join(x, coord, by=c("noeuds"="ID"))
-  return(concaveman(summarise(st_as_sf(x, coords=c("X", "Y"), crs=2154))))
+  return(concaveman(st_as_sf(x, coords=c("X", "Y"), crs=2154)))
 })
 
 poly  <-  do.call(rbind, poly)
@@ -372,20 +432,19 @@ poly$time  <-  as.factor(names(iso[[1]]))
 #Multipolygon
 poly2  <-  st_cast(poly, "MULTIPOLYGON")
 poly2$time  <-  reorder(poly2$time, c(120, 90, 60, 45, 25, 15))
+#Draw the largest isochrone first, so the smaller ones are not hidden
+poly2  <-  poly2[order(as.integer(poly2$time)), ]
 #Reproject for plotting
 poly2  <-  st_transform(poly2, "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-#Import map backgroung
-
-dijon   <-   get_stamenmap(bbox = c(left = 1.708, 
-                             bottom = 45.126, 
-                             right = 8.003, 
-                             top = 49.232),  maptype = "toner-2010",  zoom = 7)
-#Plot the map
-p  <-  ggmap(dijon)+
+#Plot the map over the commune polygons, reprojected in longlat like the isochrones
+com_ll  <-  st_transform(com, "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+p  <-  ggplot() +
+  geom_sf(data = com_ll, fill = "white", color = "grey85", linewidth = 0.1) +
   geom_sf(data=poly2, aes(fill=time), alpha=.8, inherit.aes = FALSE)+
   scale_fill_brewer(palette = "YlOrRd")+
   labs(fill="Minutes")+
   ggtitle("Isochrones around Dijon")+
+  coord_sf(xlim = c(2.5, 8), ylim = c(45.126, 49)) +
   theme(axis.text.x = element_blank(), 
         axis.text.y = element_blank(), 
         axis.ticks = element_blank(), 
@@ -393,29 +452,34 @@ p  <-  ggmap(dijon)+
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png)
 
 ## Compute possible detours within a fixed additional cost
 
 `get_detour` function returns all reachable nodes within a fixed detour
 time around the shortest path between origin and destination nodes.
-Returned nodes (n) meet the following condition :  
-**SP(o,n) + SP(n,d) \< SP(o,d) + t**  
+Returned nodes (n) meet the following condition :
+**SP(o,n) + SP(n,d) < SP(o,d) + t**
 with *SP* shortest distance/time, *o* the origin node, *d* the
-destination node and *t* the extra cost.  
-The algorithm used is a slightly modified bidirectional Dijkstra.  
-Let’s see an example for the path between Dijon and Lyon city :
+destination node and *t* the extra cost.
+The algorithm used is a slightly modified bidirectional Dijkstra.
+Let's see an example for the path between Dijon and Lyon city :
+
 
 ``` r
+#Node nearest to the Lyon city centroid (Lyon is not in the node-to-commune correspondence file)
+lyon_pt <- st_transform(st_sfc(st_point(c(4.8706, 45.777)), crs = 4326), 2154)
+lyon_xy <- st_coordinates(lyon_pt)[1, ]
+lyon_id <- coord$ID[which.min((coord$X - lyon_xy[1])^2 + (coord$Y - lyon_xy[2])^2)]
 #Compute shortest path
-trajet <- get_path_pair(graph,from="205793",to="212490")
+trajet <- get_path_pair(graph,from=dijon_id,to=lyon_id)
 
 #Compute shortest path
-distance <- get_distance_pair(graph,from="205793",to="212490")
+distance <- get_distance_pair(graph,from=dijon_id,to=lyon_id)
 
 #Compute detour time of 25 and 45 minutes
-det25 <- get_detour(graph,from="205793",to="212490",extra=25)
-det45 <- get_detour(graph,from="205793",to="212490",extra=45)
+det25 <- get_detour(graph,from=dijon_id,to=lyon_id,extra=25)
+det45 <- get_detour(graph,from=dijon_id,to=lyon_id,extra=45)
 
 #Create sf object of nodes
 pts <- st_as_sf(coord,coords=c("X","Y"),crs=2154)
@@ -426,15 +490,17 @@ pts$time <- ifelse(pts$ID %in% unlist(trajet),"Shortest Path",pts$time)
 pts$time <- factor(pts$time,levels = c("25","45","Shortest Path","0"))
 
 #Plot
-dijon   <-   get_stamenmap(bbox = c(left = 3.2, 
-                             bottom = 45.126, 
-                             right = 6.5, 
-                             top = 47.8),  maptype = "toner-2010",  zoom = 8)
+#Plot over the commune polygons, reprojected in longlat like the points
+com_ll <- st_transform(com, "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
-p <- ggmap(dijon)+
-  geom_sf(data=pts[pts$time!="0",],aes(color=time),inherit.aes = FALSE)+
+p <- ggplot() +
+  geom_sf(data = com_ll, fill = "white", color = "grey85", linewidth = 0.1) +
+  geom_sf(data=pts[pts$time %in% c("25","45"),],aes(color=time),inherit.aes = FALSE)+
+  geom_sf(data=pts[pts$time =="Shortest Path",],aes(color=time),inherit.aes = FALSE)+
+  scale_color_brewer(palette = "YlOrRd") +
   ggtitle(paste0("Detours around Dijon-lyon path - ",round(distance,digits = 2)," minutes"))+
-  labs(color="Minutes")+
+  labs(color="Minutes") +
+  coord_sf(xlim = c(3.2, 6.5), ylim = c(45.126, 47.8)) +
   theme(axis.text.x = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks = element_blank(),
@@ -442,14 +508,14 @@ p <- ggmap(dijon)+
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png)
 
 ## Contraction hierarchies (CH)
 
 Contraction hierarchies is a speed-up technique for finding shortest
-path on a network. It was proposed by Geisberger & al.(2008).  
+path on a network. It was proposed by Geisberger & al.(2008).
 Initially created for *one-to-one* queries, it has been extended to
-*many-to-many* and distance matrix calculation.  
+*many-to-many* and distance matrix calculation.
 This technique is composed of two phases:
 
 -   preprocessing phase called *contraction* with `cpp_contract`
@@ -460,7 +526,7 @@ This technique is composed of two phases:
     using buckets available in `get_distance_matrix` function.
 
 Contraction phase consists of iteratively removing a vertex **v** from
-the graph and creating a shortcut for each pair **(u,w)** of **v**’s
+the graph and creating a shortcut for each pair **(u,w)** of **v**'s
 neighborhood if the shortest path from **u** to **w** contains **v**. To
 be efficient and avoid creating too much shortcuts, vertices have to be
 ordered according to several heuristics. The two heuristics used by
@@ -482,25 +548,10 @@ ressources :
 -   [detailed author
     thesis](http://algo2.iti.kit.edu/documents/routeplanning/geisberger_dipl.pdf)
 
-## Customizable contraction hierarchies (CCH)
-
-Customizable contraction hierarchies is also a speed-up technique for finding shortest
-path on a network (J. Dibbelt, B. Strasser, D. Wagner (2014)). Unlike standard contraction hierarchies, only network's topology is used during *contraction* phase (cost is not taken into account). The main advantage is the ability to update the network's weights without needing to reconstruct the graph.  
-This algorithm actually needs three phases :  
--   preprocessing phase called *contraction* with `cpp_contract(customizable=TRUE)`
-    function
--   weights assignation using `cpp_customize()` function
--   query phase : similar to contraction hierarchies 
-
-Nodes are ordered using min-degree order but the user can provide its own order with `order` argument.  
-This technique is slightly slower than CH during a query, but it is more flexible and perfectly suited for traffic assignment where edge weights are updated at each iteration.  
 
 ``` r
 #Contraction of input graph using CH
 graph3 <- cpp_contract(graph, silent=TRUE)
-
-#Contraction of input graph using CCH
-graph4 <- cpp_contract(graph, customizable=TRUE, silent=TRUE)
 
 #Calculate distances on the contracted graph
 system.time(
@@ -508,17 +559,73 @@ system.time(
 )
 ```
 
-    ## utilisateur     système      écoulé 
-    ##        0.27        0.01        0.28
+```
+## utilisateur     système      écoulé 
+##       0.701       0.014       0.715
+```
 
 #### Compare outputs
+
 
 ``` r
 summary(pair_ch-pair_dijkstra)
 ```
 
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##       0       0       0       0       0       0      38
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##       0       0       0       0       0       0      14
+```
+
+## Customizable contraction hierarchies (CCH)
+
+Customizable contraction hierarchies is also a speed-up technique for
+finding shortest path on a network (J. Dibbelt, B. Strasser, D. Wagner
+(2014)). Unlike standard contraction hierarchies, only network's
+topology is used during *contraction* phase (cost is not taken into
+account). The main advantage is the ability to update the network's
+weights without needing to reconstruct the graph.
+This algorithm actually needs three phases :
+- preprocessing phase called *contraction* with
+`cpp_contract(customizable=TRUE)` function - weights assignation using
+`cpp_customize()` function - query phase : similar to contraction
+hierarchies
+
+Nodes are ordered using min-degree order but the user can provide its
+own order with `order` argument.
+This technique is slightly slower than CH during a query, but it is more
+flexible and perfectly suited for traffic assignment where edge weights
+are updated at each iteration.
+
+
+``` r
+#Contraction of input graph using CCH
+cch_graph <- cpp_contract(graph, customizable = TRUE, silent=TRUE)
+
+# Assign original weights
+graph4 <- cpp_customize(cch_graph)
+
+#Calculate distances on the contracted graph
+system.time(
+  pair_cch <- get_distance_pair(graph4, origin, destination)
+)
+```
+
+```
+## utilisateur     système      écoulé 
+##       2.610       0.000       2.609
+```
+
+#### Compare outputs
+
+
+``` r
+summary(pair_cch-pair_dijkstra)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##       0       0       0       0       0       0      14
+```
 
 #### Performance comparison
 
@@ -526,809 +633,427 @@ summary(pair_ch-pair_dijkstra)
 
 Here are the measurements of contraction time and query time (in second)
 of contraction hierarchies on different graphs :
+
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
-<thead>
+ <thead>
 <tr>
-<th style="empty-cells: hide;border-bottom:hidden;" colspan="5">
-</th>
-<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="6">
-
-<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
-
-Number of queries
-
-</div>
-
-</th>
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="5"></th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="6"><div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">Number of queries</div></th>
 </tr>
-<tr>
-<th style="text-align:center;">
-Graph
-</th>
-<th style="text-align:center;">
-Vertices
-</th>
-<th style="text-align:center;">
-Edges
-</th>
-<th style="text-align:center;">
-preprocessing
-</th>
-<th style="text-align:center;">
-algorithm
-</th>
-<th style="text-align:center;">
-1000
-</th>
-<th style="text-align:center;">
-2000
-</th>
-<th style="text-align:center;">
-5000
-</th>
-<th style="text-align:center;">
-10000
-</th>
-<th style="text-align:center;">
-100000
-</th>
-<th style="text-align:center;">
-1000000
-</th>
-</tr>
-</thead>
+  <tr>
+   <th style="text-align:center;"> Graph </th>
+   <th style="text-align:center;"> Vertices </th>
+   <th style="text-align:center;"> Edges </th>
+   <th style="text-align:center;"> preprocessing </th>
+   <th style="text-align:center;"> algorithm </th>
+   <th style="text-align:center;"> 1000 </th>
+   <th style="text-align:center;"> 2000 </th>
+   <th style="text-align:center;"> 5000 </th>
+   <th style="text-align:center;"> 10000 </th>
+   <th style="text-align:center;"> 100000 </th>
+   <th style="text-align:center;"> 1000000 </th>
+  </tr>
+ </thead>
 <tbody>
-<tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;font-weight: bold;">
-234615
-</td>
-<td style="text-align:center;font-weight: bold;">
-685118
-</td>
-<td style="text-align:center;font-weight: bold;">
-14
-</td>
-<td style="text-align:center;font-weight: bold;">
-ch
-</td>
-<td style="text-align:center;font-weight: bold;">
-0.22
-</td>
-<td style="text-align:center;font-weight: bold;">
-0.25
-</td>
-<td style="text-align:center;font-weight: bold;">
-0.44
-</td>
-<td style="text-align:center;font-weight: bold;">
-0.64
-</td>
-<td style="text-align:center;font-weight: bold;">
-4.60
-</td>
-<td style="text-align:center;font-weight: bold;">
-45.86
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;">
-234615
-</td>
-<td style="text-align:center;">
-685118
-</td>
-<td style="text-align:center;">
-13
-</td>
-<td style="text-align:center;">
-cch
-</td>
-<td style="text-align:center;">
-0.80
-</td>
-<td style="text-align:center;">
-1.75
-</td>
-<td style="text-align:center;">
-3.93
-</td>
-<td style="text-align:center;">
-7.92
-</td>
-<td style="text-align:center;">
-68.82
-</td>
-<td style="text-align:center;">
-302.17
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;">
-234615
-</td>
-<td style="text-align:center;">
-685118
-</td>
-<td style="text-align:center;">
--
-</td>
-<td style="text-align:center;">
-nba
-</td>
-<td style="text-align:center;">
-5.05
-</td>
-<td style="text-align:center;">
-10.10
-</td>
-<td style="text-align:center;">
-25.25
-</td>
-<td style="text-align:center;">
-50.50
-</td>
-<td style="text-align:center;">
-505.00
-</td>
-<td style="text-align:center;">
-5050.00
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;font-weight: bold;">
-4559270
-</td>
-<td style="text-align:center;font-weight: bold;">
-10389741
-</td>
-<td style="text-align:center;font-weight: bold;">
-154
-</td>
-<td style="text-align:center;font-weight: bold;">
-ch
-</td>
-<td style="text-align:center;font-weight: bold;">
-4.08
-</td>
-<td style="text-align:center;font-weight: bold;">
-3.92
-</td>
-<td style="text-align:center;font-weight: bold;">
-4.66
-</td>
-<td style="text-align:center;font-weight: bold;">
-5.11
-</td>
-<td style="text-align:center;font-weight: bold;">
-18.20
-</td>
-<td style="text-align:center;font-weight: bold;">
-147.05
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;">
-4559270
-</td>
-<td style="text-align:center;">
-10389741
-</td>
-<td style="text-align:center;">
-111
-</td>
-<td style="text-align:center;">
-cch
-</td>
-<td style="text-align:center;">
-2.91
-</td>
-<td style="text-align:center;">
-5.34
-</td>
-<td style="text-align:center;">
-12.07
-</td>
-<td style="text-align:center;">
-22.97
-</td>
-<td style="text-align:center;">
-221.63
-</td>
-<td style="text-align:center;">
-2096.49
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;">
-4559270
-</td>
-<td style="text-align:center;">
-10389741
-</td>
-<td style="text-align:center;">
--
-</td>
-<td style="text-align:center;">
-nba
-</td>
-<td style="text-align:center;">
-144.80
-</td>
-<td style="text-align:center;">
-289.60
-</td>
-<td style="text-align:center;">
-724.00
-</td>
-<td style="text-align:center;">
-1448.00
-</td>
-<td style="text-align:center;">
-14480.00
-</td>
-<td style="text-align:center;">
-144800.00
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;font-weight: bold;">
-16210743
-</td>
-<td style="text-align:center;font-weight: bold;">
-36890020
-</td>
-<td style="text-align:center;font-weight: bold;">
-536
-</td>
-<td style="text-align:center;font-weight: bold;">
-ch
-</td>
-<td style="text-align:center;font-weight: bold;">
-13.44
-</td>
-<td style="text-align:center;font-weight: bold;">
-13.61
-</td>
-<td style="text-align:center;font-weight: bold;">
-14.50
-</td>
-<td style="text-align:center;font-weight: bold;">
-15.91
-</td>
-<td style="text-align:center;font-weight: bold;">
-35.14
-</td>
-<td style="text-align:center;font-weight: bold;">
-227.22
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;">
-16210743
-</td>
-<td style="text-align:center;">
-36890020
-</td>
-<td style="text-align:center;">
-330
-</td>
-<td style="text-align:center;">
-cch
-</td>
-<td style="text-align:center;">
-7.39
-</td>
-<td style="text-align:center;">
-11.38
-</td>
-<td style="text-align:center;">
-23.36
-</td>
-<td style="text-align:center;">
-43.33
-</td>
-<td style="text-align:center;">
-402.75
-</td>
-<td style="text-align:center;">
-4007.01
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;">
-16210743
-</td>
-<td style="text-align:center;">
-36890020
-</td>
-<td style="text-align:center;">
--
-</td>
-<td style="text-align:center;">
-nba
-</td>
-<td style="text-align:center;">
-630.60
-</td>
-<td style="text-align:center;">
-1261.20
-</td>
-<td style="text-align:center;">
-3153.00
-</td>
-<td style="text-align:center;">
-6306.00
-</td>
-<td style="text-align:center;">
-63060.00
-</td>
-<td style="text-align:center;">
-630600.00
-</td>
-</tr>
+  <tr>
+   <td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="3"> ROUTE 500 </td>
+   <td style="text-align:center;font-weight: bold;vertical-align: middle !important;" rowspan="3"> 911769 </td>
+   <td style="text-align:center;font-weight: bold;vertical-align: middle !important;" rowspan="3"> 2595571 </td>
+   <td style="text-align:center;font-weight: bold;"> 43 </td>
+   <td style="text-align:center;font-weight: bold;"> ch </td>
+   <td style="text-align:center;font-weight: bold;"> 0.62 </td>
+   <td style="text-align:center;font-weight: bold;"> 0.71 </td>
+   <td style="text-align:center;font-weight: bold;"> 0.94 </td>
+   <td style="text-align:center;font-weight: bold;"> 1.33 </td>
+   <td style="text-align:center;font-weight: bold;"> 8.59 </td>
+   <td style="text-align:center;font-weight: bold;"> 81.71 </td>
+  </tr>
+  <tr>
+   
+   
+   
+   <td style="text-align:center;"> 35 </td>
+   <td style="text-align:center;"> cch </td>
+   <td style="text-align:center;"> 1.42 </td>
+   <td style="text-align:center;"> 2.78 </td>
+   <td style="text-align:center;"> 6.72 </td>
+   <td style="text-align:center;"> 12.81 </td>
+   <td style="text-align:center;"> 120.62 </td>
+   <td style="text-align:center;"> 875.38 </td>
+  </tr>
+  <tr>
+   
+   
+   
+   <td style="text-align:center;"> - </td>
+   <td style="text-align:center;"> nba </td>
+   <td style="text-align:center;"> 18.46 </td>
+   <td style="text-align:center;"> 37.57 </td>
+   <td style="text-align:center;"> 91.51 </td>
+   <td style="text-align:center;"> 187.04 </td>
+   <td style="text-align:center;"> 1856.47 </td>
+   <td style="text-align:center;"> 18474.10 </td>
+  </tr>
+  <tr>
+   <td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="3"> OSM France </td>
+   <td style="text-align:center;font-weight: bold;vertical-align: middle !important;" rowspan="3"> 4559270 </td>
+   <td style="text-align:center;font-weight: bold;vertical-align: middle !important;" rowspan="3"> 10389741 </td>
+   <td style="text-align:center;font-weight: bold;"> 154 </td>
+   <td style="text-align:center;font-weight: bold;"> ch </td>
+   <td style="text-align:center;font-weight: bold;"> 4.08 </td>
+   <td style="text-align:center;font-weight: bold;"> 3.92 </td>
+   <td style="text-align:center;font-weight: bold;"> 4.66 </td>
+   <td style="text-align:center;font-weight: bold;"> 5.11 </td>
+   <td style="text-align:center;font-weight: bold;"> 18.20 </td>
+   <td style="text-align:center;font-weight: bold;"> 147.05 </td>
+  </tr>
+  <tr>
+   
+   
+   
+   <td style="text-align:center;"> 111 </td>
+   <td style="text-align:center;"> cch </td>
+   <td style="text-align:center;"> 2.91 </td>
+   <td style="text-align:center;"> 5.34 </td>
+   <td style="text-align:center;"> 12.07 </td>
+   <td style="text-align:center;"> 22.97 </td>
+   <td style="text-align:center;"> 221.63 </td>
+   <td style="text-align:center;"> 2096.49 </td>
+  </tr>
+  <tr>
+   
+   
+   
+   <td style="text-align:center;"> - </td>
+   <td style="text-align:center;"> nba </td>
+   <td style="text-align:center;"> 144.80 </td>
+   <td style="text-align:center;"> 289.60 </td>
+   <td style="text-align:center;"> 724.00 </td>
+   <td style="text-align:center;"> 1448.00 </td>
+   <td style="text-align:center;"> 14480.00 </td>
+   <td style="text-align:center;"> 144800.00 </td>
+  </tr>
+  <tr>
+   <td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="3"> OSM Europe </td>
+   <td style="text-align:center;font-weight: bold;vertical-align: middle !important;" rowspan="3"> 16210743 </td>
+   <td style="text-align:center;font-weight: bold;vertical-align: middle !important;" rowspan="3"> 36890020 </td>
+   <td style="text-align:center;font-weight: bold;"> 536 </td>
+   <td style="text-align:center;font-weight: bold;"> ch </td>
+   <td style="text-align:center;font-weight: bold;"> 13.44 </td>
+   <td style="text-align:center;font-weight: bold;"> 13.61 </td>
+   <td style="text-align:center;font-weight: bold;"> 14.50 </td>
+   <td style="text-align:center;font-weight: bold;"> 15.91 </td>
+   <td style="text-align:center;font-weight: bold;"> 35.14 </td>
+   <td style="text-align:center;font-weight: bold;"> 227.22 </td>
+  </tr>
+  <tr>
+   
+   
+   
+   <td style="text-align:center;"> 330 </td>
+   <td style="text-align:center;"> cch </td>
+   <td style="text-align:center;"> 7.39 </td>
+   <td style="text-align:center;"> 11.38 </td>
+   <td style="text-align:center;"> 23.36 </td>
+   <td style="text-align:center;"> 43.33 </td>
+   <td style="text-align:center;"> 402.75 </td>
+   <td style="text-align:center;"> 4007.01 </td>
+  </tr>
+  <tr>
+   
+   
+   
+   <td style="text-align:center;"> - </td>
+   <td style="text-align:center;"> nba </td>
+   <td style="text-align:center;"> 630.60 </td>
+   <td style="text-align:center;"> 1261.20 </td>
+   <td style="text-align:center;"> 3153.00 </td>
+   <td style="text-align:center;"> 6306.00 </td>
+   <td style="text-align:center;"> 63060.00 </td>
+   <td style="text-align:center;"> 630600.00 </td>
+  </tr>
 </tbody>
 <tfoot>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> ch : bidirectional search on the contracted graph
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> ch : bidirectional search on the contracted graph</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> cch : customizable contraction hierarchies (topology contracted once, weights customized)
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> cch : customizable contraction hierarchies (topology contracted once, weights customized)</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> nba : new bidirectional A\* on the original graph
-</td>
-</tr><tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> OSM Europe cch values are a linear extrapolation from the measured 1,000 and 10,000 query timings
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> nba : new bidirectional A* on the original graph</td>
+</tr>
+<tr>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> OSM Europe cch values are a linear extrapolation from the measured 1,000 and 10,000 query timings</td>
 </tr>
 </tfoot>
 </table>
 
 Here are the plots (in log-log) of query time improvement factor of *CH*
-(solid lines) and *CCH* (dotted lines) algorithms compared to NBA :  
-![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+(solid lines) and *CCH* (dotted lines) algorithms compared to NBA :
+
+![plot of chunk unnamed-chunk-16](figure/unnamed-chunk-16-1.png)
 
 As we can see on the plot, the larger is the graph, the higher is the
-benefit of using contraction hierarchies. For OSM Europe, query time can
-be faster by a factor of **2800** with CH and **150** with CCH compared to NBA.
+benefit of using contraction hierarchies (CH). For OSM Europe, query
+time can be faster by a factor of **2800** with CH and **150** with CCH
+compared to NBA. Customizable contraction hierarchies (CCH) pair queries
+are consistently slower than CH pair queries — about 2× slower for 1,000
+queries and up to 10–18× slower for 1,000,000 queries on ROUTE500, OSM
+France and OSM Europe.
 
 ##### Distance matrix
 
 Here are the measurements of query time (in second) of contraction
-hierarchies on different graphs.  
-We compare *PHAST* and *many to many CH* and *CCH* to Dijkstra algorithm on square
-matrix (i.e the sets of source and target nodes are of equal length).
+hierarchies on different graphs.
+We compare *PHAST*, *many to many CH* and *CCH* to Dijkstra algorithm on
+square matrix (i.e the sets of source and target nodes are of equal
+length).
 
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
-<thead>
+ <thead>
 <tr>
-<th style="empty-cells: hide;border-bottom:hidden;" colspan="2">
-</th>
-<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="4">
-
-<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
-
-\|S\|=\|T\|
-
-</div>
-
-</th>
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="2"></th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="4"><div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">|S|=|T|</div></th>
 </tr>
-<tr>
-<th style="text-align:center;">
-Graph
-</th>
-<th style="text-align:center;">
-algorithm
-</th>
-<th style="text-align:center;">
-1000
-</th>
-<th style="text-align:center;">
-2000
-</th>
-<th style="text-align:center;">
-5000
-</th>
-<th style="text-align:center;">
-10000
-</th>
-</tr>
-</thead>
+  <tr>
+   <th style="text-align:center;"> Graph </th>
+   <th style="text-align:center;"> algorithm </th>
+   <th style="text-align:center;"> 1000 </th>
+   <th style="text-align:center;"> 2000 </th>
+   <th style="text-align:center;"> 5000 </th>
+   <th style="text-align:center;"> 10000 </th>
+  </tr>
+ </thead>
 <tbody>
-<tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;font-weight: bold;">
-mch
-</td>
-<td style="text-align:center;font-weight: bold;">
-0.64
-</td>
-<td style="text-align:center;font-weight: bold;">
-1.31
-</td>
-<td style="text-align:center;font-weight: bold;">
-5.19
-</td>
-<td style="text-align:center;font-weight: bold;">
-19.31
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;">
-phast
-</td>
-<td style="text-align:center;">
-4.21
-</td>
-<td style="text-align:center;">
-8.42
-</td>
-<td style="text-align:center;">
-21.05
-</td>
-<td style="text-align:center;">
-42.10
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;">
-cch
-</td>
-<td style="text-align:center;">
-2.21
-</td>
-<td style="text-align:center;">
-6.39
-</td>
-<td style="text-align:center;">
-41.63
-</td>
-<td style="text-align:center;">
-165.79
-</td>
-</tr>
-
-<tr>
-<td style="text-align:center;font-weight: bold;">
-ROUTE 500
-</td>
-<td style="text-align:center;">
-Dijkstra
-</td>
-<td style="text-align:center;">
-27.45
-</td>
-<td style="text-align:center;">
-54.90
-</td>
-<td style="text-align:center;">
-137.25
-</td>
-<td style="text-align:center;">
-274.50
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;font-weight: bold;">
-mch
-</td>
-<td style="text-align:center;font-weight: bold;">
-11.15
-</td>
-<td style="text-align:center;font-weight: bold;">
-18.66
-</td>
-<td style="text-align:center;font-weight: bold;">
-46.13
-</td>
-<td style="text-align:center;font-weight: bold;">
-102.18
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;">
-phast
-</td>
-<td style="text-align:center;">
-100.50
-</td>
-<td style="text-align:center;">
-201.00
-</td>
-<td style="text-align:center;">
-502.50
-</td>
-<td style="text-align:center;">
-1005.00
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;">
-cch
-</td>
-<td style="text-align:center;">
-5.24
-</td>
-<td style="text-align:center;">
-12.76
-</td>
-<td style="text-align:center;">
-67.45
-</td>
-<td style="text-align:center;">
-248.41
-</td>
-</tr>
-
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM France
-</td>
-<td style="text-align:center;">
-Dijkstra
-</td>
-<td style="text-align:center;">
-781.50
-</td>
-<td style="text-align:center;">
-1563.00
-</td>
-<td style="text-align:center;">
-3907.50
-</td>
-<td style="text-align:center;">
-7815.00
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;font-weight: bold;">
-mch
-</td>
-<td style="text-align:center;font-weight: bold;">
-39.17
-</td>
-<td style="text-align:center;font-weight: bold;">
-64.50
-</td>
-<td style="text-align:center;font-weight: bold;">
-144.39
-</td>
-<td style="text-align:center;font-weight: bold;">
-291.28
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;">
-phast
-</td>
-<td style="text-align:center;">
-460.00
-</td>
-<td style="text-align:center;">
-920.00
-</td>
-<td style="text-align:center;">
-2300.00
-</td>
-<td style="text-align:center;">
-4600.00
-</td>
-</tr>
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;">
-cch
-</td>
-<td style="text-align:center;">
-9.92
-</td>
-<td style="text-align:center;">
-20.58
-</td>
-<td style="text-align:center;">
-91.06
-</td>
-<td style="text-align:center;">
-304.90
-</td>
-</tr>
-
-<tr>
-<td style="text-align:center;font-weight: bold;">
-OSM Europe
-</td>
-<td style="text-align:center;">
-Dijkstra
-</td>
-<td style="text-align:center;">
-2886.40
-</td>
-<td style="text-align:center;">
-5772.80
-</td>
-<td style="text-align:center;">
-14432.00
-</td>
-<td style="text-align:center;">
-28864.00
-</td>
-</tr>
+  <tr>
+   <td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="4"> ROUTE 500 </td>
+   <td style="text-align:center;font-weight: bold;"> ch - mch </td>
+   <td style="text-align:center;font-weight: bold;"> 0.64 </td>
+   <td style="text-align:center;font-weight: bold;"> 1.31 </td>
+   <td style="text-align:center;font-weight: bold;"> 5.19 </td>
+   <td style="text-align:center;font-weight: bold;"> 19.31 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> ch - phast </td>
+   <td style="text-align:center;"> 4.21 </td>
+   <td style="text-align:center;"> 8.42 </td>
+   <td style="text-align:center;"> 21.05 </td>
+   <td style="text-align:center;"> 42.10 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> cch </td>
+   <td style="text-align:center;"> 2.21 </td>
+   <td style="text-align:center;"> 6.39 </td>
+   <td style="text-align:center;"> 41.63 </td>
+   <td style="text-align:center;"> 165.79 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> Dijkstra </td>
+   <td style="text-align:center;"> 27.45 </td>
+   <td style="text-align:center;"> 54.90 </td>
+   <td style="text-align:center;"> 137.25 </td>
+   <td style="text-align:center;"> 274.50 </td>
+  </tr>
+  <tr>
+   <td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="4"> OSM France </td>
+   <td style="text-align:center;font-weight: bold;"> ch - mch </td>
+   <td style="text-align:center;font-weight: bold;"> 11.15 </td>
+   <td style="text-align:center;font-weight: bold;"> 18.66 </td>
+   <td style="text-align:center;font-weight: bold;"> 46.13 </td>
+   <td style="text-align:center;font-weight: bold;"> 102.18 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> ch - phast </td>
+   <td style="text-align:center;"> 100.50 </td>
+   <td style="text-align:center;"> 201.00 </td>
+   <td style="text-align:center;"> 502.50 </td>
+   <td style="text-align:center;"> 1005.00 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> cch </td>
+   <td style="text-align:center;"> 5.24 </td>
+   <td style="text-align:center;"> 12.76 </td>
+   <td style="text-align:center;"> 67.45 </td>
+   <td style="text-align:center;"> 248.41 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> Dijkstra </td>
+   <td style="text-align:center;"> 781.50 </td>
+   <td style="text-align:center;"> 1563.00 </td>
+   <td style="text-align:center;"> 3907.50 </td>
+   <td style="text-align:center;"> 7815.00 </td>
+  </tr>
+  <tr>
+   <td style="text-align:center;font-weight: bold;font-weight: bold;vertical-align: middle !important;" rowspan="4"> OSM Europe </td>
+   <td style="text-align:center;font-weight: bold;"> ch - mch </td>
+   <td style="text-align:center;font-weight: bold;"> 39.17 </td>
+   <td style="text-align:center;font-weight: bold;"> 64.50 </td>
+   <td style="text-align:center;font-weight: bold;"> 144.39 </td>
+   <td style="text-align:center;font-weight: bold;"> 291.28 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> ch - phast </td>
+   <td style="text-align:center;"> 460.00 </td>
+   <td style="text-align:center;"> 920.00 </td>
+   <td style="text-align:center;"> 2300.00 </td>
+   <td style="text-align:center;"> 4600.00 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> cch </td>
+   <td style="text-align:center;"> 9.92 </td>
+   <td style="text-align:center;"> 20.58 </td>
+   <td style="text-align:center;"> 91.06 </td>
+   <td style="text-align:center;"> 304.90 </td>
+  </tr>
+  <tr>
+   
+   <td style="text-align:center;"> Dijkstra </td>
+   <td style="text-align:center;"> 2886.40 </td>
+   <td style="text-align:center;"> 5772.80 </td>
+   <td style="text-align:center;"> 14432.00 </td>
+   <td style="text-align:center;"> 28864.00 </td>
+  </tr>
 </tbody>
 <tfoot>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> mch : many-to-many bidirectional search on the contracted
-graph
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> ch - mch : many-to-many bidirectional search on the contracted graph</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> phast : phast algorithm on the contracted graph
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> ch - phast : phast algorithm on the contracted graph</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> cch : many-to-many query on the customizable CCH (upward searches + per-node buckets)
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> cch : many-to-many query on the customizable CCH (upward searches + per-node buckets)</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> cch 10,000 : quadratic extrapolation from the measured values at 1000, 2000 and 5000
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> Dijkstra : Dijkstra search on the original graph</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> Dijkstra : Dijkstra search on the original graph
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> cch 10,000 : quadratic extrapolation from the measured values at 1000, 2000 and 5000</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> \|S\| : number of source nodes
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> |S| : number of source nodes</td>
 </tr>
 <tr>
-<td style="padding: 0; border:0;" colspan="100%">
-<sup></sup> \|T\| : number of target nodes
-</td>
+<td style = 'padding: 0; border:0;' colspan='100%'><sup></sup> |T| : number of target nodes</td>
 </tr>
 </tfoot>
 </table>
 
 Here are the plots (in log-log) of query time improvement factor of
-*PHAST* and *many to many CH* compared to Dijkstra algorithm :
+*PHAST*, *many to many CH* and *CCH* compared to Dijkstra algorithm :
 
-![](README_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18-1.png)
 
 Benefits are less important than *one-to-one* queries but still
-interesting. For *CCH*, query time is up to **291** times faster than
-Dijkstra (OSM Europe, 1000 queries). *CCH* is **15 to 46** times faster
-than *PHAST*, and on OSM Europe it is even faster than *many-to-many CH*
-for query counts below 10000 (9.9 s vs 39.2 s for 1000 queries, and 304.9
-s vs 291.3 s for 10000 queries).  
-PHAST’s improvement is constant since it iteratively perform an
-*one-to-all\* search, just like original Dijkstra.  
-*many to many CH* is well adapted for **square matrix\*\*.
+interesting. Customizable contraction hierarchies (CCH) seems better
+suited than CH as long as network is big. On the other hand,
+*many-to-many CH* tends to outperforms when matrix dimensions grow.
+
+Contraction hierarchies's PHAST improvement is constant since it
+iteratively perform an *one-to-all* search, just like original
+Dijkstra.
+*many to many CH* is well adapted for **square matrix**.
 
 Here is the plot of query times of the three algorithms on asymmetric
 matrices (i.e. the number of sources and the number of targets are
-unequal), with *\|S\|/\|T\|* the number of sources divided by the number of
-targets. The matrix size is kept constant: *\|S\| x \|T\| = 1,048,576*.
+unequal), with *|S|/|T|* the number of sources divided by the number
+of targets. The matrix size is kept constant: *|S| x |T| =
+1,048,576*.
 
-![](README_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19-1.png)
 
-Note that this plot is the same for *\|T\| / \|S\|* (the query times were
-measured to be symmetric, within 1-2 %, for both mirror shapes on
-ROUTE500 and OSM France).  
+Note that this plot is the same for *|T| / |S|* (the query times
+were measured to be symmetric, within 1-2 %, for both mirror shapes on
+ROUTE500 and OSM France).
 *PHAST* is by far the fastest when the matrix is very unbalanced (ratio
 of 256 or more), because it only performs one search per source. As the
 matrix approaches the square shape, *CCH* takes over on OSM France and
 OSM Europe, while *many-to-many CH* remains competitive only on the
-small ROUTE500 network. *many-to-many CH* is never the best algorithm
-on OSM France or OSM Europe.
+small ROUTE500 network. *many-to-many CH* is never the best algorithm on
+OSM France or OSM Europe for this matrix size (1,048,576 paths); but
+this trend could be different as matrix size grow (see figure above).
 
-## Work with dual weighted network
+## Work with multiple weights network
 
 Sometimes it can be useful to sum up additional weights along the
-shortest path. For a use-case example, let’s say we want to compute the
+shortest path. For a use-case example, let's say we want to compute the
 distance along the shortest time path or the time needed to travel the
-shortest distance path. It is now possible to set an auxiliary set of
-edge weights during graph construction in `makegraph()` function and set
-`aggregate_aux` to `TRUE` in `get_distance_*` functions.  
-Let’s see an example where we would like to compute the number of edges
-within each shortest path :  
+shortest distance path. It is now possible to set one or multiple
+additional edge weights during graph construction in `makegraph()`
+function and set `aggregate_aux` to `TRUE` in `get_distance_*`
+functions.
+Let's see an example where we set **two** auxiliary weights: a constant
+of `1` (summing it counts the number of edges in each shortest path) and
+the length of each edge in km (summing it gives the total distance
+traveled, read from `roads_aux.csv`). `aux` accepts a data.frame with
+one column per weight; we then plot the travel time against both
+aggregated values (number of edges, and path length):
+
 
 ``` r
-# The weight to be minimized is set in 'df' argument. Additional weights are set in "aux"
-# We set auxiliary weights to 1 in order to count number of edge in shortest paths
-dgr <- makegraph(df = roads, directed = TRUE, coords = coord, aux = 1) 
+# The weight to be minimized is set in 'df'; the additional weights are set in 'aux'.
+# 'aux' is a data.frame with one column per auxiliary weight. Here we set two:
+#  - n_edges : a constant of 1, so summing it counts the edges in each shortest path
+#  - length  : the length of each edge (km), read from roads_aux.csv (aligned with roads)
+auxdf <- read.csv("roads_aux.csv", header = TRUE, stringsAsFactors = FALSE)
+aux_graph <- makegraph(df = roads, directed = TRUE, coords = coord,
+                 aux = data.frame(n_edges = 1, length = auxdf$length))
+# 2000 random origin-destination pairs
+set.seed(1)
+from <- sample(aux_graph$dict$ref, 2000)
+to <- sample(aux_graph$dict$ref, 2000)
+# Travel time, and both auxiliary weights aggregated along each shortest path
+# (aggregate_aux = TRUE returns one data.frame with the aggregated aux columns)
+time_pair <- get_distance_pair(aux_graph, from = from, to = to)
+aux_pair <- get_distance_pair(aux_graph, from = from, to = to, aggregate_aux = TRUE)
+res <- data.frame(travel_time = time_pair, aux_pair)
+res$length[is.na(res$length)] <- 0
+res$n_edges[is.na(res$n_edges)] <- 0
 
-# Compute number of edge
-hops <- get_distance_pair(Graph = dgr, from = origin, to = destination, aggregate_aux = TRUE)
-
-# plot
-dfp <- data.frame(n_edges = hops, travel_time = pair_nba)
-p <- ggplot(dfp, aes(x = travel_time, y = n_edges))+
-  geom_point()+
-  labs(x = "Travel time (min)", y = "Number of edge")+
-  theme_bw()
-p
+# Scatter plot 1: travel time vs number of edges
+p1 <- ggplot(data = res, aes(x = n_edges, y = travel_time)) +
+  geom_point() +
+  labs(x = "Number of edges", y = "Travel time (minutes)")
+p1
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20-1.png)
 
-Note that this functionality work for **contracted graphs** as well.
+``` r
+# Scatter plot 2: travel time vs path length
+p2 <- ggplot(data = res, aes(x = length, y = travel_time)) +
+  geom_point() +
+  labs(x = "Path length (km)", y = "Travel time (minutes)")
+p2
+```
+
+![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20-2.png)
+
+Note that this functionality work for **contracted graphs (CH and CCH)**
+as well.
 
 # Network simplification
 
-`cpp_simplify`’s internal function performs two major steps :  
+`cpp_simplify`'s internal function performs two major steps :
 - removing non-intersection nodes between two intersection nodes then
-calculate cost of the new edges,  
+calculate cost of the new edges,
 - removing duplicate edges that are potentially created in the first
 step.
 
 In order to remove maximum number of nodes, some iterations are needed
 until only intersection nodes are remained.
 
-Let’s see a small example :
+Let's see a small example :
+
 
 ``` r
 library(igraph)
@@ -1367,17 +1092,17 @@ plot(igr2,edge.arrow.size=.3,edge.label=E(igr2)$dist,main="One iteration - keepi
 box(col="black")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21-1.png)
 
 Here, junction nodes are `e`, `h`, `d`, `k`, `l`, `i` and `m`. So `b`,
 `c`, `f` and `n` have been contracted in the first step of the function.
 By contracting `n`, an edge with cost of 2 has been created between `m`
-and `l` nodes.  
+and `l` nodes.
 The second step of the function has removed this edge which is greater
 than the original one (i.e 1), and the whole process now need a second
-iteration to remove `m` and `l` that aren’t intersection nodes
-anymore.  
-Let’s try with `iterate` argument set to `TRUE` :
+iteration to remove `m` and `l` that aren't intersection nodes anymore.
+Let's try with `iterate` argument set to `TRUE` :
+
 
 ``` r
 par(mfrow=c(1,2),mar=c(3,0,3,0))
@@ -1399,9 +1124,10 @@ plot(igr4,edge.arrow.size=.3,edge.label=E(igr4)$dist,main="Second iteration - re
 box(col="black")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22-1.png)
 
 #### French road network simplification
+
 
 ``` r
 #Simplify original graph by keeping nodes of interest
@@ -1415,197 +1141,89 @@ system.time(
 )
 ```
 
-    ## utilisateur     système      écoulé 
-    ##        8.12        0.01        8.14
+```
+## utilisateur     système      écoulé 
+##      25.151       0.007      25.159
+```
 
 ##### Compare outputs
+
 
 ``` r
 summary(pair_nba-pair_nba_2)
 ```
 
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##       0       0       0       0       0       0      38
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##       0       0       0       0       0       0      14
+```
 
 #### Running time
 
-Here are running times in *second* on graphs of different sizes :  
-- data presented here,  
+Here are running times in *second* on graphs of different sizes :
+- data presented here,
 - OpenStreetMap french road network from
-[Geofabrik](https://download.geofabrik.de/),  
+[Geofabrik](https://download.geofabrik.de/),
 - an assembly of several european countries from OSM (France, Italy,
 Spain, Germany, Portugal, Switzerland, Belgium and Netherlands).
 
-OpenStreetMap data have been extracted with [osm2po](https://osm2po.de/)
-tool, which I highly recommend.
 
-<table>
-<thead>
-<tr>
-<th style="text-align:left;">
-Network
-</th>
-<th style="text-align:right;">
-Nodes
-</th>
-<th style="text-align:right;">
-Edges
-</th>
-<th style="text-align:right;">
-Runtime without iterations
-</th>
-<th style="text-align:right;">
-Removed nodes in first iteration
-</th>
-<th style="text-align:right;">
-Runtime with iterations
-</th>
-<th style="text-align:right;">
-Number of iteration
-</th>
-<th style="text-align:right;">
-Total removed nodes
-</th>
-<th style="text-align:right;">
-Removed nodes percentage
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-README data
-</td>
-<td style="text-align:right;">
-234,615
-</td>
-<td style="text-align:right;">
-685,118
-</td>
-<td style="text-align:right;">
-0.47
-</td>
-<td style="text-align:right;">
-39,737
-</td>
-<td style="text-align:right;">
-0.51
-</td>
-<td style="text-align:right;">
-4
-</td>
-<td style="text-align:right;">
-41,843
-</td>
-<td style="text-align:right;">
-17.83
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-OSM France
-</td>
-<td style="text-align:right;">
-4,559,270
-</td>
-<td style="text-align:right;">
-10,389,741
-</td>
-<td style="text-align:right;">
-6.73
-</td>
-<td style="text-align:right;">
-818,096
-</td>
-<td style="text-align:right;">
-11.62
-</td>
-<td style="text-align:right;">
-9
-</td>
-<td style="text-align:right;">
-842,252
-</td>
-<td style="text-align:right;">
-18.47
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-OSM ‘Europe’
-</td>
-<td style="text-align:right;">
-16,210,743
-</td>
-<td style="text-align:right;">
-36,890,020
-</td>
-<td style="text-align:right;">
-27.94
-</td>
-<td style="text-align:right;">
-3,365,240
-</td>
-<td style="text-align:right;">
-46.47
-</td>
-<td style="text-align:right;">
-11
-</td>
-<td style="text-align:right;">
-3,465,724
-</td>
-<td style="text-align:right;">
-21.38
-</td>
-</tr>
-</tbody>
-</table>
+|Network      |      Nodes|      Edges| Runtime without iterations| Removed nodes in first iteration| Runtime with iterations| Number of iteration| Total removed nodes| Removed nodes percentage|
+|:------------|----------:|----------:|--------------------------:|--------------------------------:|-----------------------:|-------------------:|-------------------:|------------------------:|
+|README data  |    911,769|  2,595,571|                       1.46|                          259,535|                    1.64|                   5|             273,382|                    29.98|
+|OSM France   |  4,559,270| 10,389,741|                       6.73|                          818,096|                   11.62|                   9|             842,252|                    18.47|
+|OSM ‘Europe’ | 16,210,743| 36,890,020|                      27.94|                        3,365,240|                   46.47|                  11|           3,465,724|                    21.38|
 
 # Traffic assignment
 
 Traffic assignment models are used to estimate the traffic flows on a
 network. It take as input origin-destinations matrix describing volume
-between each OD pair.  
+between each OD pair.
 For this part, we will use standard networks massively used in traffic
 modelling studies : Siouxfalls and Chicago networks
-([source](https://github.com/bstabler/TransportationNetworks)).  
-Let’s import Siouxfalls. It is composed of 24 nodes and 76 links.
+([source](https://github.com/bstabler/TransportationNetworks)).
+Let's import Siouxfalls. It is composed of 24 nodes and 76 links.
+
 
 ``` r
 net <- read.csv("siouxfalls_net.csv")
 head(net)
 ```
 
-    ##   Init.node Term.node  Capacity Length Free.Flow.Time    B Power Speed.limit
-    ## 1         1         2 25900.201      6              6 0.15     4           0
-    ## 2         1         3 23403.473      4              4 0.15     4           0
-    ## 3         2         1 25900.201      6              6 0.15     4           0
-    ## 4         2         6  4958.181      5              5 0.15     4           0
-    ## 5         3         1 23403.473      4              4 0.15     4           0
-    ## 6         3         4 17110.524      4              4 0.15     4           0
-    ##   Toll Type
-    ## 1    0    1
-    ## 2    0    1
-    ## 3    0    1
-    ## 4    0    1
-    ## 5    0    1
-    ## 6    0    1
+```
+##   Init.node Term.node  Capacity Length Free.Flow.Time    B Power Speed.limit
+## 1         1         2 25900.201      6              6 0.15     4           0
+## 2         1         3 23403.473      4              4 0.15     4           0
+## 3         2         1 25900.201      6              6 0.15     4           0
+## 4         2         6  4958.181      5              5 0.15     4           0
+## 5         3         1 23403.473      4              4 0.15     4           0
+## 6         3         4 17110.524      4              4 0.15     4           0
+##   Toll Type
+## 1    0    1
+## 2    0    1
+## 3    0    1
+## 4    0    1
+## 5    0    1
+## 6    0    1
+```
 
 We also have OD matrix as well :
+
 
 ``` r
 trips <- read.csv("siouxfalls_trips.csv")
 head(trips)
 ```
 
-    ##   from to demand
-    ## 1    1  2    100
-    ## 2    1  3    100
-    ## 3    1  4    500
-    ## 4    1  5    200
-    ## 5    1  6    300
-    ## 6    1  7    500
+```
+##   from to demand
+## 1    1  2    100
+## 2    1  3    100
+## 3    1  4    500
+## 4    1  5    200
+## 5    1  6    300
+## 6    1  7    500
+```
 
 ## All-or-Nothing (AON)
 
@@ -1613,14 +1231,15 @@ All-or-Nothing assignment (AON) is the most simplistic (and fastest)
 method to load flow on a network, since it assume there is no congestion
 effects. The assignment algorithm itself is the procedure that loads the
 origin-destination matrix to the shortest path trees and produces the
-flows.  
+flows.
 In `cppRouting`, OD matrix is represented as 3 vectors of equal length
-:  
-- `from` : origin node,  
-- `to` : destination node,  
+:
+- `from` : origin node,
+- `to` : destination node,
 - `demand` : volume.
 
-Let’s load flows on the network using `get_aon()` function :
+Let's load flows on the network using `get_aon()` function :
+
 
 ``` r
 sgr <- makegraph(df = net[,c("Init.node", "Term.node", "Free.Flow.Time")], directed = TRUE) 
@@ -1630,13 +1249,16 @@ aon <- get_aon(Graph = sgr, from = trips$from, to = trips$to, demand = trips$dem
 head(aon)
 ```
 
-    ##   from to cost  flow
-    ## 1    1  2    6  3800
-    ## 2    1  3    4  6000
-    ## 3    2  1    6  3800
-    ## 4    2  6    5  6600
-    ## 5    3  1    4  6000
-    ## 6    3  4    4 10200
+```
+##   from to cost  flow
+## 1    1  2    6  3800
+## 2    1  3    4  6000
+## 3    2  1    6  3800
+## 4    2  6    5  6600
+## 5    3  1    4  6000
+## 6    3  4    4 10200
+```
+
 
 ``` r
 g <- graph_from_data_frame(aon[,c("from", "to", "flow")], directed = TRUE)
@@ -1649,41 +1271,57 @@ plot(g, edge.width = net$Capacity/2000, edge.arrow.size = 0, main = "AON assignm
 box(col = "black")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29-1.png)
 
-`get_aon` work also for **contracted networks**.
+`get_aon` work also for **contracted networks (CH and CCH)**.
 
 ### Choosing the best routing algorithm
 
 Computing time is directly linked to shortest paths calculations. The
-user has the choice between two kind of routing algorithms, depending
-the **sparsity** of OD matrix. By default, `algorithm` argument is set
-to bidirectional Dijkstra. Just like `get_*_pair` functions, it run
-`length(from)` times routing algorithm for finding each OD pair’s
-shortest path. If OD matrix is dense, recursive *one-to-many* methods
-like Dijkstra algorithm would be preferred.  
-Given an origin node, bidirectional Dijkstra et NBA\* algorithms are on
+user has the choice between three kind of routing algorithms, depending
+the **sparsity** of OD matrix and network size. By default, `aon_method`
+argument is set to bidirectional Dijkstra. Just like `get_*_pair`
+functions, it run `length(from)` times routing algorithm for finding
+each OD pair's shortest path. If OD matrix is dense, recursive
+*one-to-many* methods like Dijkstra algorithm would be preferred. Given
+an origin node, bidirectional Dijkstra et NBA* algorithms are on
 average 2 and 5 times faster than Dijkstra algorithm, respectively.
+If network is big enough, a network preprocessed with **customizable
+contraction hierarchies** could be a win since the graph have to be
+contracted just one time.
 
-This rule-of-thumb apply also when the network have been contracted
-using `cpp_contract` function. `phast` algorithm is for matrix-like
-shortest paths calculation, and `bi` is pairwise. In that case, `bi`
-algorithm is 200 times faster than `phast` for a given node.
+Note that it is also possible to contract the network using CH at each
+iteration by applying `aon_method = "cphast"`or `aon_method = "cbi"`.
+`cphast` algorithm is for matrix-like shortest paths calculation, and
+`cbi` is pairwise. In that case, `cbi` algorithm is 200 times faster
+than `cphast` for a given node.
 
-For resuming :  
-- matrix-like calculation : optimal for dense matrix, run *one-to-many*
-search for `min(length(unique(from)), length(unique(to)))` times,  
-- pairwise calculation : optimal for highly sparse matrix, run
-*one-to-one* search for `length(from)` times.  
+For resuming :
+
+-   matrix-like calculation (`aon_method="d"`): optimal for dense
+    matrix, run *one-to-many* search for
+    `min(length(unique(from)), length(unique(to)))` times,
+
+-   pairwise calculation (`aon_method="bi"` or `aon_method="nba"`):
+    optimal for highly sparse matrix, run *one-to-one* search for
+    `length(from)` times.
+
+-   customizable contraction hierarchies (`aon_method="cch"`) : optimal
+    for large network and large OD matrix
+
+-   contraction hierarchies (`aon_method="cbi"` or
+    `aon_method="cphast"`) : contract network with CH at each iteration
+    then apply `phast` or `bi` algorithm. **It's a legacy feature, CCH
+    must be preferred**.
 
 ## User Equilibrium (UE)
 
-The term “User Equilibrium” is used to describe a route choice
+The term "User Equilibrium" is used to describe a route choice
 assumption formally proposed by
-[Wardrop](https://doi.org/10.1680/ipeds.1952.11362) :  
+[Wardrop](https://doi.org/10.1680/ipeds.1952.11362) :
 **“The journey times on all the routes actually used are equal and less
 than those which would be experienced by a single vehicle on any unused
-routes”**.  
+routes”**.
 Note that this principle follows directly from the assumptions that
 drivers choose minimum time paths, and are well-informed about network
 conditions.
@@ -1692,7 +1330,7 @@ Unlike AON assignment, this more realistic way to assign flows on a
 network take into account **congestion effect**. In this paradigm, the
 cost of a given link is dependent of the flow on it.
 
-As an example, let’s assume 3000 commuters going from one node to
+As an example, let's assume 3000 commuters going from one node to
 another connected by two links. The User equilibrium is illustrated on
 this figure
 ([source](https://tfresource.org/topics/User_Equilibrium.html)):
@@ -1702,83 +1340,53 @@ this figure
 The relation between cost and flow is called **volume decay function**
 and is written as :
 
-![t = t\_{0}.(1+\\alpha.(\\frac{v}{c})^{\\beta})](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;t%20%3D%20t_%7B0%7D.%281%2B%5Calpha.%28%5Cfrac%7Bv%7D%7Bc%7D%29%5E%7B%5Cbeta%7D%29 "t = t_{0}.(1+\alpha.(\frac{v}{c})^{\beta})")  
-with
-![t](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;t "t")
-the cost,
-![t\_{0}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;t_%7B0%7D "t_{0}")
-the free-flow cost,
-![v](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;v "v")
-the flow (or volume),
-![c](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;c "c")
-the link capacity and
-![\\alpha, \\beta](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Calpha%2C%20%5Cbeta "\alpha, \beta")
-unitless parameters.
+$t = t_{0}.(1+alpha.(frac{v}{c})^{beta})$
+with $t$ the cost, $t_{0}$ the free-flow cost, $v$ the flow (or volume),
+$c$ the link capacity and $alpha, beta$ unitless parameters.
 
 Traffic Assignment Problem (TAP) is a convex optimization problem solved
 by iterative algorithms. The **relative gap** is the metric to minimize
 and is written as :
 
-![gap=\|(\\frac{TSTT}{SPTT}) - 1\|](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;gap%3D%7C%28%5Cfrac%7BTSTT%7D%7BSPTT%7D%29%20-%201%7C "gap=|(\frac{TSTT}{SPTT}) - 1|")
+$gap=|(frac{TSTT}{SPTT}) - 1|$
 
 Total System Travel Time is written as
-![TSTT = \\sum\_{x \\in E} v\_{x}.t\_{x}(v\_{x})](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;TSTT%20%3D%20%5Csum_%7Bx%20%5Cin%20E%7D%20v_%7Bx%7D.t_%7Bx%7D%28v_%7Bx%7D%29 "TSTT = \sum_{x \in E} v_{x}.t_{x}(v_{x})")  
+$TSTT = sum_{x in E} v_{x}.t_{x}(v_{x})$
 Shortest Path Travel Time is written as
-![SPTT = \\sum\_{x \\in E} \\hat{v}\_{x}.t\_{x}(v\_{x})](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;SPTT%20%3D%20%5Csum_%7Bx%20%5Cin%20E%7D%20%5Chat%7Bv%7D_%7Bx%7D.t_%7Bx%7D%28v_%7Bx%7D%29 "SPTT = \sum_{x \in E} \hat{v}_{x}.t_{x}(v_{x})")  
-With
-![E](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;E "E")
-the set of edge in the network,
-![v](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;v "v")
-the volume or flow,
-![t](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;t "t")
-the cost,
-![\\hat{v}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Chat%7Bv%7D "\hat{v}")
-the flow estimated by All-or-Nothing assignment.
+$SPTT = sum_{x in E} hat{v}_{x}.t_{x}(v_{x})$
+With $E$ the set of edge in the network, $v$ the volume or flow, $t$ the
+cost, $hat{v}$ the flow estimated by All-or-Nothing assignment.
 
 ### Link-based algorithms
 
 These methods use the descent direction given by AON assignment at each
 iteration. All links are updated simultaneously using descent direction
-and a *step size* parameter
-![\\theta](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Ctheta "\theta").
+and a *step size* parameter $theta$.
 
 Link-based algorithms implemented in `cppRouting` are, in increasing
 order of complexity :
 
--   **Method of Successive Average** (`msa`) :
-    ![\\theta](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Ctheta "\theta")
-    is defined as
-    ![\\frac{1}{it}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Cfrac%7B1%7D%7Bit%7D "\frac{1}{it}")
-    with
-    ![it](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;it "it")
-    the actual number of iteration.  
--   **Frank-Wolfe** (`fw`) :
-    ![\\theta](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Ctheta "\theta")
-    is computed by minimizing the Beckmann function with bisection
-    method.  
--   **Conjugate Frank-Wolfe** (`cfw`) :
-    ![\\theta](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Ctheta "\theta")
-    is computed by minimizing the Beckmann function with bisection
-    method. Descent direction is computed using AON assignment and
-    direction at
-    ![it-1](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;it-1 "it-1").  
--   **Bi-Conjugate Frank-Wolfe** (`bfw`) :
-    ![\\theta](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Ctheta "\theta")
-    is computed by minimizing the Beckmann function with bisection
-    method. Descent direction is computed using AON assignment and
-    directions at
-    ![it-1](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;it-1 "it-1")
-    and
-    ![it-2](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;it-2 "it-2").
+-   **Method of Successive Average** (`msa`) : $theta$ is defined as
+    $frac{1}{it}$ with $it$ the actual number of iteration.
+-   **Frank-Wolfe** (`fw`) : $theta$ is computed by minimizing the
+    Beckmann function with bisection method.
+-   **Conjugate Frank-Wolfe** (`cfw`) : $theta$ is computed by
+    minimizing the Beckmann function with bisection method. Descent
+    direction is computed using AON assignment and direction at $it-1$.
+-   **Bi-Conjugate Frank-Wolfe** (`bfw`) : $theta$ is computed by
+    minimizing the Beckmann function with bisection method. Descent
+    direction is computed using AON assignment and directions at $it-1$
+    and $it-2$.
 
 By going down through that list, we slightly increase computing time in
-each iteration but we will need less iterations to reach a given gap.  
-Let’s equilibrate traffic within our small network, first we need to
+each iteration but we will need less iterations to reach a given gap.
+Let's equilibrate traffic within our small network, first we need to
 construct the network with important parameters : `capacity`, `alpha`
 and `beta`.
 
 **For these algorithms, 99% of computation time is done within AON
 assignment.**
+
 
 ``` r
 sgr <- makegraph(df = net[,c("Init.node", "Term.node", "Free.Flow.Time")], 
@@ -1794,29 +1402,35 @@ traffic <- assign_traffic(Graph = sgr,  from = trips$from, to = trips$to, demand
 traffic$gap
 ```
 
-    ## [1] 0.0000009230227
+```
+## [1] 0.0000009230227
+```
 
 Returned data contains the equilibrated network with the following edge
-attributes :  
-- `ftt` : free-travel time i.e. the initial cost set during graph
-construction,  
-- `cost` : actual travel time at equilibrium,  
+attributes :
+- `ftt` : free-travel time i.e. the initial cost set during graph
+construction,
+- `cost` : actual travel time at equilibrium,
 - `flow` : equilibrated flow.
+
 
 ``` r
 head(traffic$data)
 ```
 
-    ##   from to ftt     cost      flow  capacity alpha beta
-    ## 1    1  2   6 6.000779  4442.890 25900.201  0.15    4
-    ## 2    1  3   4 4.008658  8111.525 23403.473  0.15    4
-    ## 3    2  1   6 6.000829  4511.531 25900.201  0.15    4
-    ## 4    2  6   5 6.545270  5940.297  4958.181  0.15    4
-    ## 5    3  1   4 4.008369  8042.884 23403.473  0.15    4
-    ## 6    3  4   4 4.262114 13910.673 17110.524  0.15    4
+```
+##   from to ftt     cost      flow  capacity alpha beta
+## 1    1  2   6 6.000779  4442.890 25900.201  0.15    4
+## 2    1  3   4 4.008658  8111.525 23403.473  0.15    4
+## 3    2  1   6 6.000829  4511.531 25900.201  0.15    4
+## 4    2  6   5 6.545270  5940.297  4958.181  0.15    4
+## 5    3  1   4 4.008369  8042.884 23403.473  0.15    4
+## 6    3  4   4 4.262114 13910.673 17110.524  0.15    4
+```
 
 Now, we can plot the result with line size varying with road capacity
 and the color with flow.
+
 
 ``` r
 par(mfrow=c(1,2),mar=c(3,0,3,0))
@@ -1839,12 +1453,12 @@ plot(g, edge.width = traffic$data$capacity/2000, edge.arrow.size = 0, main = "Fl
 box(col = "black")
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+![plot of chunk unnamed-chunk-32](figure/unnamed-chunk-32-1.png)
 
 ### Bush-based algorithms
 
 `cppRouting` also propose a bush-based algorithm called **Algorithm B**
-from [R.B. Dial (2006)](https://doi.org/10.1016/j.trb.2006.02.008).  
+from [R.B. Dial (2006)](https://doi.org/10.1016/j.trb.2006.02.008).
 The problem is decomposed into sub-problems, corresponding to each
 origin of the OD matrix, that operate on acyclic sub-networks of the
 original transportation network, called **bushes**. Link flows are
@@ -1855,98 +1469,111 @@ can achieve very precise solution by minimizing relative gap down to
 
 The main steps of the procedure are :
 
-**Initialization**  
+**Initialization**
 - bushes initialization : for each unique origin node of the OD matrix,
 an acyclic sub-network is created by computing shortest path tree from
 root node to all other nodes.
 
-For each bush :  
-- Topological ordering of the nodes  
-- for each node, shortest path and longest path is computed and stored.  
-- given an OD matrix, flows are loaded on each bush using shortest path labels.  
+For each bush :
+- Topological ordering of the nodes - for each node, shortest path and
+longest path is computed and stored. - given an OD matrix, flows are
+loaded on each bush using shortest path labels.
 
-**Iteration**  
-For each bush :  
-- shortest and longest paths are updated  
+**Iteration**
+For each bush :
+- shortest and longest paths are updated
 - bush optimization : the bush is updated by removing unused links (no
 flow on it) and adding links leading to shorter paths. Network costs are
-updated in the same time.  
+updated in the same time.
 - bush equilibration : the flow is shifted from the shortest to the
 longest path using Newton method.
 
-**Evaluation**  
+**Evaluation**
 We compute AON assignment and relative gap.
 
 For detailed explanations of Algorithm B, please see this course ([part
-1](https://cistup.iisc.ac.in/tarun/CE_272/Lecture_23.pdf), [part
-2](https://cistup.iisc.ac.in/tarun/CE_272/Lecture_24.pdf)).
+1](http://civil.iisc.ac.in/~tarunr/CE_272/Lecture_23.pdf), [part
+2](http://civil.iisc.ac.in/~tarunr/CE_272/Lecture_24.pdf)).
 
 **Important note : computation time for algorithm-B is depending of the
 number of origin node AND AON assignment.**
 
 Algorithm B is used by setting `dial` to `algorithm` argument :
 
+
 ``` r
 traffic <- assign_traffic(Graph = sgr,  from = trips$from, to = trips$to, demand = trips$demand, 
                           max_gap = 1e-6, algorithm = "dial", verbose = TRUE)
 ```
 
-    ## Bushes initialization...
-    ## Iterating...
-    ## iteration 1 : 0.05019
-    ## iteration 2 : 0.0152742
-    ## iteration 3 : 0.00363109
-    ## iteration 4 : 0.000592523
-    ## iteration 5 : 0.000106401
-    ## iteration 6 : 3.00525e-05
-    ## iteration 7 : 3.5758e-05
-    ## iteration 8 : 1.21886e-05
-    ## iteration 9 : 6.67853e-06
-    ## iteration 10 : 1.659e-06
-    ## iteration 11 : 2.34866e-07
+```
+## Bushes initialization...
+## Iterating...
+## iteration 1 : 0.05019
+## iteration 2 : 0.0152742
+## iteration 3 : 0.00363109
+## iteration 4 : 0.000592523
+## iteration 5 : 0.000106401
+## iteration 6 : 3.00525e-05
+## iteration 7 : 3.5758e-05
+## iteration 8 : 1.21886e-05
+## iteration 9 : 6.67853e-06
+## iteration 10 : 1.659e-06
+## iteration 11 : 2.34866e-07
+```
 
 ``` r
 traffic$gap
 ```
 
-    ## [1] 0.000000234866
+```
+## [1] 0.000000234866
+```
 
 ### Performance comparison
 
-Now, let’s measure performance of Traffic assignment algorithms on a
+Now, let's measure performance of Traffic assignment algorithms on a
 larger road network. We use Chicago network, composed of 12982 nodes and
 39018 edges.
+
 
 ``` r
 net <- read.csv("chicagoregional_net.csv")
 head(net)
 ```
 
-    ##   from    to capacity length ftime    B power speed toll type
-    ## 1    1 10293   100000   0.45     0 0.15     4    25    0    3
-    ## 2    2 10294   100000   0.50     0 0.15     4    25    0    3
-    ## 3    3 10295   100000   0.39     0 0.15     4    25    0    3
-    ## 4    4 10296   100000   0.58     0 0.15     4    25    0    3
-    ## 5    5 10297   100000   0.50     0 0.15     4    25    0    3
-    ## 6    6 10298   100000   0.58     0 0.15     4    25    0    3
+```
+##   from    to capacity length ftime    B power speed toll type
+## 1    1 10293   100000   0.45     0 0.15     4    25    0    3
+## 2    2 10294   100000   0.50     0 0.15     4    25    0    3
+## 3    3 10295   100000   0.39     0 0.15     4    25    0    3
+## 4    4 10296   100000   0.58     0 0.15     4    25    0    3
+## 5    5 10297   100000   0.50     0 0.15     4    25    0    3
+## 6    6 10298   100000   0.58     0 0.15     4    25    0    3
+```
 
 OD matrix contains 2,297,945 trips.
+
 
 ``` r
 trips <- read.csv("chicagoregional_trips.csv")
 head(trips)
 ```
 
-    ##   from to demand
-    ## 1    1  1  28.94
-    ## 2    1  2  16.58
-    ## 3    1  3   2.01
-    ## 4    1  4  13.99
-    ## 5    1  5   4.90
-    ## 6    1  6   5.10
+```
+##   from to demand
+## 1    1  1  28.94
+## 2    1  2  16.58
+## 3    1  3   2.01
+## 4    1  4  13.99
+## 5    1  5   4.90
+## 6    1  6   5.10
+```
 
-Since All-or-Nothing algorithm will be called multiple times, we have to
-choose the fastest AON assignment algorithm.
+Since All-or-Nothing algorithm will be run multiple times, we have to
+choose the fastest AON assignment algorithm. Let's benchmark `d`, `bi`
+and `cch` methods.
+
 
 ``` r
 # Construct graph with link attributes
@@ -1969,18 +1596,19 @@ microbenchmark(
 )
 ```
 
-    ## Unit: seconds
-    ##        expr       min        lq      mean    median        uq       max neval
-    ##    pairwise 75.414786 75.414786 75.414786 75.414786 75.414786 75.414786     1
-    ##  matrixlike  1.411425  1.411425  1.411425  1.411425  1.411425  1.411425     1
-    ##         cch  1.901310  1.901310  1.901310  1.901310  1.901310  1.901310     1
+```
+## Unit: seconds
+##        expr       min        lq      mean    median        uq       max neval
+##    pairwise 55.368205 55.368205 55.368205 55.368205 55.368205 55.368205     1
+##  matrixlike  1.092179  1.092179  1.092179  1.092179  1.092179  1.092179     1
+##         cch  1.909323  1.909323  1.909323  1.909323  1.909323  1.909323     1
+```
 
 By setting matrix-like AON calculation, we speed up computation time by
-a factor of 50 for link-based methods.  
-On this network, CCH is slightly slower than matrix-like Dijkstra
-(**1.9 s** vs **1.2 s**): its main advantage appears in `assign_traffic`, where the
-topology is contracted once and only re-customized (about 0.04 s) whenever
-edge weights change during congestion iterations.
+a factor of 50 for link-based methods.
+On this network, CCH is slightly slower than matrix-like Dijkstra (**1.9
+s** vs **1.2 s**) due to its small size (~10 000 nodes).
+
 
 ``` r
 sgr <- makegraph(df = net[,c("from", "to", "ftime")], directed = TRUE,
@@ -2033,150 +1661,80 @@ p <- ggplot(dfp, aes(x = time, y = gap, colour = algo))+
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-35-1.png)<!-- -->
+![plot of chunk unnamed-chunk-37](figure/unnamed-chunk-37-1.png)
 
 Algorithm B could achieve very small gap within an reasonable amount of
-time, while link-based methods seems to converge much more slowly.  
+time, while link-based methods seems to converge much more slowly.
 For achieving highly precise solutions, algorithm B should be
 implemented. However, algorithm B generally use more memory than
 link-based methods, depending network size and OD matrix. On the other
 hand, link-based method may have a higher benefit through parallel
 computing since computation time is mainly due to AON assignment.
 
-**Note : network can be contracted “on-the-fly” at each iteration to
-speed-up AON calculation, by setting `cphast` or `cbi` in `aon_method`
-argument.**
-
 # Algorithm compatibility
 
 Here is a table summarizing `cppRouting` functions compatibility with
-network nature (contracted, simplified, normal).
+network nature (contracted (CH or CCH), simplified, normal).
 
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
-<thead>
-<tr>
-<th style="text-align:left;">
-Functions
-</th>
-<th style="text-align:left;">
-contracted
-</th>
-<th style="text-align:left;">
-simplified
-</th>
-</tr>
-</thead>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Functions </th>
+   <th style="text-align:left;"> contracted </th>
+   <th style="text-align:left;"> simplified </th>
+  </tr>
+ </thead>
 <tbody>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-assign_traffic
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_aon
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_detour
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_distance_matrix - one weight
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_distance_matrix - two weights
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_distance_pair - one weight
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_distance_pair - two weights
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_isochrone
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_multi_paths
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_path_pair
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> assign_traffic </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_aon </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_detour </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_distance_matrix - one weight </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_distance_matrix - two weights </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_distance_pair - one weight </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_distance_pair - two weights </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_isochrone </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_multi_paths </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_path_pair </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
 </tbody>
 </table>
 
@@ -2186,129 +1744,86 @@ Now a table summarizing `cppRouting` functions compatibility with
 parallel computing.
 
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
-<thead>
-<tr>
-<th style="text-align:left;">
-Functions
-</th>
-<th style="text-align:left;">
-multithreaded
-</th>
-</tr>
-</thead>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Functions </th>
+   <th style="text-align:left;"> multithreaded </th>
+  </tr>
+ </thead>
 <tbody>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-makegraph
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-cpp_contract
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-cpp_simplify
-</td>
-<td style="text-align:left;background-color: red !important;">
-no
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-assign_traffic - link-based
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-assign_traffic - bush-based
-</td>
-<td style="text-align:left;background-color: red !important;">
-partly
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_aon
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_detour
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_distance_matrix
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_distance_pair
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_isochrone
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_multi_paths
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;font-weight: bold;">
-get_path_pair
-</td>
-<td style="text-align:left;background-color: green !important;">
-yes
-</td>
-</tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> makegraph </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> cpp_extract </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> cpp_contract </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> cpp_customize </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> cpp_simplify </td>
+   <td style="text-align:left;background-color: red !important;"> no </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> assign_traffic - link-based </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> assign_traffic - bush-based </td>
+   <td style="text-align:left;background-color: red !important;"> partly </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_aon </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_detour </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_distance_matrix </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_distance_pair </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_isochrone </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_multi_paths </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;font-weight: bold;"> get_path_pair </td>
+   <td style="text-align:left;background-color: green !important;"> yes </td>
+  </tr>
 </tbody>
 </table>
 
 # Applications
 
-**Except application 4, all indicators are calculated at the country
-scale but for the limited `R`’s ability to plot large shapefile, only
-one region is mapped.**
+**Except applications 4 and 5, all indicators are calculated at the
+country scale but for the limited `R`'s ability to plot large shapefile,
+only one region is mapped.**
 
 ## Application 1 : Calculate Two Step Floating Catchment Areas (2SFCA) of general practitioners in France
 
 2SFCA method is explained here :
 <https://en.wikipedia.org/wiki/Two-step_floating_catchment_area_method>
 
-**First step**  
+**First step**
 Isochrones are calculated with the `cppRouting` function `get_isochrone`
+
 
 ``` r
 #Isochrone around doctor locations with time limit of 15 minutes
@@ -2329,6 +1844,7 @@ df$ratio<-df$NB_D201/df$pop
 
 **Second step**
 
+
 ``` r
 #Isochrone around each commune with time limit of 15 minutes (few seconds to compute)
 iso2<-get_isochrone(graph,
@@ -2344,6 +1860,7 @@ df2<-df2 %>% group_by(origin) %>%
 
 **Plot the map for Bourgogne-Franche-Comte region**
 
+
 ``` r
 #Joining commune IDs to nodes
 df2<-left_join(df2,ndcom[,c("id_noeud","com")],by=c("origin"="id_noeud"))
@@ -2351,22 +1868,23 @@ df2<-left_join(df2,ndcom[,c("id_noeud","com")],by=c("origin"="id_noeud"))
 com<-left_join(com,df2[,c("com","sfca")],by=c("INSEE_COM"="com"))
 #Plot for one region
 p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) + 
-  tm_fill(col = "sfca",style="cont")+
+  tm_fill(col = "sfca",style="cont", lwd=0)+
   tm_layout(main.title="2SFCA applied to general practitioners",legend.outside=TRUE)
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-40-1.png)<!-- -->
+![plot of chunk unnamed-chunk-42](figure/unnamed-chunk-42-1.png)
 
 ## Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 
-**Shortest travel time matrix**  
+**Shortest travel time matrix**
 The shortest travel time is computed with the `cppRouting` function
 `get_distance_matrix`. In order to compute multiple distances from one
 source, original uni-directional Dijkstra algorithm is ran without early
-stopping.  
+stopping.
 We compute travel time from all commune nodes to all maternity ward
-nodes (i.e \~36000\*400 distances).
+nodes (i.e ~36000*400 distances).
+
 
 ``` r
 #Distance matrix on contracted graph
@@ -2385,25 +1903,27 @@ com<-left_join(com,dists2[,c("com","mindist")],by=c("INSEE_COM"="com"))
 **Plot the map of minimum travel time in Bourgogne-Franche-Comte
 region**
 
+
 ``` r
 p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) + 
-  tm_fill(col = "mindist",style="cont",palette="Greens",title="Minutes")+
+  tm_fill(col = "mindist",style="cont",palette="Greens",title="Minutes", lwd=0)+
   tm_layout(main.title="Travel time to the closest maternity ward",legend.outside=T)
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-42-1.png)<!-- -->
+![plot of chunk unnamed-chunk-44](figure/unnamed-chunk-44-1.png)
 
 ## Application 3 : Calculate average commuting time to go to job in France
 
-Commuting data from national census is composed of 968794 unique pairs
+Commuting data from national census is composed of 1003647 unique pairs
 of origin - destination locations (home municipality, job municipality).
 Using other `R` packages like `igraph` or `dodgr`, we would have to
 calculate the whole matrix between all communes (36000 x 36000). We
 would end with a 10Gb matrix whereas we only need 0.075% of the result
-(968794/(36000 x 36000)).  
+(1003647/(36000 x 36000)).
 So this example illustrate the advantage of calculating distance by
 *pair*.
+
 
 ``` r
 #Merge node to communes
@@ -2423,32 +1943,30 @@ traveltime<-traveltime %>% group_by(CODGEO) %>% summarise(time=weighted.mean(dis
 **Plot the map of average travel time of Bourgogne-Franche-Comte
 inhabitants**
 
+
 ``` r
 #Merge to shapefile
-com<-left_join(com,traveltime,by=c("INSEE_COM"="CODGEO"))
-
-p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
-  tm_fill(col = "time",style="quantile",n=5,title="Minutes",palette="Reds")+
+com_time <- left_join(com, traveltime, by = c("INSEE_COM"="CODGEO"))
+p <- tm_shape(com_time[com_time$NOM_REG=="BOURGOGNE-FRANCHE-COMTE", ]) +
+  tm_fill(col = "time",style="quantile",n=5,title="Minutes",palette="Reds", lwd=0)+
   tm_layout(main.title="Average travel time",legend.outside=TRUE)
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-44-1.png)<!-- -->
+![plot of chunk unnamed-chunk-46](figure/unnamed-chunk-46-1.png)
 
 ## Application 4 : Calculate the flow of people crossing each municipality in the context of commuting in Bourgogne-Franche-Comte region
 
 First, we must determine in which commune each node is located.
 
+
 ``` r
 #Convert nodes coordinates to spatial points
 pts<-st_as_sf(coord,coords = c("X","Y"),crs=2154)
 st_crs(com)<-st_crs(pts)
-```
-
-    ## Warning: st_crs<- : replacing crs does not reproject data; use st_transform for
-    ## that
-
-``` r
+#One row per commune: the app 1/2 joins may have duplicated communes sharing
+#the same nearest node (node_commune.csv is not unique by node)
+com<-com[!duplicated(com$INSEE_COM),]
 #Spatial join commune ID to each node
 spjoin<-st_join(pts,com[,"INSEE_COM"])
 st_geometry(spjoin)<-NULL
@@ -2469,6 +1987,7 @@ shortPath<-left_join(shortPath,spjoin,by=c("node"="ID"))
 If a commuter crosses multiple nodes in a municipality, we count it only
 once.
 
+
 ``` r
 #Remove duplicated 
 shortPath<-shortPath[!duplicated(shortPath[,c("from","to","INSEE_COM")]),]
@@ -2482,134 +2001,136 @@ shortPath<-left_join(shortPath,
 shortPath<-shortPath %>% group_by(INSEE_COM) %>% summarise(flow=sum(flux))
 ```
 
-**Plot the flow of people crossing Bourgogne-Franche-Comte’s communes **
+**Plot the flow of people crossing Bourgogne-Franche-Comte's communes**
+
 
 ``` r
 #Merge to shapefile
 com<-left_join(com,shortPath,by="INSEE_COM")
 
 p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) + 
-  tm_fill(col = "flow",style="quantile",n=10,palette="Blues")+
+  tm_fill(col = "flow",style="quantile",n=10,palette="Blues", lwd=0)+
   tm_layout(main.title="Commuters flow",legend.outside=TRUE)
 p
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-47-1.png)<!-- -->
+![plot of chunk unnamed-chunk-49](figure/unnamed-chunk-49-1.png)
 
-# Benchmark with other R packages
+## Application 5 : Estimate the commuter traffic at user equilibrium in Bourgogne-Franche-Comte
 
-To show the efficiency of `cppRouting`, we can make some benchmarking
-with the famous R package `igraph`, and the `dodgr` package. Estimation
-of the User Equilibrium cannot be compared because of the absence of
-this kind of algorithm within `R` landscape (to my knowledge).
+In application 4, every commuter followed the shortest path, whatever
+the volume of people on it. In this last application, we estimate the
+traffic at **user equilibrium**. `assign_traffic` solves this problem
+with the bi-conjugate Frank-Wolfe algorithm (`"bfw"`). Each Frank-Wolfe
+iteration requires an All-or-Nothing assignment, and edge weights change
+at every iteration, so we use a customizable contraction hierarchy
+(`aon_method = "cch"`): the topology is prepared once with
+`cpp_contract`, and only the edge costs are updated at each iteration,
+which is the fastest option for this use case (see the traffic
+assignment section).
 
-**Distance matrix : one core**
+We work on the sub-network of the BFC region (arcs whose two endpoints
+are located in the region). This approximation means that
+origin-destination pairs whose real path exits the region are routed
+within the sub-network instead. The `capacity` parameter is set to
+1,800, a standard value for a single lane in France; the commuter flows
+are expressed in people, so this assignment should be read as a relative
+congestion model rather than a strict veh/hour calibration.
+
 
 ``` r
-library(igraph)
-library(dodgr)
-#Sampling 1000 random origin/destination nodes (1000000 distances to compute)
-set.seed(10)
-origin<-sample(unique(roads$from),1000,replace = F)
-destination<-sample(unique(roads$from),1000,replace = F)
+#Nodes located in the region (node ids are 0-based, aligned with the road file)
+nodecom  <- spjoin$INSEE_COM
+bfc_nodes <- which(nodecom %in% comBourg) - 1L
+#Sub-network: keep only arcs whose two endpoints are in the region
+keep_e <- (as.integer(roads$from) %in% bfc_nodes) & (as.integer(roads$to) %in% bfc_nodes)
+sub_road <- roads[keep_e, ]
+old_ids <- sort(unique(c(as.integer(sub_road$from), as.integer(sub_road$to))))
+#Renumber the nodes from 0
+idmap <- setNames(as.character(seq_along(old_ids) - 1L), as.character(old_ids))
+sub_road$from <- idmap[as.character(sub_road$from)]
+sub_road$to   <- idmap[as.character(sub_road$to)]
+sub_coord <- coord[match(old_ids, as.integer(coord$ID)), ]
+sub_coord$ID <- as.character(seq_along(old_ids) - 1L)
+#Keep only origin-destination pairs whose two endpoints are in the sub-network
+od <- cmt[as.character(cmt$node1) %in% old_ids & as.character(cmt$node2) %in% old_ids, ]
+od$node1 <- idmap[as.character(od$node1)]
+od$node2 <- idmap[as.character(od$node2)]
+cat(sprintf("Sub-network: %d nodes, %d arcs - %d origin-destination pairsn",
+            length(old_ids), nrow(sub_road), nrow(od)))
+```
+
+```
+## Sub-network: 64310 nodes, 179340 arcs - 47628 origin-destination pairs
+```
+
+
+``` r
+#Traffic assignment needs the BPR parameters, defined at graph construction
+RcppParallel::setThreadOptions(numThreads = parallel::detectCores() - 1) #the AON step is multithreaded
+g_ue <- makegraph(sub_road, coords = sub_coord, directed = TRUE,
+                  capacity = 1800, alpha = 0.15, beta = 4)
+cch_ue <- cpp_contract(g_ue, customizable = TRUE) #topology prepared once
+```
+
+```
+## Computing elimination order...
+## Eliminating nodes...
 ```
 
 ``` r
-RcppParallel::setThreadOptions(1)
-#igraph graph
-graph_igraph<-graph_from_data_frame(roads,directed = TRUE)
-
-#dodgr graph
-
-roads2<-roads
-colnames(roads2)[3]<-"dist"
-
-#benchmark
-microbenchmark(igraph=test_igraph<-distances(graph_igraph,origin,to=destination,weights = E(graph_igraph)$weight,mode="out"),
-               dodgr=test_dodgr<-dodgr_dists(graph=roads2,from=origin,to=destination),
-               cpprouting=test_cpp<-get_distance_matrix(graph,origin,destination),
-               contr_mch=test_mch<-get_distance_matrix(graph3,origin,destination,algorithm = "mch"),
-               contr_phast=test_phast<-get_distance_matrix(graph3,origin,destination,algorithm = "phast"),
-               times=1,
-               unit = 's')
+ue <- assign_traffic(g_ue, from = od$node1, to = od$node2, demand = od$flux,
+                     algorithm = "bfw", aon_method = "cch", cch = cch_ue,
+                     max_gap = 0.001, verbose = FALSE)
+cat(sprintf("Gap achieved: %.5f (%d iterations)n", ue$gap, ue$it))
 ```
 
-    ## Unit: seconds
-    ##         expr       min        lq      mean    median        uq       max neval
-    ##       igraph 64.924762 64.924762 64.924762 64.924762 64.924762 64.924762     1
-    ##        dodgr 79.129622 79.129622 79.129622 79.129622 79.129622 79.129622     1
-    ##   cpprouting 28.453509 28.453509 28.453509 28.453509 28.453509 28.453509     1
-    ##    contr_mch  0.637912  0.637912  0.637912  0.637912  0.637912  0.637912     1
-    ##  contr_phast  4.360011  4.360011  4.360011  4.360011  4.360011  4.360011     1
+```
+## Gap achieved: 0.00100 (635 iterations)
+```
 
-Even if we add the preprocessing time (i.e. 14s) to the query time, the
-whole process of contraction hierarchies is still faster.
+Each row of `ue$data` is an arc, with its free-flow time (`ftt`), its
+equilibrium cost (`cost`) and its equilibrated flow (`flow`). To
+visualize the result, we map each arc on the segment between the
+coordinates of its two nodes, and we plot every arc with a positive
+flow: both the line thickness and the color intensity are proportional
+to the flow (with a log scale for the color, to make the hubs stand out
+from the thin rural mesh).
 
-**Ouput**
 
 ``` r
-head(cbind(test_igraph[,1],test_dodgr[,1],test_cpp[,1],test_mch[,1],test_phast[,1]))
+#Coordinates of the two endpoints of each arc
+cof <- sub_coord; colnames(cof) <- c("ID_f","X_f","Y_f")
+cot <- sub_coord; colnames(cot) <- c("ID_t","X_t","Y_t")
+ue_df <- left_join(ue$data, cof, by = c("from" = "ID_f"))
+ue_df <- left_join(ue_df, cot, by = c("to" = "ID_t"))
+ue_df <- ue_df[!is.na(ue_df$X_f) & !is.na(ue_df$X_t) & ue_df$flow > 0, ]
+ue_df$geom <- mapply(function(a,b,c,dd) st_linestring(rbind(c(a,b), c(c,dd))),
+                     ue_df$X_f, ue_df$Y_f, ue_df$X_t, ue_df$Y_t, SIMPLIFY = FALSE)
+ue_df <- st_sf(ue_df, crs = 2154)
+com_bfc <- com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE", ]
+bbox <- st_bbox(com_bfc$geometry)
+p <- ggplot() +
+  geom_sf(data = com_bfc, fill = "white", color = "grey85", linewidth = 0.2) +
+  geom_sf(data = ue_df, aes(size = flow, color = flow), alpha = 0.9) +
+  scale_size_continuous(range = c(0.2, 2.5), trans = "sqrt", name = "Commuter flow (people)") +
+  scale_color_gradient(low="yellow", high = "red", trans = "log10", name = NULL, guide = "none") +
+  coord_sf(xlim = bbox[c("xmin","xmax")], ylim = bbox[c("ymin","ymax")]) +
+  theme_void()
+p
 ```
 
-    ##            [,1]     [,2]     [,3]     [,4]     [,5]
-    ## 151604 442.6753 442.6753 442.6753 442.6753 442.6753
-    ## 111317 415.5493 415.6265 415.5493 415.5493 415.5493
-    ## 212122 344.0450 344.0450 344.0450 344.0450 344.0450
-    ## 215162 340.6700 340.6700 340.6700 340.6700 340.6700
-    ## 159720 385.1082 385.1082 385.1082 385.1082 385.1082
-    ## 168762 513.4273 513.5044 513.4273 513.4273 513.4273
+![plot of chunk unnamed-chunk-52](figure/unnamed-chunk-52-1.png)
 
-**All-or-Nothing assignment : sparse OD matrix**
-
-``` r
-#generate random flows
-flows <- sample(10:1000, 1000, replace = TRUE)
-flows2 <- diag(flows, nrow = 1000, ncol = 1000)
-
-microbenchmark(dodgr=test_dodgr<-dodgr_flows_aggregate(graph = roads2, from = origin, to = destination, flows = flows2, contract = FALSE, norm_sums = FALSE, tol = 0),
-               cpprouting=test_cpp <- get_aon(graph, from = origin, to = destination, demand = flows, algorithm = "bi"),
-               cpprouting_ch=test_ch <- get_aon(graph3, from = origin, to = destination, demand = flows, algorithm = "bi"),
-               times=1,
-               unit = 's')
-```
-
-    ## Unit: seconds
-    ##           expr        min         lq       mean     median         uq
-    ##          dodgr 39.9192510 39.9192510 39.9192510 39.9192510 39.9192510
-    ##     cpprouting 11.6453517 11.6453517 11.6453517 11.6453517 11.6453517
-    ##  cpprouting_ch  0.6071558  0.6071558  0.6071558  0.6071558  0.6071558
-    ##         max neval
-    ##  39.9192510     1
-    ##  11.6453517     1
-    ##   0.6071558     1
-
-**All-or-Nothing assignment : dense OD matrix**
-
-``` r
-#generate random flows
-flows <- sample(10:1000, 1000000, replace = TRUE)
-flows2 <- matrix(flows, nrow = 1000, ncol = 1000)
-df_flows <- as.data.frame(flows2)
-colnames(df_flows) <- destination
-df_flows$from <- origin
-df_flows <- reshape2::melt(df_flows, id.vars = "from", variable.name = "to")
-
-microbenchmark(dodgr=test_dodgr<-dodgr_flows_aggregate(graph = roads2, from = origin, to = destination, flows = flows2, contract = FALSE, norm_sums = FALSE, tol = 0),
-               cpprouting=test_cpp <- get_aon(graph, from = df_flows$from, to = df_flows$to, demand = df_flows$value, algorithm = "d"),
-               cpprouting_ch=test_ch <- get_aon(graph3, from = df_flows$from, to = df_flows$to, demand = df_flows$value, algorithm = "phast"),
-               times=1,
-               unit = 's')
-```
-
-    ## Unit: seconds
-    ##           expr      min       lq     mean   median       uq      max neval
-    ##          dodgr 98.68688 98.68688 98.68688 98.68688 98.68688 98.68688     1
-    ##     cpprouting 31.16458 31.16458 31.16458 31.16458 31.16458 31.16458     1
-    ##  cpprouting_ch  5.91544  5.91544  5.91544  5.91544  5.91544  5.91544     1
+The resulting picture matches the expected commuter structure of the
+region: the traffic concentrates on the rings around the urban cores
+(Dijon, Besançon, Dole, Auxerre, Chalon-sur-Saône...), with thick radial
+roads and empty corridors between the rural areas.
 
 # Citation
 
-Please don’t forget to cite `cppRouting` package in your work !
+Please don't forget to cite `cppRouting` package in your work !
+
 
 ``` r
 citation("cppRouting")

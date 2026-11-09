@@ -312,13 +312,13 @@ bool CGraph::stall(int &node, DVec &distances, G &graph){
 
 DVec CGraph::routing_dvec(IVec dep, IVec arr, int algo){
   distancePairC dijfunc(this, dep, arr, algo);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
   return dijfunc.m_result;
 }
 
 vector<SVec> CGraph::routing_svec(IVec dep, IVec arr, IVec keep, int algo){
   pathPairC dijfunc(this, dep, arr, keep, algo);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
   return dijfunc.m_result;
 }
 

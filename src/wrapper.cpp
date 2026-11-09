@@ -508,7 +508,7 @@ Rcpp::NumericVector cppmataddmulti(std::vector<int> &gfrom, std::vector<int> &gt
   Graph network(gfrom, gto, gw, aux_flat, n_aux, nb);
 
   distanceMatAdd dijfunc(&network, dep, arr);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
 
   Rcpp::NumericVector result = Rcpp::wrap(dijfunc.m_result);
   result.attr("dim") = Rcpp::IntegerVector::create((int)dep.size(), (int)arr.size(), n_aux);
@@ -555,7 +555,7 @@ Rcpp::NumericMatrix cppdistaddmulti(std::vector<int> &gfrom, std::vector<int> &g
   }
 
   distancePairAdd dijfunc(&network, dep, arr, algo);
-  parallelFor(0, dep.size(), dijfunc, 1, 12);
+  parallelFor(0, dep.size(), dijfunc);
 
   Rcpp::NumericMatrix result(dep.size(), n_aux);
   for (int col = 0; col < n_aux; col++){
@@ -617,7 +617,7 @@ Rcpp::NumericMatrix cppdistaddCmulti(std::vector<int> &orfrom, std::vector<int> 
   networkc.addr = dijfunc.m_result2;
 
   distancePairCAdd distfunc(&networkc, dep, arr);
-  parallelFor(0, dep.size(), distfunc, 1, 12);
+  parallelFor(0, dep.size(), distfunc);
 
   Rcpp::NumericMatrix result(dep.size(), n_aux);
   for (int col = 0; col < n_aux; col++){
@@ -680,7 +680,7 @@ Rcpp::NumericVector cppmataddCmulti(std::vector<int> &orfrom, std::vector<int> &
   networkc.addr = dijfunc.m_result2;
 
   phastCAdd distfunc(&networkc, dep, arr);
-  parallelFor(0, dep.size(), distfunc, 1, 12);
+  parallelFor(0, dep.size(), distfunc);
 
   Rcpp::NumericVector result = Rcpp::wrap(distfunc.m_result);
   result.attr("dim") = Rcpp::IntegerVector::create((int)dep.size(), (int)arr.size(), n_aux);
