@@ -13,7 +13,7 @@ A data.frame with columns \code{highway}, \code{clazz} and \code{speed}, suitabl
 \description{
 Highway tag values kept for foot routing, with a class id and a flat assumed walking pace (km/h,
 not a legal speed limit -- \code{use_maxspeed} has no effect for this mode, see
-\link{graph_from_osmpbf}). Excludes \code{motorway}/\code{trunk} (+ \code{_link}), which are not
+\code{graph_from_osmpbf}). Excludes \code{motorway}/\code{trunk} (+ \code{_link}), which are not
 walkable; includes \code{footway}/\code{path}/\code{pedestrian}/\code{steps} in addition to ordinary
 roads, since pedestrians can generally use any street. \code{clazz} ids reuse \link{osm_car_profile}'s
 values for highway types shared with that profile, so the same real-world road has the same class id

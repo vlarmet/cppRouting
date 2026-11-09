@@ -86,7 +86,7 @@ an unrecognized element name raises an error immediately (rather than silently k
 is what a typo'd list element would otherwise do). Recognized elements:
 \itemize{
   \item \code{mode}: one of \code{"car"} (default), \code{"foot"}, \code{"bicycle"} or \code{"hgv"} --
-  which access-tag/oneway resolution rules to apply (see \link{graph_from_osmpbf}'s \code{@details} for
+  which access-tag/oneway resolution rules to apply (see \code{graph_from_osmpbf}'s \code{@details} for
   the exact tags checked per mode). If \code{profile} is left \code{NULL}, also selects the matching
   default profile (\link{osm_car_profile}/\link{osm_foot_profile}/\link{osm_bike_profile}/
   \link{osm_hgv_profile}).
