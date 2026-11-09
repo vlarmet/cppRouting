@@ -101,7 +101,7 @@ let's define what a graph is.
 A graph is commonly used to represent a network, which is composed of
 vertices connected by edges.
 
-![](https://www.researchgate.net/profile/Hai-Jun-Zhou/publication/300370830/figure/fig1/AS:613866690080787@1523368632234/An-graph-with-N-12-vertices-and-M-21-weighted-edges-In-this-example-the-two-weights.png)
+![](https://www.researchgate.net/profile/Hai-Jun-Zhou/publication/300370830/README_files/figure-gfm/fig1/AS:613866690080787@1523368632234/An-graph-with-N-12-vertices-and-M-21-weighted-edges-In-this-example-the-two-weights.png)
 
 In `cppRouting`, an edge has at least three attributes : vertice's ID
 from which it start, vertice's ID from which it end and a weight
@@ -452,7 +452,7 @@ p  <-  ggplot() +
 p
 ```
 
-![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png)
+![plot of chunk unnamed-chunk-9](README_files/figure-gfm/unnamed-chunk-9-1.png)
 
 ## Compute possible detours within a fixed additional cost
 
@@ -508,7 +508,7 @@ p <- ggplot() +
 p
 ```
 
-![plot of chunk unnamed-chunk-10](figure/unnamed-chunk-10-1.png)
+![plot of chunk unnamed-chunk-10](README_files/figure-gfm/unnamed-chunk-10-1.png)
 
 ## Contraction hierarchies (CH)
 
@@ -792,7 +792,7 @@ of contraction hierarchies on different graphs :
 Here are the plots (in log-log) of query time improvement factor of *CH*
 (solid lines) and *CCH* (dotted lines) algorithms compared to NBA :
 
-![plot of chunk unnamed-chunk-16](figure/unnamed-chunk-16-1.png)
+![plot of chunk unnamed-chunk-16](README_files/figure-gfm/unnamed-chunk-16-1.png)
 
 As we can see on the plot, the larger is the graph, the higher is the
 benefit of using contraction hierarchies (CH). For OSM Europe, query
@@ -951,7 +951,7 @@ length).
 Here are the plots (in log-log) of query time improvement factor of
 *PHAST*, *many to many CH* and *CCH* compared to Dijkstra algorithm :
 
-![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-18-1.png)
+![plot of chunk unnamed-chunk-18](README_files/figure-gfm/unnamed-chunk-18-1.png)
 
 Benefits are less important than *one-to-one* queries but still
 interesting. Customizable contraction hierarchies (CCH) seems better
@@ -969,7 +969,7 @@ unequal), with *|S|/|T|* the number of sources divided by the number
 of targets. The matrix size is kept constant: *|S| x |T| =
 1,048,576*.
 
-![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-19-1.png)
+![plot of chunk unnamed-chunk-19](README_files/figure-gfm/unnamed-chunk-19-1.png)
 
 Note that this plot is the same for *|T| / |S|* (the query times
 were measured to be symmetric, within 1-2 %, for both mirror shapes on
@@ -1026,7 +1026,7 @@ p1 <- ggplot(data = res, aes(x = n_edges, y = travel_time)) +
 p1
 ```
 
-![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20-1.png)
+![plot of chunk unnamed-chunk-20](README_files/figure-gfm/unnamed-chunk-20-1.png)
 
 ``` r
 # Scatter plot 2: travel time vs path length
@@ -1036,7 +1036,7 @@ p2 <- ggplot(data = res, aes(x = length, y = travel_time)) +
 p2
 ```
 
-![plot of chunk unnamed-chunk-20](figure/unnamed-chunk-20-2.png)
+![plot of chunk unnamed-chunk-20](README_files/figure-gfm/unnamed-chunk-20-2.png)
 
 Note that this functionality work for **contracted graphs (CH and CCH)**
 as well.
@@ -1092,7 +1092,7 @@ plot(igr2,edge.arrow.size=.3,edge.label=E(igr2)$dist,main="One iteration - keepi
 box(col="black")
 ```
 
-![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-21-1.png)
+![plot of chunk unnamed-chunk-21](README_files/figure-gfm/unnamed-chunk-21-1.png)
 
 Here, junction nodes are `e`, `h`, `d`, `k`, `l`, `i` and `m`. So `b`,
 `c`, `f` and `n` have been contracted in the first step of the function.
@@ -1124,7 +1124,7 @@ plot(igr4,edge.arrow.size=.3,edge.label=E(igr4)$dist,main="Second iteration - re
 box(col="black")
 ```
 
-![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22-1.png)
+![plot of chunk unnamed-chunk-22](README_files/figure-gfm/unnamed-chunk-22-1.png)
 
 #### French road network simplification
 
@@ -1271,7 +1271,7 @@ plot(g, edge.width = net$Capacity/2000, edge.arrow.size = 0, main = "AON assignm
 box(col = "black")
 ```
 
-![plot of chunk unnamed-chunk-29](figure/unnamed-chunk-29-1.png)
+![plot of chunk unnamed-chunk-29](README_files/figure-gfm/unnamed-chunk-29-1.png)
 
 `get_aon` work also for **contracted networks (CH and CCH)**.
 
@@ -1453,7 +1453,7 @@ plot(g, edge.width = traffic$data$capacity/2000, edge.arrow.size = 0, main = "Fl
 box(col = "black")
 ```
 
-![plot of chunk unnamed-chunk-32](figure/unnamed-chunk-32-1.png)
+![plot of chunk unnamed-chunk-32](README_files/figure-gfm/unnamed-chunk-32-1.png)
 
 ### Bush-based algorithms
 
@@ -1661,7 +1661,7 @@ p <- ggplot(dfp, aes(x = time, y = gap, colour = algo))+
 p
 ```
 
-![plot of chunk unnamed-chunk-37](figure/unnamed-chunk-37-1.png)
+![plot of chunk unnamed-chunk-37](README_files/figure-gfm/unnamed-chunk-37-1.png)
 
 Algorithm B could achieve very small gap within an reasonable amount of
 time, while link-based methods seems to converge much more slowly.
@@ -1873,7 +1873,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![plot of chunk unnamed-chunk-42](figure/unnamed-chunk-42-1.png)
+![plot of chunk unnamed-chunk-42](README_files/figure-gfm/unnamed-chunk-42-1.png)
 
 ## Application 2 : Calculate the minimum travel time to the closest maternity ward in France
 
@@ -1911,7 +1911,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![plot of chunk unnamed-chunk-44](figure/unnamed-chunk-44-1.png)
+![plot of chunk unnamed-chunk-44](README_files/figure-gfm/unnamed-chunk-44-1.png)
 
 ## Application 3 : Calculate average commuting time to go to job in France
 
@@ -1953,7 +1953,7 @@ p <- tm_shape(com_time[com_time$NOM_REG=="BOURGOGNE-FRANCHE-COMTE", ]) +
 p
 ```
 
-![plot of chunk unnamed-chunk-46](figure/unnamed-chunk-46-1.png)
+![plot of chunk unnamed-chunk-46](README_files/figure-gfm/unnamed-chunk-46-1.png)
 
 ## Application 4 : Calculate the flow of people crossing each municipality in the context of commuting in Bourgogne-Franche-Comte region
 
@@ -2014,7 +2014,7 @@ p<-tm_shape(com[com$NOM_REG=="BOURGOGNE-FRANCHE-COMTE",]) +
 p
 ```
 
-![plot of chunk unnamed-chunk-49](figure/unnamed-chunk-49-1.png)
+![plot of chunk unnamed-chunk-49](README_files/figure-gfm/unnamed-chunk-49-1.png)
 
 ## Application 5 : Estimate the commuter traffic at user equilibrium in Bourgogne-Franche-Comte
 
@@ -2120,7 +2120,7 @@ p <- ggplot() +
 p
 ```
 
-![plot of chunk unnamed-chunk-52](figure/unnamed-chunk-52-1.png)
+![plot of chunk unnamed-chunk-52](README_files/figure-gfm/unnamed-chunk-52-1.png)
 
 The resulting picture matches the expected commuter structure of the
 region: the traffic concentrates on the rings around the urban cores
