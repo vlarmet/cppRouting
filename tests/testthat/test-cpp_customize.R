@@ -33,6 +33,36 @@ test_that("weights are validated: wrong length, NA and negative are rejected", {
   expect_error(cpp_customize(cch, weights = c(-1, rep(1, n - 1))))
 })
 
+test_that("weights accepts a column name (dist and aux columns)", {
+  e <- toy_edges()
+  g <- cppRouting::makegraph(e, directed = TRUE, aux = data.frame(time = e$dist * 2))
+  cch <- cpp_contract(g, customizable = TRUE, silent = TRUE)
+
+  d_default <- get_distance_pair(cpp_customize(cch), "1", "6")
+  d_dist_name <- get_distance_pair(cpp_customize(cch, weights = "dist"), "1", "6")
+  expect_equal(d_dist_name, d_default, tolerance = 1e-8)
+
+  d_time <- get_distance_pair(cpp_customize(cch, weights = "time"), "1", "6")
+  expect_equal(d_time, d_default * 2, tolerance = 1e-8)
+})
+
+test_that("weights rejects unknown column names and unnameable aux", {
+  e <- toy_edges()
+  g <- cppRouting::makegraph(e, directed = TRUE)
+  cch <- cpp_contract(g, customizable = TRUE, silent = TRUE)
+  expect_error(cpp_customize(cch, weights = "time"), "Import additional weights")
+
+  g_aux <- cppRouting::makegraph(e, directed = TRUE, aux = data.frame(time = e$dist))
+  cch_aux <- cpp_contract(g_aux, customizable = TRUE, silent = TRUE)
+  expect_error(cpp_customize(cch_aux, weights = "nope"), "not a known column")
+
+  g_plain_aux <- cppRouting::makegraph(e, directed = TRUE, aux = rep(1, nrow(e)))
+  cch_plain_aux <- cpp_contract(g_plain_aux, customizable = TRUE, silent = TRUE)
+  expect_error(cpp_customize(cch_plain_aux, weights = "time"), "unnamed aux")
+
+  expect_error(cpp_customize(cch_aux, weights = c("time", "time")))
+})
+
 test_that("only a cpp_contract(customizable = TRUE) object is accepted", {
   g <- toy_graph()
   ch <- cpp_contract(g, silent = TRUE) # classical, not customizable
