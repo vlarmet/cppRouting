@@ -12,7 +12,8 @@ Minor changes
 
 -   `cpp_simplify()` result is now classed (`cppRouting_simplified`), fixing downstream functions that silently failed on a simplified graph.
 -   `cpp_simplify()` now correctly aggregates multiple auxiliary columns across merged edges (previously single-column only).
--   `cpp_contract(..., customizable = TRUE)` shows progress, like classical contraction.
+-   `cpp_contract(..., customizable = TRUE)` shows progress, like classical contraction.  
+-   `to_igraph()` : convert cppRouting graph to igraph object
 
 cppRouting v3.2
 ===============
