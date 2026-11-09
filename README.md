@@ -256,11 +256,13 @@ All graph attributes should **never** be modified by the user.
 
 `cppRouting` is able to extract a routable network from the most used
 geographic sources:
-- **OpenStreetMap** - object from `osmdata` R package - cached file from
-`osmextract` R package - `.osm.pbf` file on disk (downloadable at
-[Geofabrik](https://download.geofabrik.de/)) - **generic
-`LINESTRING/MULTILINESTRING` datasets** - shapefile (`.shp`, `.dbf`,
-`.prj`, `.shx`) on disk - `sf` object
+- **OpenStreetMap** 
+  - object from `osmdata` R package 
+  - cached file from `osmextract` R package 
+  - `.osm.pbf` file on disk (downloadable at [Geofabrik](https://download.geofabrik.de/)) 
+- **generic `LINESTRING/MULTILINESTRING` datasets** 
+  - shapefile (`.shp`, `.dbf`, `.prj`, `.shx`) on disk 
+  - `sf` object
 
 Extraction is done through an optimized C++ engine, without extra
 dependencies, using `cpp_extract()` function.
@@ -585,10 +587,9 @@ topology is used during *contraction* phase (cost is not taken into
 account). The main advantage is the ability to update the network's
 weights without needing to reconstruct the graph.
 This algorithm actually needs three phases :
-- preprocessing phase called *contraction* with
-`cpp_contract(customizable=TRUE)` function - weights assignation using
-`cpp_customize()` function - query phase : similar to contraction
-hierarchies
+- preprocessing phase called *contraction* with `cpp_contract(customizable=TRUE)` function 
+- weights assignation using `cpp_customize()` function 
+- query phase : similar to contraction hierarchies
 
 Nodes are ordered using min-degree order but the user can provide its
 own order with `order` argument.
