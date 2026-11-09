@@ -2,7 +2,7 @@ Package: cppRouting
 Type: Package
 Title: Algorithms for Routing and Solving the Traffic Assignment Problem
 Version: 4.0
-Date: 2025-11-28
+Date: 2026-11-09
 Authors@R: person(given = "Vincent",family = "Larmet",role = c("aut", "cre"),email = "larmet.vincent@gmail.com")
 Description: Calculation of distances, shortest paths and isochrones on weighted graphs using several variants of Dijkstra algorithm.
     Proposed algorithms are unidirectional Dijkstra (Dijkstra, E. W. (1959) <doi:10.1007/BF01386390>),
