@@ -49,11 +49,12 @@ source:
 | **Scale** | -- | `max_mem`, `tmp_path` (`.pbf` only) |
 
 **Shared by every source, regardless of family** -- these stay as individual top-level
-arguments, not nested in `osm_params`/`geom_params`: `output`/`out_prefix`, `coords`/`epsg`, `keep_length`,
-and `snap_digits` (endpoint dedup for shapefile/`sf`; matches vertices against `$osm_points` for
-`osmdata`; unused for `.pbf`, which has stable node ids -- the one argument that doesn't fit
-cleanly in either bucket, so it's left flat). These are covered first, once, below -- rather
-than repeated in both the shapefile/`sf` and OSM sections.
+arguments, not nested in `osm_params`/`geom_params`:  
+- `output`/`out_prefix` : output format, 
+- `coords`/`epsg` : nodes's coordinates extraction, 
+- `keep_length` : store edges geographic length as auxiliary weight,
+- `snap_digits` : endpoint precision (endpoint dedup for shapefile/`sf`; matches vertices against `$osm_points` for
+`osmdata`; unused for `.pbf`, which has stable node ids)
 
 ## Arguments shared by every source
 
