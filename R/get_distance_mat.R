@@ -57,6 +57,7 @@
 #' print(dist_mat)
 
 get_distance_matrix<-function(Graph, from, to, algorithm="phast", aggregate_aux = FALSE, allcores=FALSE){
+  Graph <- tag_legacy_graph(Graph)
   if (any(is.na(from))) stop("NAs are not allowed in origin/destination nodes")
   if (any(is.na(to))) stop("NAs are not allowed in origin/destination nodes")
   from<-as.character(from)

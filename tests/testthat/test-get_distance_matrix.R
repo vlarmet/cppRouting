@@ -45,3 +45,19 @@ test_that("unreachable pairs are NA in the matrix", {
   expect_equal(unname(m[1, 1]), 2)
   expect_true(is.na(m[1, 2]))
 })
+
+test_that("legacy plain-list graphs (no class) are still accepted", {
+  # cppRouting < 3.0 and some downstream packages (e.g. rTARDIS) pass plain
+  # lists without the cppRouting_graph/cppRouting_contracted class.
+  g <- grid_graph(5, 5, directed = TRUE)
+  legacy <- as.list(g)
+  class(legacy) <- "list"
+  m <- get_distance_matrix(legacy, from = c("1"), to = c("10", "11"))
+  expect_equal(unname(m), unname(get_distance_matrix(g, c("1"), c("10", "11"))))
+
+  ch <- cpp_contract(g, silent = TRUE)
+  legacy_ch <- as.list(ch)
+  class(legacy_ch) <- "list"
+  m2 <- get_distance_matrix(legacy_ch, from = c("1"), to = c("10", "11"))
+  expect_equal(unname(m2), unname(get_distance_matrix(ch, c("1"), c("10", "11"))))
+})

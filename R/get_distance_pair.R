@@ -68,6 +68,7 @@
 #' print(dist_mat)
 
 get_distance_pair<-function(Graph, from, to, aggregate_aux = FALSE, algorithm="bi", constant=1, allcores=FALSE){
+  Graph <- tag_legacy_graph(Graph)
 
   if (length(from)!=length(to)) stop("From and to have not the same length")
 

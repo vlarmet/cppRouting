@@ -58,6 +58,7 @@
 #' print(non_dir_paths)
 
 get_path_pair<-function(Graph,from,to,algorithm="bi",constant=1,keep=NULL,long=FALSE){
+  Graph <- tag_legacy_graph(Graph)
 
   if (length(from)!=length(to)) stop("From and to have not the same length")
 

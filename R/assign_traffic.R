@@ -130,6 +130,7 @@
 
 assign_traffic <- function(Graph, from, to, demand, algorithm = "bfw", max_gap = 0.001, max_it = .Machine$integer.max,
                            aon_method = "bi", cch = NULL, constant = 1, dial_params = NULL, verbose = TRUE){
+  Graph <- tag_legacy_graph(Graph)
   if (length(from)!=length(to) | length(from) != length(demand)) stop("From, to and demand have not the same length")
   demand <- as.numeric(demand)
   if (any(is.na(data.frame(from,to, demand)))) stop("NAs are not allowed in origin/destination trips")

@@ -3,6 +3,24 @@
 # single legacy aux vector or a multi-column aux data.frame declared at
 # makegraph() time.
 
+# Restore the class on legacy plain-list graphs. cppRouting < 3.0 (and some
+# downstream packages that build graph lists by hand, e.g. rTARDIS) produced
+# objects without the "cppRouting_graph"/"cppRouting_contracted" class. The
+# 3.x dispatch detected them structurally (5 elements = normal, 6 =
+# contracted); re-tag them so class-based dispatch keeps accepting them.
+tag_legacy_graph <- function(Graph) {
+  cls <- class(Graph)
+  if (is.list(Graph) && length(cls) == 1 && identical(cls, "list")) {
+    if (!is.null(Graph$original) && !is.null(Graph$rank) && !is.null(Graph$shortcuts)) {
+      class(Graph) <- "cppRouting_contracted"
+    } else if (!is.null(Graph$data) && !is.null(Graph$dict) &&
+               !is.null(Graph$nbnode) && !is.null(Graph$attrib)) {
+      class(Graph) <- "cppRouting_graph"
+    }
+  }
+  Graph
+}
+
 # Turn (aux attribute, aggregate_aux argument) into a numeric matrix ready for
 # the C++ layer, plus enough metadata to shape the result the same way the
 # request was expressed.

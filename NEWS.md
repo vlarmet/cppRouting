@@ -14,6 +14,7 @@ Minor changes
 -   `cpp_simplify()` now correctly aggregates multiple auxiliary columns across merged edges (previously single-column only).
 -   `cpp_contract(..., customizable = TRUE)` shows progress, like classical contraction.  
 -   `to_igraph()` : convert cppRouting graph to igraph object
+-   `tag_legacy_graph()` : convert old graph object (simple R list) into `cppRouting_graph` `cppRouting_contracted` for backward compatibility
 
 cppRouting v3.2
 ===============
