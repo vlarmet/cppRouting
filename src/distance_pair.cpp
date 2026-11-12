@@ -1065,10 +1065,9 @@ void distancePairC::bidirmod(std::size_t begin, std::size_t end){
 
     while (true) {
 
-      if (Q.top().second > mu && Qr.top().second > mu){
-        break;
-      }
-      if (Q.empty() && Qr.empty()){
+      // Q.top()/Qr.top() must not be read before the empty check (UB on an
+      // empty queue): an exhausted side has no candidate, i.e. +inf.
+      if ((Q.empty() || Q.top().second > mu) && (Qr.empty() || Qr.top().second > mu)){
         break;
       }
 
@@ -1240,10 +1239,9 @@ void distancePairCAdd::bidirmod(std::size_t begin, std::size_t end){
 
     while (true) {
 
-      if (Q.top().second > mu && Qr.top().second > mu){
-        break;
-      }
-      if (Q.empty() && Qr.empty()){
+      // Q.top()/Qr.top() must not be read before the empty check (UB on an
+      // empty queue): an exhausted side has no candidate, i.e. +inf.
+      if ((Q.empty() || Q.top().second > mu) && (Qr.empty() || Qr.top().second > mu)){
         break;
       }
 

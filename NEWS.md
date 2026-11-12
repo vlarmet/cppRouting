@@ -1,3 +1,9 @@
+cppRouting v4.1
+===============
+Fixes after M1-SAN, clang-ASAN and valgrind CRAN failed tests :  
+- `aon.cpp`, `distance_pair.cpp`, `path_pair.cpp` : check priority queue emptyness before calling `.top()`  
+- `io_osm_graph_disk.cpp` : add explicit trailing pad
+
 cppRouting v4.0
 ===============
 Major changes

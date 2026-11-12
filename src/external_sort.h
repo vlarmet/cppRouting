@@ -4,7 +4,8 @@
 // Generic external (disk-backed) sort: chunked in-RAM sort + k-way merge via
 // temporary files. Lets a caller sort/dedupe a sequence far larger than the
 // memory budget it's given, at the cost of sequential disk I/O for the
-// overflow. Record must be a POD/trivially-copyable type (records are
+// overflow. Record must be a POD/trivially-copyable type with no
+// uninitialised padding bytes (records are
 // written/read as raw bytes) so this stays format-agnostic -- it knows
 // nothing about OSM, node ids, or ways; it is purely "sort records that
 // don't fit in RAM".

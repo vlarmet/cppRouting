@@ -115,7 +115,7 @@ The data presented here is the official french road network describing
 over 300000 km of roads.
 All data used in this README are free and can be downloaded here :
 
--   roads : <https://data.cquest.org/ign/route500/ROUTE500_3-0__SHP_LAMB93_FXX_2021-11-03.7z>
+-   roads : <https://cartes.gouv.fr/rechercher-une-donnee/dataset/IGNF_ROUTE-500#telechargement>
 -   general practitioners and maternity ward locations :
     <https://api.insee.fr/melodi/file/DS_BPE/DS_BPE_2025_CSV_FR>
 -   population :

@@ -15,7 +15,9 @@ namespace {
 
 // (node_id, way index, position within the way) -- sorted by node_id to be
 // merge-joined against the node coordinate table.
-struct IdPosRecord { int64_t node_id; int64_t way_idx; int32_t position; };
+// explicit trailing pad: the record is serialized as raw bytes (ExternalSorter),
+// so implicit alignment padding would carry uninitialised bytes to disk
+struct IdPosRecord { int64_t node_id; int64_t way_idx; int32_t position; int32_t pad; };
 struct CompareIdPosById {
   bool operator()(const IdPosRecord &a, const IdPosRecord &b) const { return a.node_id < b.node_id; }
 };
@@ -207,7 +209,7 @@ Rcpp::List build_osm_graph_disk(std::string path,
     int64_t way_idx = 0;
     while (ways_reader.read_way(speed, direction, clazz, refs)){
       for (size_t p = 0; p < refs.size(); p++)
-        idpos_sorter.add(IdPosRecord{refs[p], way_idx, static_cast<int32_t>(p)});
+        idpos_sorter.add(IdPosRecord{refs[p], way_idx, static_cast<int32_t>(p), 0});
       way_idx++;
     }
   }
